@@ -11,7 +11,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   // Fetch Match Details
   const { data: match } = await supabase
     .from('matches')
-    .select('*, home:teams!home_team_id(*), away:teams!away_team_id(*)')
+    .select('*, home:teams!home_team_id(*, players(*)), away:teams!away_team_id(*, players(*))')
     .eq('id', id)
     .single();
 

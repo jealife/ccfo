@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Shield, 
   Users, 
@@ -38,21 +38,80 @@ export default function RegistrationPage() {
     email: ""
   });
 
-  const [staff, setStaff] = useState(Array(6).fill({
+  const [staff, setStaff] = useState(Array.from({ length: 6 }, () => ({
     last_name: "",
     first_name: "",
     nationality: "",
     role: "",
     origin_village: ""
-  }));
+  })));
 
-  const [players, setPlayers] = useState(Array(24).fill({
-    jersey_number: "",
+  const [players, setPlayers] = useState(Array.from({ length: 24 }, (_, i) => ({
+    jersey_number: (i + 1).toString(),
     full_name: "",
     birth_date: "",
     position: "",
     origin_village: ""
-  }));
+  })));
+
+  const [documents, setDocuments] = useState({
+    identity_docs: "",
+    village_attestation: "",
+    payment_receipt: ""
+  });
+
+  useEffect(() => {
+    checkExistingTeam();
+  }, []);
+
+  async function checkExistingTeam() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: teamData } = await supabase
+      .from('teams')
+      .select(`
+        *,
+        staff(*),
+        players(*)
+      `)
+      .eq('manager_id', user.id)
+      .single();
+
+    if (teamData) {
+      // Pre-fill state with existing data
+      setTeamInfo({
+        name: teamData.name || "",
+        village: teamData.village || "",
+        jersey_color: teamData.jersey_color || "",
+        president_name: teamData.president_name || "",
+        president_phone: teamData.president_phone || "",
+        whatsapp: teamData.whatsapp || "",
+        email: teamData.email || ""
+      });
+
+      if (teamData.staff && teamData.staff.length > 0) {
+        const loadedStaff = Array.from({ length: 6 }, (_, i) => 
+          teamData.staff[i] || { last_name: "", first_name: "", nationality: "", role: "", origin_village: "" }
+        );
+        setStaff(loadedStaff);
+      }
+
+      if (teamData.players && teamData.players.length > 0) {
+        const loadedPlayers = Array.from({ length: 24 }, (_, i) => 
+          teamData.players.find((p: any) => parseInt(p.jersey_number) === i + 1) || 
+          { jersey_number: (i + 1).toString(), full_name: "", birth_date: "", position: "", origin_village: "" }
+        );
+        setPlayers(loadedPlayers);
+      }
+
+      setDocuments({
+        identity_docs: teamData.identity_docs_url || "",
+        village_attestation: teamData.village_attestation_url || "",
+        payment_receipt: teamData.payment_receipt_url || ""
+      });
+    }
+  }
 
   const steps = [
     { id: 1, title: "Général", icon: <Shield /> },
@@ -71,7 +130,8 @@ export default function RegistrationPage() {
       const result = await submitTeamRegistration({
         teamInfo,
         staff,
-        players
+        players,
+        documents
       });
 
       if (result.success) {
@@ -93,19 +153,19 @@ export default function RegistrationPage() {
       </div>
 
       {/* Stepper */}
-      <div className="flex items-center justify-between max-w-3xl mx-auto px-4">
+      <div className="flex items-center justify-center max-w-3xl mx-auto px-2">
         {steps.map((s, i) => (
-          <div key={s.id} className="flex items-center group">
+          <div key={s.id} className="flex items-center">
             <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 shadow-2xl",
-              step === s.id ? "bg-primary border-primary text-white scale-110" : 
+              "w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-500 border-2 shadow-2xl",
+              step === s.id ? "bg-primary border-primary text-white scale-110" :
               step > s.id ? "bg-green-500 border-green-500 text-white" : "bg-card border-white/5 text-muted"
             )}>
-              {step > s.id ? <CheckCircle2 className="w-6 h-6" /> : s.icon}
+              {step > s.id ? <CheckCircle2 className="w-4 h-4 md:w-6 md:h-6" /> : <span className="scale-75 md:scale-100">{s.icon}</span>}
             </div>
             {i < steps.length - 1 && (
               <div className={cn(
-                "w-12 h-0.5 mx-2 transition-all duration-1000",
+                "w-6 md:w-12 h-0.5 mx-1 md:mx-2 transition-all duration-1000",
                 step > s.id ? "bg-green-500" : "bg-white/5"
               )} />
             )}
@@ -114,7 +174,7 @@ export default function RegistrationPage() {
       </div>
 
       {/* Form Content */}
-      <div className="glass-card p-10 min-h-[500px] animate-fade-in relative overflow-hidden">
+      <div className="glass-card p-5 md:p-10 pb-20 min-h-[500px] animate-fade-in relative overflow-hidden">
         {/* Step 1: General Info */}
         {step === 1 && (
           <div className="space-y-8">
@@ -129,13 +189,79 @@ export default function RegistrationPage() {
           </div>
         )}
 
-        {/* Step 2: Staff Table */}
+        {/* Step 2: Staff */}
         {step === 2 && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <h3 className="font-black uppercase text-sm tracking-widest text-primary flex items-center gap-2">
               <Users className="w-4 h-4" /> Les 6 Membres du Staff Technique
             </h3>
-            <div className="overflow-x-auto">
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-4">
+              {staff.map((s, i) => (
+                <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Membre {i + 1}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Nom</label>
+                      <input 
+                        value={s.last_name}
+                        onChange={(e) => {
+                          const newStaff = [...staff];
+                          newStaff[i] = { ...newStaff[i], last_name: e.target.value };
+                          setStaff(newStaff);
+                        }}
+                        className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" placeholder="..." />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Prénom</label>
+                      <input 
+                        value={s.first_name}
+                        onChange={(e) => {
+                          const newStaff = [...staff];
+                          newStaff[i] = { ...newStaff[i], first_name: e.target.value };
+                          setStaff(newStaff);
+                        }}
+                        className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" placeholder="..." />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Nationalité</label>
+                      <input 
+                        value={s.nationality}
+                        onChange={(e) => {
+                          const newStaff = [...staff];
+                          newStaff[i] = { ...newStaff[i], nationality: e.target.value };
+                          setStaff(newStaff);
+                        }}
+                        className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" placeholder="..." />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Fonction</label>
+                      <input 
+                        value={s.role}
+                        onChange={(e) => {
+                          const newStaff = [...staff];
+                          newStaff[i] = { ...newStaff[i], role: e.target.value };
+                          setStaff(newStaff);
+                        }}
+                        className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" placeholder={i === 0 ? "Coach" : i === 1 ? "Coach Adj" : "Fonction"} />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Village Origine</label>
+                      <input 
+                        value={s.origin_village}
+                        onChange={(e) => {
+                          const newStaff = [...staff];
+                          newStaff[i] = { ...newStaff[i], origin_village: e.target.value };
+                          setStaff(newStaff);
+                        }}
+                        className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" placeholder="..." />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-white/5 uppercase tracking-widest">
                   <tr>
@@ -147,13 +273,58 @@ export default function RegistrationPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {staff.map((_, i) => (
+                  {staff.map((s, i) => (
                     <tr key={i}>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." /></td>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." /></td>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." /></td>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder={i === 0 ? "Coach" : i === 1 ? "Coach Adj" : "Fonction"} /></td>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." /></td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          value={s.last_name}
+                          onChange={(e) => {
+                            const newStaff = [...staff];
+                            newStaff[i] = { ...newStaff[i], last_name: e.target.value };
+                            setStaff(newStaff);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." />
+                      </td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          value={s.first_name}
+                          onChange={(e) => {
+                            const newStaff = [...staff];
+                            newStaff[i] = { ...newStaff[i], first_name: e.target.value };
+                            setStaff(newStaff);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." />
+                      </td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          value={s.nationality}
+                          onChange={(e) => {
+                            const newStaff = [...staff];
+                            newStaff[i] = { ...newStaff[i], nationality: e.target.value };
+                            setStaff(newStaff);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." />
+                      </td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          value={s.role}
+                          onChange={(e) => {
+                            const newStaff = [...staff];
+                            newStaff[i] = { ...newStaff[i], role: e.target.value };
+                            setStaff(newStaff);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder={i === 0 ? "Coach" : i === 1 ? "Coach Adj" : "Fonction"} />
+                      </td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          value={s.origin_village}
+                          onChange={(e) => {
+                            const newStaff = [...staff];
+                            newStaff[i] = { ...newStaff[i], origin_village: e.target.value };
+                            setStaff(newStaff);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="..." />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -162,13 +333,74 @@ export default function RegistrationPage() {
           </div>
         )}
 
-        {/* Step 3: Players Table */}
+        {/* Step 3: Players */}
         {step === 3 && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <h3 className="font-black uppercase text-sm tracking-widest text-primary flex items-center gap-2">
               <UserPlus className="w-4 h-4" /> Les 24 Joueurs de l'Effectif
             </h3>
-            <div className="overflow-x-auto h-[600px]">
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3 max-h-[65vh] overflow-y-auto pr-1">
+              {players.map((p, i) => (
+                <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs shrink-0">{i + 1}</span>
+                    <input 
+                      value={p.full_name}
+                      onChange={(e) => {
+                        const newPlayers = [...players];
+                        newPlayers[i] = { ...newPlayers[i], full_name: e.target.value };
+                        setPlayers(newPlayers);
+                      }}
+                      className="flex-1 bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" placeholder="Nom complet..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Naissance</label>
+                      <input 
+                        type="date" 
+                        value={p.birth_date}
+                        onChange={(e) => {
+                          const newPlayers = [...players];
+                          newPlayers[i] = { ...newPlayers[i], birth_date: e.target.value };
+                          setPlayers(newPlayers);
+                        }}
+                        className="w-full bg-white/5 border border-white/5 rounded-lg px-2 py-2 text-xs outline-none focus:border-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Poste</label>
+                      <select 
+                        value={p.position}
+                        onChange={(e) => {
+                          const newPlayers = [...players];
+                          newPlayers[i] = { ...newPlayers[i], position: e.target.value };
+                          setPlayers(newPlayers);
+                        }}
+                        className="w-full bg-card border border-white/5 rounded-lg px-2 py-2 text-xs outline-none focus:border-primary">
+                        <option value="">Poste</option>
+                        <option value="GK">Gardien</option>
+                        <option value="DEF">Défenseur</option>
+                        <option value="MID">Milieu</option>
+                        <option value="FWD">Attaquant</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[9px] font-black uppercase text-muted tracking-widest">Village Origine</label>
+                      <input 
+                        value={p.origin_village}
+                        onChange={(e) => {
+                          const newPlayers = [...players];
+                          newPlayers[i] = { ...newPlayers[i], origin_village: e.target.value };
+                          setPlayers(newPlayers);
+                        }}
+                        className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" placeholder="Village..." />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto h-[560px]">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-white/5 uppercase tracking-widest sticky top-0 z-10">
                   <tr>
@@ -180,13 +412,48 @@ export default function RegistrationPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {players.map((_, i) => (
+                  {players.map((p, i) => (
                     <tr key={i}>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none text-center font-black text-primary" placeholder={`${i+1}`} /></td>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="Nom complet..." /></td>
-                      <td className="p-1 border border-white/5"><input type="date" className="w-full bg-transparent p-3 outline-none focus:bg-white/5" /></td>
                       <td className="p-1 border border-white/5">
-                        <select className="w-full bg-transparent p-3 outline-none focus:bg-white/5 appearance-none">
+                        <input 
+                          value={p.jersey_number}
+                          onChange={(e) => {
+                            const newPlayers = [...players];
+                            newPlayers[i] = { ...newPlayers[i], jersey_number: e.target.value };
+                            setPlayers(newPlayers);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none text-center font-black text-primary" placeholder={`${i+1}`} />
+                      </td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          value={p.full_name}
+                          onChange={(e) => {
+                            const newPlayers = [...players];
+                            newPlayers[i] = { ...newPlayers[i], full_name: e.target.value };
+                            setPlayers(newPlayers);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="Nom complet..." />
+                      </td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          type="date" 
+                          value={p.birth_date}
+                          onChange={(e) => {
+                            const newPlayers = [...players];
+                            newPlayers[i] = { ...newPlayers[i], birth_date: e.target.value };
+                            setPlayers(newPlayers);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" />
+                      </td>
+                      <td className="p-1 border border-white/5">
+                        <select 
+                          value={p.position}
+                          onChange={(e) => {
+                            const newPlayers = [...players];
+                            newPlayers[i] = { ...newPlayers[i], position: e.target.value };
+                            setPlayers(newPlayers);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5 appearance-none">
                           <option value="">Poste</option>
                           <option value="GK">Gardien</option>
                           <option value="DEF">Défenseur</option>
@@ -194,7 +461,16 @@ export default function RegistrationPage() {
                           <option value="FWD">Attaquant</option>
                         </select>
                       </td>
-                      <td className="p-1 border border-white/5"><input className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="Village..." /></td>
+                      <td className="p-1 border border-white/5">
+                        <input 
+                          value={p.origin_village}
+                          onChange={(e) => {
+                            const newPlayers = [...players];
+                            newPlayers[i] = { ...newPlayers[i], origin_village: e.target.value };
+                            setPlayers(newPlayers);
+                          }}
+                          className="w-full bg-transparent p-3 outline-none focus:bg-white/5" placeholder="Village..." />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -206,9 +482,24 @@ export default function RegistrationPage() {
         {/* Step 4: Documents */}
         {step === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-full items-center">
-            <DocUpload label="Cartes d'identité / Actes de naissance" desc="Un seul fichier PDF contenant toutes les pièces" />
-            <DocUpload label="Attestation Chef de Village" desc="Document signé par l'autorité locale" />
-            <DocUpload label="Reçu de Paiement" desc="Preuve du frais d'affiliation" />
+            <DocUpload 
+              label="Cartes d'identité / Actes de naissance" 
+              desc="Un seul fichier PDF contenant toutes les pièces" 
+              value={documents.identity_docs}
+              onChange={(url) => setDocuments(prev => ({ ...prev, identity_docs: url }))}
+            />
+            <DocUpload 
+              label="Attestation Chef de Village" 
+              desc="Document signé par l'autorité locale" 
+              value={documents.village_attestation}
+              onChange={(url) => setDocuments(prev => ({ ...prev, village_attestation: url }))}
+            />
+            <DocUpload 
+              label="Reçu de Paiement" 
+              desc="Preuve du frais d'affiliation" 
+              value={documents.payment_receipt}
+              onChange={(url) => setDocuments(prev => ({ ...prev, payment_receipt: url }))}
+            />
           </div>
         )}
 
@@ -290,19 +581,83 @@ function InputField({ label, placeholder, value, onChange }: any) {
   );
 }
 
-function DocUpload({ label, desc }: any) {
+function DocUpload({ label, desc, value, onChange }: { label: string, desc: string, value: string, onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const supabase = createClient();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `registration-docs/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('team-docs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('team-docs').getPublicUrl(filePath);
+      onChange(publicUrl);
+    } catch (error: any) {
+      alert("Erreur upload : " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <div className="p-8 rounded-xl bg-white/5 border-2 border-dashed border-white/10 flex flex-col items-center text-center space-y-4 hover:border-primary/50 transition-all group">
-      <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-muted group-hover:text-primary transition-colors">
-        <Upload className="w-8 h-8" />
+    <div className={cn(
+      "p-8 rounded-xl bg-white/5 border-2 border-dashed flex flex-col items-center text-center space-y-4 transition-all group",
+      value ? "border-green-500/50 bg-green-500/5" : "border-white/10 hover:border-primary/50"
+    )}>
+      <div className={cn(
+        "w-16 h-16 rounded-2xl flex items-center justify-center transition-colors",
+        value ? "bg-green-500/20 text-green-500" : "bg-secondary text-muted group-hover:text-primary"
+      )}>
+        {uploading ? <Loader2 className="w-8 h-8 animate-spin" /> : value ? <CheckCircle2 className="w-8 h-8" /> : <Upload className="w-8 h-8" />}
       </div>
       <div className="space-y-1">
         <div className="text-sm font-black uppercase tracking-tight">{label}</div>
         <div className="text-[10px] text-muted font-medium">{desc}</div>
       </div>
-      <button className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
-        Parcourir
-      </button>
+      
+      <label className="cursor-pointer">
+        <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
+        <div className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+          {uploading ? "Chargement..." : value ? "Modifier" : "Parcourir"}
+        </div>
+      </label>
+
+      {value && (
+        <a href={value} target="_blank" rel="noreferrer" className="text-[9px] text-primary font-bold hover:underline">
+          Voir le document
+        </a>
+      )}
     </div>
   );
 }
+
+function Loader2({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("animate-spin", className)}
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+

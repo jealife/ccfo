@@ -1,38 +1,186 @@
 "use client";
 
-import { CreditCard, CheckCircle2, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { 
+  CreditCard, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  Search, 
+  FileText, 
+  ExternalLink,
+  Loader2,
+  TrendingUp,
+  Banknote
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 export default function AdminPaymentsPage() {
+  const [teams, setTeams] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  async function fetchPayments() {
+    const { data, error } = await supabase
+      .from('teams')
+      .select('id, name, village, payment_receipt_url, status, created_at')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setTeams(data);
+    }
+    setLoading(false);
+  }
+
+  const filteredTeams = teams.filter(t => 
+    t.name.toLowerCase().includes(search.toLowerCase()) ||
+    t.village.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const stats = {
+    pending: teams.filter(t => t.status === 'pending').length,
+    validated: teams.filter(t => t.status === 'validated').length,
+    totalAmount: teams.filter(t => t.status === 'validated').length * 150000
+  };
+
   return (
     <div className="space-y-8 animate-fade-in pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black font-outfit uppercase tracking-tighter">Gestion des Paiements</h1>
-          <p className="text-muted text-sm">Validez les frais d'affiliation des équipes.</p>
+          <p className="text-muted text-sm">Suivi des frais d'affiliation (150.000 FCFA / équipe).</p>
+        </div>
+        
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-primary transition-colors" />
+          <input 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher une équipe..." 
+            className="w-full md:w-80 bg-white/5 border border-white/10 rounded-xl pl-12 pr-6 py-3 text-sm outline-none focus:border-primary/50 transition-all"
+          />
         </div>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="sports-card p-6 bg-blue-500/10 border-blue-500/20">
-          <p className="text-xs font-black uppercase text-blue-500">En Attente</p>
-          <p className="text-3xl font-black font-outfit mt-2">0</p>
-        </div>
-        <div className="sports-card p-6 bg-green-500/10 border-green-500/20">
-          <p className="text-xs font-black uppercase text-green-500">Validés</p>
-          <p className="text-3xl font-black font-outfit mt-2">0 FCFA</p>
-        </div>
-        <div className="sports-card p-6 bg-red-500/10 border-red-500/20">
-          <p className="text-xs font-black uppercase text-red-500">Rejetés</p>
-          <p className="text-3xl font-black font-outfit mt-2">0</p>
-        </div>
+        <StatCard 
+          label="En Attente" 
+          value={stats.pending.toString()} 
+          icon={<Clock className="text-yellow-500" />} 
+          color="yellow" 
+        />
+        <StatCard 
+          label="Recettes Validées" 
+          value={`${stats.totalAmount.toLocaleString()} FCFA`} 
+          icon={<Banknote className="text-green-500" />} 
+          color="green" 
+          trend="Equipes validées"
+          trendValue={stats.validated.toString()}
+        />
+        <StatCard 
+          label="Equipes Inscrites" 
+          value={teams.length.toString()} 
+          icon={<CreditCard className="text-primary" />} 
+          color="primary" 
+        />
       </div>
 
       <div className="sports-card bg-card/30 backdrop-blur-xl border-white/5 overflow-hidden">
-        <div className="py-20 text-center text-muted">
-          <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p className="text-sm italic">Module de vérification des paiements en construction.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-white/5">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Village</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Reçu</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center">Statut</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="py-20 text-center">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary opacity-20" />
+                  </td>
+                </tr>
+              ) : filteredTeams.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-20 text-center text-muted italic text-sm">
+                    Aucun paiement trouvé.
+                  </td>
+                </tr>
+              ) : filteredTeams.map((team) => (
+                <tr key={team.id} className="hover:bg-white/5 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center font-bold text-xs text-primary">
+                        {team.name[0]}
+                      </div>
+                      <span className="font-bold text-sm uppercase tracking-tight">{team.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-xs font-bold text-muted uppercase">{team.village}</td>
+                  <td className="px-6 py-4">
+                    {team.payment_receipt_url ? (
+                      <a href={team.payment_receipt_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black text-primary hover:underline">
+                        <FileText className="w-3 h-3" /> VOIR REÇU
+                      </a>
+                    ) : (
+                      <span className="text-[10px] font-black text-red-500/50">NON FOURNI</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                      team.status === 'validated' ? "bg-green-500/10 text-green-500" : 
+                      team.status === 'rejected' ? "bg-red-500/10 text-red-500" :
+                      "bg-yellow-500/10 text-yellow-500"
+                    )}>
+                      {team.status === 'validated' ? 'Validé' : team.status === 'rejected' ? 'Rejeté' : 'Attente'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button className="p-2 rounded-lg bg-white/5 border border-white/10 hover:border-primary/50 text-muted hover:text-primary transition-all">
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon, color, trend, trendValue }: any) {
+  return (
+    <div className="sports-card p-6 bg-card/30 backdrop-blur-xl border-white/5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-white/5", color === 'yellow' ? 'text-yellow-500' : color === 'green' ? 'text-green-500' : 'text-primary')}>
+          {icon}
+        </div>
+        <TrendingUp className="w-4 h-4 opacity-10" />
+      </div>
+      <div>
+        <div className="text-2xl font-black font-outfit uppercase tracking-tighter">{value}</div>
+        <div className="text-[10px] font-black text-muted uppercase tracking-widest mt-1">{label}</div>
+      </div>
+      {trend && (
+        <div className="pt-4 border-t border-white/5 flex items-center gap-2 text-[10px] font-bold">
+          <span className="text-green-500">{trendValue}</span>
+          <span className="text-muted">{trend}</span>
+        </div>
+      )}
     </div>
   );
 }

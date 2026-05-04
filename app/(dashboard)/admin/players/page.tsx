@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Award, Search, Filter, Download, MoreVertical, MapPin, Printer, Shield } from "lucide-react";
+import { Award, Search, Download, MapPin, Printer, Shield, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -9,7 +9,13 @@ export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [printingPlayer, setPrintingPlayer] = useState<any>(null);
+  const [search, setSearch] = useState("");
   const supabase = createClient();
+
+  const filtered = players.filter(p =>
+    !search || p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    p.team?.name?.toLowerCase().includes(search.toLowerCase())
+  );
 
   useEffect(() => {
     async function fetchPlayers() {
@@ -44,6 +50,8 @@ export default function AdminPlayersPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input 
               placeholder="Rechercher un joueur..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               className="pl-10 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-primary outline-none transition-all w-full sm:w-64"
             />
           </div>
@@ -53,7 +61,8 @@ export default function AdminPlayersPage() {
         </div>
       </div>
 
-      <div className="sports-card bg-card/30 backdrop-blur-xl border-white/5 overflow-hidden">
+      {/* TABLE DESKTOP */}
+      <div className="sports-card bg-card/30 backdrop-blur-xl border-white/5 overflow-hidden hidden md:block">
         {loading ? (
           <div className="py-20 text-center text-muted animate-pulse">Chargement des joueurs...</div>
         ) : (
@@ -61,65 +70,62 @@ export default function AdminPlayersPage() {
             <table className="w-full text-left">
               <thead className="bg-white/5 border-b border-white/5">
                 <tr>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Joueur</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">N°</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Poste</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Village (Origine)</th>
-                  <th className="px-6 py-4 text-right"></th>
+                  <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Joueur</th>
+                  <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
+                  <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-muted">N°</th>
+                  <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Poste</th>
+                  <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-muted hidden lg:table-cell">Village</th>
+                  <th className="px-5 py-3 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {players.map((player) => (
+                {filtered.map((player) => (
                   <tr key={player.id} className="hover:bg-white/5 transition-colors group">
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center overflow-hidden">
+                        <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center overflow-hidden shrink-0 text-muted">
                           {player.photo_url ? (
                             <img src={player.photo_url} alt={player.full_name} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="font-bold text-muted">{player.full_name?.[0]}</span>
+                            <User className="w-5 h-5 opacity-50" />
                           )}
                         </div>
-                        <span className="font-bold uppercase tracking-tight">{player.full_name}</span>
+                        <span className="font-bold text-sm uppercase tracking-tight">{player.full_name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-muted">{player.team?.name || "Sans équipe"}</span>
+                    <td className="px-5 py-3">
+                      <span className="text-xs font-bold text-muted">{player.team?.name || "Sans équipe"}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">
+                    <td className="px-5 py-3">
+                      <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">
                         {player.jersey_number}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-accent">
-                        {player.position}
-                      </span>
+                    <td className="px-5 py-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-accent">{player.position}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-muted flex items-center gap-2">
+                    <td className="px-5 py-3 hidden lg:table-cell">
+                      <span className="text-xs text-muted flex items-center gap-1">
                         <MapPin className="w-3 h-3" /> {player.origin_village}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => setPrintingPlayer(player)}
-                        className="p-2 hover:bg-accent/10 hover:text-accent rounded-lg text-muted transition-colors"
-                        title="Imprimer la Licence"
-                      >
-                        <Printer className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 hover:bg-white/10 rounded-lg text-muted transition-colors">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button 
+                          onClick={() => setPrintingPlayer(player)}
+                          className="p-2 hover:bg-accent/10 hover:text-accent rounded-lg text-muted transition-colors"
+                          title="Imprimer la Licence"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
-                {players.length === 0 && (
+                {filtered.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-muted italic text-sm">
-                      Aucun joueur enregistré pour le moment.
+                      {search ? `Aucun résultat pour "${search}"` : "Aucun joueur enregistré pour le moment."}
                     </td>
                   </tr>
                 )}
@@ -127,6 +133,46 @@ export default function AdminPlayersPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* CARDS MOBILE */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className="py-16 text-center text-muted animate-pulse">Chargement...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-12 text-center text-muted italic text-sm sports-card">
+            {search ? `Aucun résultat pour "${search}"` : "Aucun joueur enregistré."}
+          </div>
+        ) : filtered.map((player) => (
+          <div key={player.id} className="sports-card p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center overflow-hidden shrink-0 text-muted">
+              {player.photo_url ? (
+                <img src={player.photo_url} alt={player.full_name} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-6 h-6 opacity-50" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-sm uppercase tracking-tight truncate">{player.full_name}</div>
+              <div className="text-[10px] text-muted mt-0.5">{player.team?.name || "Sans équipe"}</div>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] font-black text-primary">#{player.jersey_number}</span>
+                <span className="text-[10px] font-black text-accent uppercase">{player.position}</span>
+                {player.origin_village && (
+                  <span className="text-[10px] text-muted flex items-center gap-0.5">
+                    <MapPin className="w-2.5 h-2.5" />{player.origin_village}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button 
+              onClick={() => setPrintingPlayer(player)}
+              className="p-3 bg-white/5 hover:bg-accent/10 hover:text-accent rounded-xl text-muted transition-colors shrink-0"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* MODAL DE PRÉVISUALISATION DE LA LICENCE */}
@@ -176,7 +222,7 @@ export default function AdminPlayersPage() {
                 </div>
               )}
               {/* Dégradé sur la photo pour la fondre avec le bas */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-card via-card/40 to-transparent" />
               
               {/* Badge Numéro (flottant) */}
               <div className="absolute top-2 right-2 w-8 h-8 bg-[#ffcc00] text-black rounded-lg flex items-center justify-center font-black text-xl shadow-lg border border-white/20 rotate-3">

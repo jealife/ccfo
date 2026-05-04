@@ -19,7 +19,10 @@ import { createClient } from "@/lib/supabase/client";
 export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
   const supabase = createClient();
+
+  const filteredTeams = filter === "all" ? teams : teams.filter(t => t.status === filter);
 
   useEffect(() => {
     async function fetchTeams() {
@@ -51,13 +54,18 @@ export default function AdminTeamsPage() {
           <p className="text-muted">Consultez et validez les inscriptions au tournoi.</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card/50 hover:bg-card transition-all text-sm font-bold">
-            <Filter className="w-4 h-4" /> Filtrer
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-background hover:bg-primary/90 transition-all text-sm font-bold">
-            <Download className="w-4 h-4" /> Exporter PDF
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {["all","validated","pending","rejected"].map(f => (
+            <button 
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                filter === f ? "bg-primary text-white" : "border border-border bg-card/50 hover:bg-card text-muted"
+              }`}
+            >
+              {f === "all" ? "Tous" : f === "validated" ? "Validées" : f === "pending" ? "En attente" : "Rejetées"}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -69,110 +77,71 @@ export default function AdminTeamsPage() {
         <StatusStatCard label="Rejetées" value={stats.rejected.toString().padStart(2, '0')} icon={<XCircle />} color="red" />
       </div>
 
-      {/* Teams Table */}
-      <div className="sports-card bg-card/30 backdrop-blur-xl border-white/5 overflow-hidden">
+      {/* Teams Table - Desktop */}
+      <div className="sports-card bg-card/30 backdrop-blur-xl border-white/5 overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-white/5 border-b border-white/5">
               <tr>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Village</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Manager</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Joueurs/Staff</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Paiement</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Statut</th>
-                <th className="px-6 py-4 text-right"></th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Village</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Joueurs/Staff</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Statut</th>
+                <th className="px-4 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {(teams || []).map((team: any) => (
+              {(filteredTeams || []).map((team: any) => (
                 <tr key={team.id} className="hover:bg-white/5 transition-colors group">
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold">
+                      <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center font-bold text-sm shrink-0">
                         {team.name[0]}
                       </div>
-                      <span className="font-bold">{team.name}</span>
+                      <div>
+                        <div className="font-bold text-sm">{team.name}</div>
+                        <div className="text-[10px] text-muted">{team.village}</div>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-muted">{team.village}</td>
-                  <td className="px-6 py-4 text-sm font-medium">Manager #{team.manager_id?.slice(0, 4)}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-3 w-32">
+                  <td className="px-4 py-4 text-sm text-muted hidden lg:table-cell">{team.village}</td>
+                  <td className="px-4 py-4">
+                    <div className="flex flex-col gap-2 w-28">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
-                          <span className="text-muted">Joueurs</span>
-                          <span className={team.players?.[0]?.count >= 24 ? "text-green-500" : "text-primary"}>
-                            {team.players?.[0]?.count || 0}/24
-                          </span>
+                          <span className="text-muted">J</span>
+                          <span className={team.players?.[0]?.count >= 24 ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/24</span>
                         </div>
-                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className={cn("h-full rounded-full transition-all", team.players?.[0]?.count >= 24 ? "bg-green-500" : "bg-primary")}
-                            style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / 24) * 100)}%` }}
-                          />
+                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div className={cn("h-full rounded-full transition-all", team.players?.[0]?.count >= 24 ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / 24) * 100)}%` }} />
                         </div>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
-                          <span className="text-muted">Staff</span>
-                          <span className={team.staff?.[0]?.count >= 6 ? "text-green-500" : "text-accent"}>
-                            {team.staff?.[0]?.count || 0}/6
-                          </span>
+                          <span className="text-muted">S</span>
+                          <span className={team.staff?.[0]?.count >= 6 ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/6</span>
                         </div>
-                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className={cn("h-full rounded-full transition-all", team.staff?.[0]?.count >= 6 ? "bg-green-500" : "bg-accent")}
-                            style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / 6) * 100)}%` }}
-                          />
+                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div className={cn("h-full rounded-full transition-all", team.staff?.[0]?.count >= 6 ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / 6) * 100)}%` }} />
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[10px] font-black uppercase",
-                      team.status === "validated" ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
-                    )}>
-                      {team.status === "validated" ? "Payé" : "En attente"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <StatusBadge status={team.status} />
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="px-4 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
                       {team.status === 'pending' && (
                         <>
-                          <button 
-                            className="p-2 hover:bg-green-500/10 rounded-lg text-green-500 transition-colors" 
-                            title="Valider l'équipe"
-                            onClick={async () => {
-                              const { error } = await supabase.from('teams').update({ status: 'validated' }).eq('id', team.id);
-                              if (!error) window.location.reload();
-                            }}
-                          >
+                          <button className="p-2 hover:bg-green-500/10 rounded-lg text-green-500 transition-colors" title="Valider" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'validated' }).eq('id', team.id); if (!error) window.location.reload(); }}>
                             <CheckCircle2 className="w-4 h-4" />
                           </button>
-                          <button 
-                            className="p-2 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors" 
-                            title="Rejeter le dossier"
-                            onClick={async () => {
-                              const { error } = await supabase.from('teams').update({ status: 'rejected' }).eq('id', team.id);
-                              if (!error) window.location.reload();
-                            }}
-                          >
+                          <button className="p-2 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors" title="Rejeter" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'rejected' }).eq('id', team.id); if (!error) window.location.reload(); }}>
                             <XCircle className="w-4 h-4" />
                           </button>
                         </>
                       )}
-                      <button 
-                        className="p-2 hover:bg-white/10 rounded-lg text-accent transition-colors" 
-                        title="Imprimer Licences"
-                        onClick={() => window.print()}
-                      >
-                        <Printer className="w-4 h-4" />
-                      </button>
                       <button className="p-2 hover:bg-white/10 rounded-lg text-primary transition-colors" title="Voir les détails">
                         <Eye className="w-4 h-4" />
                       </button>
@@ -183,6 +152,54 @@ export default function AdminTeamsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Teams Cards - Mobile */}
+      <div className="md:hidden space-y-3">
+        {(filteredTeams || []).map((team: any) => (
+          <div key={team.id} className="sports-card p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold">{team.name[0]}</div>
+                <div>
+                  <div className="font-bold">{team.name}</div>
+                  <div className="text-[10px] text-muted uppercase tracking-widest">{team.village}</div>
+                </div>
+              </div>
+              <StatusBadge status={team.status} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
+                  <span className="text-muted">Joueurs</span>
+                  <span className={team.players?.[0]?.count >= 24 ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/24</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full", team.players?.[0]?.count >= 24 ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / 24) * 100)}%` }} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
+                  <span className="text-muted">Staff</span>
+                  <span className={team.staff?.[0]?.count >= 6 ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/6</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full", team.staff?.[0]?.count >= 6 ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / 6) * 100)}%` }} />
+                </div>
+              </div>
+            </div>
+            {team.status === 'pending' && (
+              <div className="flex gap-2 pt-2 border-t border-white/5">
+                <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-green-500/10 text-green-500 text-xs font-black uppercase" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'validated' }).eq('id', team.id); if (!error) window.location.reload(); }}>
+                  <CheckCircle2 className="w-4 h-4" /> Valider
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'rejected' }).eq('id', team.id); if (!error) window.location.reload(); }}>
+                  <XCircle className="w-4 h-4" /> Rejeter
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

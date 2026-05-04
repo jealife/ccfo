@@ -153,19 +153,28 @@ export function MatchDetailClient({ match, events, stats }: any) {
                 </div>
                 <div>
                   <div className="font-black uppercase text-sm tracking-tight">{match.home.name}</div>
-                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">Formation 4-3-3</div>
+                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">Effectif Officiel</div>
                 </div>
               </div>
               <div className="divide-y divide-white/5">
-                {[1, 4, 5, 3, 2, 8, 6, 10, 7, 9, 11].map((num, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 hover:bg-white/5 transition-colors">
-                    <div className="w-6 text-right font-black font-outfit text-muted text-sm">{num}</div>
-                    <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center text-muted"><User className="w-4 h-4" /></div>
-                    <div className="flex-1">
-                      <div className="font-bold text-sm">Joueur {num}</div>
+                {match.home.players?.length > 0 ? match.home.players.map((p: any) => (
+                  <div key={p.id} className="flex items-center gap-4 p-3 hover:bg-white/5 transition-colors">
+                    <div className="w-6 text-right font-black font-outfit text-primary text-xs">{p.jersey_number}</div>
+                    <div className="w-8 h-8 rounded-full bg-background border border-white/5 flex items-center justify-center overflow-hidden shrink-0">
+                      {p.photo_url ? (
+                        <img src={p.photo_url} alt={p.full_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4 text-muted/50" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm truncate uppercase tracking-tight">{p.full_name}</div>
+                      <div className="text-[9px] font-black text-muted uppercase tracking-widest">{p.position}</div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="p-8 text-center text-muted text-xs italic">Composition non disponible</div>
+                )}
               </div>
             </div>
 
@@ -177,19 +186,28 @@ export function MatchDetailClient({ match, events, stats }: any) {
                 </div>
                 <div>
                   <div className="font-black uppercase text-sm tracking-tight">{match.away.name}</div>
-                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">Formation 4-4-2</div>
+                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">Effectif Officiel</div>
                 </div>
               </div>
               <div className="divide-y divide-white/5">
-                {[1, 2, 4, 5, 3, 7, 8, 6, 11, 10, 9].map((num, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 hover:bg-white/5 transition-colors">
-                    <div className="w-6 text-right font-black font-outfit text-muted text-sm">{num}</div>
-                    <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center text-muted"><User className="w-4 h-4" /></div>
-                    <div className="flex-1">
-                      <div className="font-bold text-sm">Adversaire {num}</div>
+                {match.away.players?.length > 0 ? match.away.players.map((p: any) => (
+                  <div key={p.id} className="flex items-center gap-4 p-3 hover:bg-white/5 transition-colors">
+                    <div className="w-6 text-right font-black font-outfit text-primary text-xs">{p.jersey_number}</div>
+                    <div className="w-8 h-8 rounded-full bg-background border border-white/5 flex items-center justify-center overflow-hidden shrink-0">
+                      {p.photo_url ? (
+                        <img src={p.photo_url} alt={p.full_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4 text-muted/50" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm truncate uppercase tracking-tight">{p.full_name}</div>
+                      <div className="text-[9px] font-black text-muted uppercase tracking-widest">{p.position}</div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="p-8 text-center text-muted text-xs italic">Composition non disponible</div>
+                )}
               </div>
             </div>
           </div>

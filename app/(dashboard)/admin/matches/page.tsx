@@ -149,9 +149,9 @@ export default function AdminMatchesPage() {
       {/* MATCH LIST */}
       <div className="grid grid-cols-1 gap-4">
         {matches.map((match) => (
-          <div key={match.id} className="sports-card p-6 flex flex-col md:flex-row items-center justify-between group">
-            <div className="flex items-center gap-8 flex-1 w-full">
-              <div className="text-center md:border-r border-white/5 md:pr-8 min-w-[100px]">
+          <div key={match.id} className="sports-card p-4 md:p-6 flex flex-col md:flex-row items-center justify-between group gap-4">
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 flex-1 w-full">
+              <div className="flex flex-row md:flex-col items-center justify-between w-full md:w-auto md:border-r border-white/5 md:pr-8 min-w-[100px] bg-white/5 md:bg-transparent p-3 md:p-0 rounded-xl">
                 <div className="text-sm font-black font-outfit text-primary">
                   {new Date(match.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                 </div>
@@ -160,19 +160,19 @@ export default function AdminMatchesPage() {
                 </div>
               </div>
 
-              <div className="flex-1 flex items-center justify-between gap-4">
-                <div className="flex-1 flex items-center justify-end gap-3">
-                  <span className="font-bold text-sm hidden sm:block uppercase tracking-tight">{match.home?.name}</span>
-                  <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold text-sm">{match.home?.name?.[0]}</div>
+              <div className="flex-1 flex items-center justify-between gap-2 md:gap-4 w-full">
+                <div className="flex-1 flex flex-col md:flex-row items-center justify-end gap-2 md:gap-3">
+                  <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-center md:text-right leading-tight min-h-[2.5em] md:min-h-0 flex items-center">{match.home?.name}</span>
+                  <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold text-sm shrink-0">{match.home?.name?.[0]}</div>
                 </div>
 
-                <div className="px-6 py-2 rounded-xl bg-white/5 border border-white/5 flex flex-col items-center gap-1">
+                <div className="px-3 md:px-6 py-2 rounded-xl bg-white/5 border border-white/5 flex flex-col items-center gap-1 shrink-0">
                   <span className="text-[10px] font-black uppercase tracking-widest text-primary/50">VS</span>
                 </div>
 
-                <div className="flex-1 flex items-center justify-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold text-sm">{match.away?.name?.[0]}</div>
-                  <span className="font-bold text-sm hidden sm:block uppercase tracking-tight">{match.away?.name}</span>
+                <div className="flex-1 flex flex-col-reverse md:flex-row items-center justify-start gap-2 md:gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold text-sm shrink-0">{match.away?.name?.[0]}</div>
+                  <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-center md:text-left leading-tight min-h-[2.5em] md:min-h-0 flex items-center">{match.away?.name}</span>
                 </div>
               </div>
             </div>
