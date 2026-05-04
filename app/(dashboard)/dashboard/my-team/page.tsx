@@ -141,8 +141,8 @@ export default function MyTeamPage() {
               isEditing={editingPlayerId === player.id}
               onEdit={() => setEditingPlayerId(player.id)}
               onCancel={() => setEditingPlayerId(null)}
-              onSave={(updates) => handleUpdatePlayer(player.id, updates)}
-              onPhotoUpload={(file) => handlePhotoUpload(player.id, file)}
+              onSave={(updates: any) => handleUpdatePlayer(player.id, updates)}
+              onPhotoUpload={(file: any) => handlePhotoUpload(player.id, file)}
             />
           ))}
         </div>
