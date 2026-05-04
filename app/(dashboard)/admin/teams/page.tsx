@@ -15,29 +15,69 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { AlertDialog } from "@/components/ui/Modal";
 
 export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning"; onConfirm?: () => void; isConfirm?: boolean }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success"
+  });
   const supabase = createClient();
 
   const filteredTeams = filter === "all" ? teams : teams.filter(t => t.status === filter);
 
   useEffect(() => {
-    async function fetchTeams() {
-      const { data } = await supabase
-        .from('teams')
-        .select(`
-          *,
-          players(count),
-          staff(count)
-        `);
-      setTeams(data || []);
-      setLoading(false);
-    }
     fetchTeams();
   }, []);
+
+  async function fetchTeams() {
+    setLoading(true);
+    const { data } = await supabase
+      .from('teams')
+      .select(`
+        *,
+        players(count),
+        staff(count)
+      `);
+    setTeams(data || []);
+    setLoading(false);
+  }
+
+  const handleStatusUpdate = async (teamId: string, newStatus: string) => {
+    const actionLabel = newStatus === 'validated' ? "valider" : "rejeter";
+    
+    setAlert({
+      isOpen: true,
+      title: "Confirmation",
+      message: `Voulez-vous vraiment ${actionLabel} cette équipe ?`,
+      type: "warning",
+      isConfirm: true,
+      onConfirm: async () => {
+        const { error } = await supabase.from('teams').update({ status: newStatus }).eq('id', teamId);
+        if (error) {
+          setAlert({
+            isOpen: true,
+            title: "Erreur",
+            message: "Erreur lors de la mise à jour : " + error.message,
+            type: "error"
+          });
+        } else {
+          fetchTeams();
+          setAlert({
+            isOpen: true,
+            title: "Succès",
+            message: `L'équipe a été ${newStatus === 'validated' ? 'validée' : 'rejetée'} avec succès.`,
+            type: "success"
+          });
+        }
+      }
+    });
+  };
 
   const stats = {
     total: teams?.length || 0,
@@ -134,10 +174,18 @@ export default function AdminTeamsPage() {
                     <div className="flex items-center justify-end gap-1">
                       {team.status === 'pending' && (
                         <>
-                          <button className="p-2 hover:bg-green-500/10 rounded-lg text-green-500 transition-colors" title="Valider" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'validated' }).eq('id', team.id); if (!error) window.location.reload(); }}>
+                          <button 
+                            className="p-2 hover:bg-green-500/10 rounded-lg text-green-500 transition-colors" 
+                            title="Valider" 
+                            onClick={() => handleStatusUpdate(team.id, 'validated')}
+                          >
                             <CheckCircle2 className="w-4 h-4" />
                           </button>
-                          <button className="p-2 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors" title="Rejeter" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'rejected' }).eq('id', team.id); if (!error) window.location.reload(); }}>
+                          <button 
+                            className="p-2 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors" 
+                            title="Rejeter" 
+                            onClick={() => handleStatusUpdate(team.id, 'rejected')}
+                          >
                             <XCircle className="w-4 h-4" />
                           </button>
                         </>
@@ -190,10 +238,16 @@ export default function AdminTeamsPage() {
             </div>
             {team.status === 'pending' && (
               <div className="flex gap-2 pt-2 border-t border-white/5">
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-green-500/10 text-green-500 text-xs font-black uppercase" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'validated' }).eq('id', team.id); if (!error) window.location.reload(); }}>
+                <button 
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-green-500/10 text-green-500 text-xs font-black uppercase" 
+                  onClick={() => handleStatusUpdate(team.id, 'validated')}
+                >
                   <CheckCircle2 className="w-4 h-4" /> Valider
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase" onClick={async () => { const { error } = await supabase.from('teams').update({ status: 'rejected' }).eq('id', team.id); if (!error) window.location.reload(); }}>
+                <button 
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase" 
+                  onClick={() => handleStatusUpdate(team.id, 'rejected')}
+                >
                   <XCircle className="w-4 h-4" /> Rejeter
                 </button>
               </div>

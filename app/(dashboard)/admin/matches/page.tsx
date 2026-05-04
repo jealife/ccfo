@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { AlertDialog } from "@/components/ui/Modal";
 
 export default function AdminMatchesPage() {
   const [matches, setMatches] = useState<any[]>([]);
@@ -30,6 +31,14 @@ export default function AdminMatchesPage() {
     match_date: "",
     venue: "Stade Municipal",
     status: "scheduled"
+  });
+
+  // Modal State
+  const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning"; onConfirm?: () => void; isConfirm?: boolean }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success"
   });
 
   useEffect(() => {
@@ -54,7 +63,12 @@ export default function AdminMatchesPage() {
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.home_team_id === formData.away_team_id) {
-      alert("Une équipe ne peut pas s'affronter elle-même !");
+      setAlert({
+        isOpen: true,
+        title: "Sélection Invalide",
+        message: "Une équipe ne peut pas s'affronter elle-même !",
+        type: "warning"
+      });
       return;
     }
 
@@ -62,7 +76,12 @@ export default function AdminMatchesPage() {
     const { error } = await supabase.from('matches').insert([formData]);
 
     if (error) {
-      alert("Erreur : " + error.message);
+      setAlert({
+        isOpen: true,
+        title: "Erreur",
+        message: "Erreur lors de la création : " + error.message,
+        type: "error"
+      });
     } else {
       setShowForm(false);
       fetchData();
@@ -71,10 +90,17 @@ export default function AdminMatchesPage() {
   };
 
   const handleDeleteMatch = async (id: string) => {
-    if (confirm("Supprimer ce match ?")) {
-      await supabase.from('matches').delete().eq('id', id);
-      fetchData();
-    }
+    setAlert({
+      isOpen: true,
+      title: "Confirmation",
+      message: "Voulez-vous vraiment supprimer ce match ?",
+      type: "warning",
+      isConfirm: true,
+      onConfirm: async () => {
+        await supabase.from('matches').delete().eq('id', id);
+        fetchData();
+      }
+    });
   };
 
   return (
@@ -208,6 +234,16 @@ export default function AdminMatchesPage() {
           </div>
         )}
       </div>
+
+      <AlertDialog 
+        isOpen={alert.isOpen}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type as any}
+        isConfirm={alert.isConfirm}
+        onConfirm={alert.onConfirm}
+      />
     </div>
   );
 }

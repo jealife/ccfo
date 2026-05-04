@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { submitTeamRegistration } from "@/app/api/registration/actions";
+import { AlertDialog } from "@/components/ui/Modal";
 
 export default function RegistrationPage() {
   const [step, setStep] = useState(1);
@@ -27,6 +28,14 @@ export default function RegistrationPage() {
   const [agreed, setAgreed] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  // Modal State
+  const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success"
+  });
 
   // Form State
   const [teamInfo, setTeamInfo] = useState({
@@ -144,7 +153,12 @@ export default function RegistrationPage() {
 
   const handleSubmit = async () => {
     if (!agreed) {
-      alert("Veuillez signer l'engagement pour continuer.");
+      setAlert({
+        isOpen: true,
+        title: "Signature Requise",
+        message: "Veuillez signer l'engagement pour continuer.",
+        type: "warning"
+      });
       return;
     }
     setIsLoading(true);
@@ -160,7 +174,12 @@ export default function RegistrationPage() {
         router.push("/dashboard?message=Inscription réussie ! Votre dossier est en cours de validation.");
       }
     } catch (error: any) {
-      alert("Erreur lors de l'enregistrement : " + error.message);
+      setAlert({
+        isOpen: true,
+        title: "Erreur d'inscription",
+        message: "Erreur lors de l'enregistrement : " + error.message,
+        type: "error"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -595,6 +614,14 @@ export default function RegistrationPage() {
           )}
         </div>
       </div>
+
+      <AlertDialog 
+        isOpen={alert.isOpen}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type as any}
+      />
     </div>
   );
 }
@@ -639,7 +666,7 @@ function DocUpload({ label, desc, value, onChange }: { label: string, desc: stri
       const { data: { publicUrl } } = supabase.storage.from('team-docs').getPublicUrl(filePath);
       onChange(publicUrl);
     } catch (error: any) {
-      alert("Erreur upload : " + error.message);
+      console.error("Upload error:", error);
     } finally {
       setUploading(false);
     }

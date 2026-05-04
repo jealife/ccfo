@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { updateMatchLive } from "@/app/api/matches/actions";
+import { AlertDialog } from "@/components/ui/Modal";
 
 export default function MatchLiveController({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -25,6 +26,14 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
   
   // New Event Form
   const [newEvent, setNewEvent] = useState({ minute: "", type: "goal", player: "", team: "home" });
+
+  // Modal State
+  const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success"
+  });
 
   useEffect(() => {
     fetchMatch();
@@ -73,9 +82,19 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     setSaving(false);
     
     if (!result.success) {
-      alert("Erreur lors de la mise à jour : " + result.error);
+      setAlert({
+        isOpen: true,
+        title: "Erreur",
+        message: "Erreur lors de la mise à jour : " + result.error,
+        type: "error"
+      });
     } else {
-      alert("Match mis à jour avec succès ! Le site public est synchronisé.");
+      setAlert({
+        isOpen: true,
+        title: "Succès",
+        message: "Match mis à jour avec succès ! Le site public est synchronisé.",
+        type: "success"
+      });
       fetchMatch();
     }
   }
@@ -228,6 +247,14 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
           </div>
         </div>
       </div>
+
+      <AlertDialog 
+        isOpen={alert.isOpen}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </div>
   );
 }
