@@ -5,6 +5,7 @@ import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, Squ
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { updateMatchLive } from "@/app/api/matches/actions";
 
 export default function MatchLiveController({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -19,6 +20,8 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [events, setEvents] = useState<any[]>([]);
+  const [homePlayers, setHomePlayers] = useState<any[]>([]);
+  const [awayPlayers, setAwayPlayers] = useState<any[]>([]);
   
   // New Event Form
   const [newEvent, setNewEvent] = useState({ minute: "", type: "goal", player: "", team: "home" });
@@ -41,6 +44,14 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
       setHomeScore(data.home_score || 0);
       setAwayScore(data.away_score || 0);
       setEvents(data.events || []);
+
+      // Fetch players for both teams
+      const [hRes, aRes] = await Promise.all([
+        supabase.from('players').select('*').eq('team_id', data.home_team_id).order('jersey_number', { ascending: true }),
+        supabase.from('players').select('*').eq('team_id', data.away_team_id).order('jersey_number', { ascending: true })
+      ]);
+      setHomePlayers(hRes.data || []);
+      setAwayPlayers(aRes.data || []);
     }
     setLoading(false);
   }
@@ -52,19 +63,17 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     const sortedEvents = [...events].sort((a, b) => parseInt(a.minute) - parseInt(b.minute));
     setEvents(sortedEvents);
 
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        status,
-        home_score: homeScore,
-        away_score: awayScore,
-        events: sortedEvents
-      })
-      .eq('id', id);
+    const result = await updateMatchLive(id, {
+      status,
+      home_score: homeScore,
+      away_score: awayScore,
+      events: sortedEvents
+    });
 
     setSaving(false);
-    if (error) {
-      alert("Veuillez d'abord exécuter la commande SQL sur Supabase pour ajouter la colonne 'events' (JSONB). " + error.message);
+    
+    if (!result.success) {
+      alert("Erreur lors de la mise à jour : " + result.error);
     } else {
       alert("Match mis à jour avec succès ! Le site public est synchronisé.");
       fetchMatch();
@@ -175,7 +184,21 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
               </div>
               <div className="grid grid-cols-12 gap-4">
                 <input type="number" placeholder="Min" value={newEvent.minute} onChange={(e) => setNewEvent({...newEvent, minute: e.target.value})} className="col-span-3 bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none text-center tabular-nums" />
-                <input type="text" placeholder="Nom du joueur" value={newEvent.player} onChange={(e) => setNewEvent({...newEvent, player: e.target.value})} className="col-span-6 bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+                <div className="col-span-6 relative">
+                  <input 
+                    list="player-list"
+                    type="text" 
+                    placeholder="Nom du joueur" 
+                    value={newEvent.player} 
+                    onChange={(e) => setNewEvent({...newEvent, player: e.target.value})} 
+                    className="w-full bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" 
+                  />
+                  <datalist id="player-list">
+                    {(newEvent.team === 'home' ? homePlayers : awayPlayers).map(p => (
+                      <option key={p.id} value={p.full_name}>{p.full_name} (#{p.jersey_number})</option>
+                    ))}
+                  </datalist>
+                </div>
                 <button onClick={addEvent} className="col-span-3 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
                   <Plus className="w-5 h-5" />
                 </button>
