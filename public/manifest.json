@@ -1,0 +1,23 @@
+{
+  "name": "CCFO Gabon",
+  "short_name": "CCFO",
+  "description": "Plateforme officielle de la Coupe Cantonale Fieng Okano",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#ef4444",
+  "icons": [
+    {
+      "src": "/Logo-CCFO-Blanc.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Logo-CCFO-Blanc.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
