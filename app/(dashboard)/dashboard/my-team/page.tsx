@@ -68,6 +68,31 @@ export default function MyTeamPage() {
     }
   };
 
+  const handleAddPlayer = async () => {
+    if (players.length >= 24) {
+      showToast("Limite de 24 joueurs atteinte", "error");
+      return;
+    }
+
+    const newPlayer = {
+      team_id: team.id,
+      full_name: "Nouveau Joueur",
+      jersey_number: (players.length + 1).toString(),
+      position: "MID",
+      origin_village: team.village
+    };
+
+    const { data, error } = await supabase.from('players').insert([newPlayer]).select().single();
+    
+    if (error) {
+      showToast("Erreur lors de l'ajout", "error");
+    } else {
+      setPlayers(prev => [...prev, data]);
+      setEditingPlayerId(data.id);
+      showToast("Joueur ajouté ✓", "success");
+    }
+  };
+
   const handlePhotoUpload = async (id: string, file: File): Promise<boolean> => {
     // Validate file
     if (!file.type.startsWith("image/")) {
@@ -203,7 +228,10 @@ export default function MyTeamPage() {
               Effectif <span className="text-primary">{players.length}/24</span>
             </h2>
           </div>
-          <button className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10">
+          <button 
+            onClick={handleAddPlayer}
+            className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-all"
+          >
             <UserPlus className="w-3 h-3" /> Ajouter
           </button>
         </div>

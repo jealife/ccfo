@@ -24,6 +24,7 @@ import { submitTeamRegistration } from "@/app/api/registration/actions";
 export default function RegistrationPage() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -121,10 +122,31 @@ export default function RegistrationPage() {
     { id: 5, title: "Paiement", icon: <CreditCard /> }
   ];
 
-  const handleNext = () => setStep(s => Math.min(s + 1, 5));
+  const saveDraft = async () => {
+    try {
+      await submitTeamRegistration({
+        teamInfo,
+        staff,
+        players,
+        documents
+      });
+    } catch (error) {
+      console.error("Erreur sauvegarde brouillon:", error);
+    }
+  };
+
+  const handleNext = () => {
+    saveDraft();
+    setStep(s => Math.min(s + 1, 5));
+  };
+
   const handlePrev = () => setStep(s => Math.max(s - 1, 1));
 
   const handleSubmit = async () => {
+    if (!agreed) {
+      alert("Veuillez signer l'engagement pour continuer.");
+      return;
+    }
     setIsLoading(true);
     try {
       const result = await submitTeamRegistration({
@@ -515,19 +537,32 @@ export default function RegistrationPage() {
             </div>
             
             <label className="flex items-center gap-4 cursor-pointer p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all">
-              <input type="checkbox" className="w-6 h-6 rounded accent-primary" />
+              <input 
+                type="checkbox" 
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="w-6 h-6 rounded accent-primary" />
               <span className="font-black uppercase tracking-widest text-xs italic">Je signe cet engagement numériquement</span>
             </label>
 
-            <div className="w-full max-w-md p-8 rounded-xl bg-linear-to-br from-primary to-accent border border-white/20 shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Frais d'affiliation</span>
-                <Shield className="w-4 h-4 text-white" />
+            <div className="w-full max-w-md p-8 rounded-xl bg-card border border-white/10 shadow-2xl space-y-6">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted">Frais d'affiliation</span>
+                <Shield className="w-4 h-4 text-primary" />
               </div>
               <div className="text-4xl font-black font-outfit text-white">150.000 FCFA</div>
-              <button className="w-full mt-6 py-4 rounded-xl bg-white text-primary font-black uppercase tracking-widest text-xs hover:scale-105 transition-all">
-                Payer maintenant
+              
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-left">
+                <p className="text-[10px] text-primary font-bold leading-relaxed italic">
+                  Note : Le paiement n'est pas obligatoire pour soumettre votre dossier, mais il est requis pour la validation finale par le comité.
+                </p>
+              </div>
+
+              <button className="w-full py-4 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-lg shadow-primary/20">
+                Payer via Airtel Money / Moov
               </button>
+              
+              <p className="text-[9px] text-muted font-bold uppercase tracking-widest">Ou payez plus tard depuis votre dashboard</p>
             </div>
           </div>
         )}
