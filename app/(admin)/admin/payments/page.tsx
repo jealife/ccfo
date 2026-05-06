@@ -11,7 +11,8 @@ import {
   ExternalLink,
   Loader2,
   TrendingUp,
-  Banknote
+  Banknote,
+  ChevronRight
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -142,7 +143,8 @@ export default function AdminPaymentsPage() {
         />
       </div>
 
-      <div className="sports-card bg-card/30 backdrop-blur-xl border-white/5 overflow-hidden">
+      {/* Payments Table - Desktop & Tablet */}
+      <div className="sports-card bg-card/30 backdrop-blur-xl border-white/5 overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-white/5">
@@ -230,6 +232,66 @@ export default function AdminPaymentsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Payments Cards - Mobile Only */}
+      <div className="md:hidden space-y-4">
+        {loading ? (
+          <div className="py-20 text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary opacity-20" />
+          </div>
+        ) : filteredTeams.length === 0 ? (
+          <div className="py-20 text-center text-muted italic text-sm">
+            Aucun paiement trouvé.
+          </div>
+        ) : filteredTeams.map((team) => (
+          <div 
+            key={team.id}
+            onClick={() => {
+              setSelectedTeam(team);
+              setIsModalOpen(true);
+            }}
+            className="sports-card p-5 space-y-4 bg-card/40 border-white/5 hover:border-primary/30 transition-all active:scale-[0.98]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center font-black text-primary shadow-xl border border-white/5">
+                  {team.name[0]}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base uppercase tracking-tight">{team.name}</h3>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted">{team.village}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={cn(
+                  "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                  team.status === 'validated' ? "bg-green-500/10 text-green-500" : 
+                  team.status === 'rejected' ? "bg-red-500/10 text-red-500" :
+                  "bg-yellow-500/10 text-yellow-500"
+                )}>
+                  {team.status === 'validated' ? 'Payé' : team.status === 'rejected' ? 'Annulé' : 'Attente'}
+                </div>
+                {team.status === 'validated' && <div className="text-[10px] font-black text-green-500/80 mt-1">400.000 FCFA</div>}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {team.payment_receipt_url ? (
+                  <span className="flex items-center gap-1.5 text-[9px] font-black text-primary uppercase">
+                    <FileText className="w-3.5 h-3.5" /> Reçu disponible
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-black text-red-500/50 uppercase italic">Reçu non fourni</span>
+                )}
+              </div>
+              <button className="flex items-center gap-1 text-[9px] font-black text-muted uppercase">
+                Détails <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Detail Modal */}
