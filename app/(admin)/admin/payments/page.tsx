@@ -46,7 +46,7 @@ export default function AdminPaymentsPage() {
   const stats = {
     pending: teams.filter(t => t.status === 'pending').length,
     validated: teams.filter(t => t.status === 'validated').length,
-    totalAmount: teams.filter(t => t.status === 'validated').length * 150000
+    totalAmount: teams.filter(t => t.status === 'validated').length * 400000
   };
 
   return (
@@ -54,7 +54,7 @@ export default function AdminPaymentsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black font-outfit uppercase tracking-tighter">Gestion des Paiements</h1>
-          <p className="text-muted text-sm">Suivi des frais d'affiliation (150.000 FCFA / équipe).</p>
+          <p className="text-muted text-sm">Suivi des frais d'affiliation (400.000 FCFA / équipe).</p>
         </div>
         
         <div className="relative group">
@@ -138,14 +138,17 @@ export default function AdminPaymentsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
-                      team.status === 'validated' ? "bg-green-500/10 text-green-500" : 
-                      team.status === 'rejected' ? "bg-red-500/10 text-red-500" :
-                      "bg-yellow-500/10 text-yellow-500"
-                    )}>
-                      {team.status === 'validated' ? 'Validé' : team.status === 'rejected' ? 'Rejeté' : 'Attente'}
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                        team.status === 'validated' ? "bg-green-500/10 text-green-500" : 
+                        team.status === 'rejected' ? "bg-red-500/10 text-red-500" :
+                        "bg-yellow-500/10 text-yellow-500"
+                      )}>
+                        {team.status === 'validated' ? 'Payé' : team.status === 'rejected' ? 'Annulé' : 'Attente'}
+                      </span>
+                      {team.status === 'validated' && <span className="text-[8px] font-black text-green-500/60 uppercase">400.000 FCFA</span>}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button className="p-2 rounded-lg bg-white/5 border border-white/10 hover:border-primary/50 text-muted hover:text-primary transition-all">

@@ -69,12 +69,23 @@ export default function AdminTeamsPage() {
       type: "warning",
       isConfirm: true,
       onConfirm: async () => {
-        const { error } = await supabase.from('teams').update({ status: newStatus }).eq('id', teamId);
-        if (error) {
+        const { error: teamError } = await supabase.from('teams').update({ status: newStatus }).eq('id', teamId);
+        
+        if (!teamError && newStatus === 'validated') {
+          // Auto-create or update payment record
+          await supabase.from('payments').upsert({
+            team_id: teamId,
+            amount: 400000,
+            status: 'paid',
+            created_at: new Date().toISOString()
+          }, { onConflict: 'team_id' });
+        }
+
+        if (teamError) {
           setAlert({
             isOpen: true,
             title: "Erreur",
-            message: "Erreur lors de la mise à jour : " + error.message,
+            message: "Erreur lors de la mise à jour : " + teamError.message,
             type: "error"
           });
         } else {
@@ -82,7 +93,7 @@ export default function AdminTeamsPage() {
           setAlert({
             isOpen: true,
             title: "Succès",
-            message: `L'équipe a été ${newStatus === 'validated' ? 'validée' : 'rejetée'} avec succès.`,
+            message: `L'équipe a été ${newStatus === 'validated' ? 'validée (Paiement 400k confirmé)' : 'rejetée'} avec succès.`,
             type: "success"
           });
         }
