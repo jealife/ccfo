@@ -44,10 +44,10 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
             
             {/* HOME TEAM */}
             <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 z-10">
-              <div className="w-14 h-14 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-secondary border border-white/10 flex items-center justify-center text-2xl md:text-5xl font-black text-white shadow-2xl group-hover:scale-105 transition-transform duration-500">
+              <div className="w-12 h-12 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-secondary border border-white/10 flex items-center justify-center text-xl md:text-5xl font-black text-white shadow-2xl group-hover:scale-105 transition-transform duration-500">
                 {match.home.name[0]}
               </div>
-              <h2 className="text-[10px] md:text-xl font-black font-outfit uppercase tracking-tighter text-center leading-tight text-white/90">
+              <h2 className="text-[9px] md:text-xl font-black font-outfit uppercase tracking-tighter text-center leading-tight text-white/90">
                 {match.home.name}
               </h2>
             </div>
@@ -59,14 +59,14 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               </div>
               
               <div className="flex items-center justify-center gap-3 md:gap-8">
-                <span className="text-4xl md:text-8xl font-black font-outfit tabular-nums tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                <span className="text-3xl md:text-8xl font-black font-outfit tabular-nums tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                   {match.status === 'scheduled' ? '-' : match.home_score}
                 </span>
                 <div className="flex flex-col items-center gap-1 opacity-20">
-                  <div className="w-1 h-1 rounded-full bg-white" />
-                  <div className="w-1 h-1 rounded-full bg-white" />
+                  <div className="w-0.5 h-0.5 md:w-1 md:h-1 rounded-full bg-white" />
+                  <div className="w-0.5 h-0.5 md:w-1 md:h-1 rounded-full bg-white" />
                 </div>
-                <span className="text-4xl md:text-8xl font-black font-outfit tabular-nums tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                <span className="text-3xl md:text-8xl font-black font-outfit tabular-nums tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                   {match.status === 'scheduled' ? '-' : match.away_score}
                 </span>
               </div>
@@ -78,10 +78,10 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
             {/* AWAY TEAM */}
             <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 z-10">
-              <div className="w-14 h-14 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-secondary border border-white/10 flex items-center justify-center text-2xl md:text-5xl font-black text-white shadow-2xl group-hover:scale-105 transition-transform duration-500">
+              <div className="w-12 h-12 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-secondary border border-white/10 flex items-center justify-center text-xl md:text-5xl font-black text-white shadow-2xl group-hover:scale-105 transition-transform duration-500">
                 {match.away.name[0]}
               </div>
-              <h2 className="text-[10px] md:text-xl font-black font-outfit uppercase tracking-tighter text-center leading-tight text-white/90">
+              <h2 className="text-[9px] md:text-xl font-black font-outfit uppercase tracking-tighter text-center leading-tight text-white/90">
                 {match.away.name}
               </h2>
             </div>

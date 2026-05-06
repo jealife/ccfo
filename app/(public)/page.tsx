@@ -103,25 +103,27 @@ export default async function HomePage() {
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-            <div className="lg:col-span-7 space-y-10">
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl animate-fade-in">
+            <div className="lg:col-span-7 space-y-6 md:space-y-10">
+              <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl animate-fade-in">
                 <div className="flex -space-x-2">
                   {[1,2,3].map(i => (
-                    <div key={i} className="w-6 h-6 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-[8px] font-black">
+                    <div key={i} className="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-[7px] md:text-[8px] font-black">
                       {i}
                     </div>
                   ))}
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Saison {tournamentYear} • 8 Villages Engagés</span>
+                <p className="text-[9px] md:text-xs font-black uppercase tracking-widest text-white/80">Edition 2026 • Prestige</p>
               </div>
 
-              <div className="space-y-4">
-                <h1 className="text-5xl md:text-7xl font-outfit font-black leading-[1.1] tracking-tighter animate-slide-up pb-2">
-                  {mainName} <br />
-                  <span className="gradient-text-primary italic py-1 block md:inline">{subName}</span>
+              <div className="space-y-4 md:space-y-6">
+                <h1 className="text-3xl md:text-7xl lg:text-8xl font-black font-outfit uppercase tracking-tighter leading-[0.9] text-white">
+                  <span className="block opacity-60">Coupe Cantonale</span>
+                  <span className="block text-primary italic drop-shadow-[0_0_30px_rgba(239,68,68,0.3)]">Fieng Okano</span>
+                  <span className="block">2026</span>
                 </h1>
-                <p className="text-xl md:text-2xl text-muted/80 max-w-xl font-medium leading-relaxed animate-slide-up animation-delay-200">
-                  Vivez l'excellence du football au cœur du canton {subName}. L'élite s'affronte, l'histoire s'écrit ici.
+                
+                <p className="text-xs md:text-xl text-muted font-medium max-w-xl leading-relaxed">
+                  Vivez l'excellence du football au cœur du canton Fieng Okano 2026. L'élite s'affronte, l'histoire s'écrit ici.
                 </p>
               </div>
 

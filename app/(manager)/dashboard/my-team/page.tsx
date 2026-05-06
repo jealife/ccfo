@@ -203,8 +203,8 @@ export default function MyTeamPage() {
           </div>
           <div className="text-center sm:text-left space-y-2">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-black font-outfit uppercase tracking-tighter">{team.name}</h1>
-              <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-widest border border-green-500/20">
+              <h1 className="text-xl md:text-4xl lg:text-5xl font-black font-outfit uppercase tracking-tighter">{team.name}</h1>
+              <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest border border-green-500/20">
                 {team.status}
               </span>
             </div>
@@ -221,10 +221,10 @@ export default function MyTeamPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-primary border border-white/5">
-              <Users className="w-5 h-5" />
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-white/5 flex items-center justify-center text-primary border border-white/5">
+              <Users className="w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <h2 className="text-xl md:text-2xl font-black font-outfit uppercase tracking-tighter">Staff Technique <span className="text-primary text-sm ml-2">({staff.length}/6)</span></h2>
+            <h2 className="text-lg md:text-2xl font-black font-outfit uppercase tracking-tighter">Staff Technique <span className="text-primary text-[10px] md:text-sm ml-2">({staff.length}/6)</span></h2>
           </div>
           <button 
             onClick={handleAddStaff}
@@ -262,11 +262,11 @@ export default function MyTeamPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-accent border border-white/5">
-              <Activity className="w-5 h-5" />
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-white/5 flex items-center justify-center text-accent border border-white/5">
+              <Activity className="w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <h2 className="text-xl md:text-2xl font-black font-outfit uppercase tracking-tighter">
-              Effectif <span className="text-primary">{players.length}/24</span>
+            <h2 className="text-lg md:text-2xl font-black font-outfit uppercase tracking-tighter">
+              Effectif <span className="text-primary text-[10px] md:text-sm ml-2">{players.length}/24</span>
             </h2>
           </div>
           <button 
