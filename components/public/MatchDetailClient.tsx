@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User } from "lucide-react";
+import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -44,6 +44,12 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
     { id: "lineups", label: "Compositions", icon: <Users className="w-4 h-4" /> },
   ];
 
+  // Helper to find player photo from rosters
+  const getPlayerInfo = (name: string, teamSide: 'home' | 'away') => {
+    const players = teamSide === 'home' ? match.home.players : match.away.players;
+    return players?.find((p: any) => p.full_name === name || name.includes(p.full_name) || p.full_name.includes(name));
+  };
+
   return (
     <div className="w-full">
       {/* TABS NAVIGATION */}
@@ -80,48 +86,97 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
               <div className="relative pl-6 space-y-8">
                 <div className="absolute left-[11px] top-0 bottom-0 w-px bg-white/10" />
                 
-                {events.map((event: any) => (
-                  <div key={event.id} className="relative flex items-center gap-6">
-                    <div className={cn(
-                      "absolute left-[-29px] w-6 h-6 rounded-full border-4 border-background bg-card flex items-center justify-center z-10",
-                      event.type === 'goal' ? "border-primary bg-primary/20 text-primary" : "border-white/10"
-                    )}>
-                      {event.type === 'goal' ? <Goal className="w-3 h-3" /> : <Square className={cn("w-3 h-3 fill-current", event.type === 'yellow' ? "text-yellow-500" : "text-red-500")} />}
-                    </div>
-                    
-                    <div className="w-12 text-right">
-                      <span className="text-sm font-black font-outfit text-white">{event.minute}'</span>
-                    </div>
-                    
-                    <div className={cn(
-                      "flex-1 p-4 rounded-2xl border border-white/5 flex items-center justify-between",
-                      event.type === 'goal' ? "bg-primary/5 border-primary/20" : "bg-white/5"
-                    )}>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm text-white">{event.player}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted mt-1">
-                          {event.type === 'goal' ? 'But' : 'Carton'} • {event.team === 'home' ? match.home.name : match.away.name}
-                        </span>
+                {events.map((event: any) => {
+                  const playerInfo = getPlayerInfo(event.player, event.team);
+                  return (
+                    <div key={event.id} className="relative flex items-center gap-4 md:gap-6">
+                      <div className={cn(
+                        "absolute left-[-29px] w-6 h-6 rounded-full border-4 border-background bg-card flex items-center justify-center z-10",
+                        event.type === 'goal' ? "border-primary bg-primary/20 text-primary" : "border-white/10"
+                      )}>
+                        {event.type === 'goal' ? <Goal className="w-3 h-3" /> : <Square className={cn("w-3 h-3 fill-current", event.type === 'yellow' ? "text-yellow-500" : "text-red-500")} />}
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center font-black text-xs">
-                        {event.team === 'home' ? match.home.name[0] : match.away.name[0]}
+                      
+                      <div className="w-10 md:w-12 text-right">
+                        <span className="text-[10px] md:text-sm font-black font-outfit text-white/60">{event.minute}'</span>
+                      </div>
+                      
+                      <div className={cn(
+                        "flex-1 p-3 md:p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4",
+                        event.type === 'goal' ? "bg-primary/5 border-primary/20" : "bg-white/5"
+                      )}>
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                          {/* Player Photo in Event */}
+                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
+                            {playerInfo?.photo_url ? (
+                              <img src={playerInfo.photo_url} alt={event.player} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">
+                                {event.player?.[0] || "?"}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-sm md:text-base text-white truncate leading-tight">{event.player}</span>
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted mt-0.5">
+                              {event.type === 'goal' ? 'But' : 'Carton'} • {event.team === 'home' ? match.home.name : match.away.name}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-background/50 flex items-center justify-center font-black text-[9px] md:text-xs shrink-0 border border-white/5">
+                          {event.team === 'home' ? match.home.name[0] : match.away.name[0]}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             
-            {/* MOTM - Only if set */}
+            {/* MAN OF THE MATCH (MOTM) */}
             {match.motm_player && (
-              <div className="glass-card p-6 flex flex-col sm:flex-row items-center gap-6 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.1),transparent_50%)]">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-secondary border border-accent/20 flex items-center justify-center text-2xl md:text-3xl font-black text-accent relative shadow-lg shrink-0">
-                  <Star className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 text-accent fill-current" />
-                  {match.motm_player[0]}
-                </div>
-                <div className="flex-1 text-center sm:text-left">
-                  <h4 className="text-xl font-black font-outfit uppercase">{match.motm_player}</h4>
-                  <p className="text-accent font-black uppercase tracking-widest text-[10px] mt-1">Homme du Match</p>
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-linear-to-r from-accent/50 to-primary/50 rounded-[2rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                <div className="relative glass-card p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 md:gap-10 bg-linear-to-br from-accent/10 via-background to-background border-accent/20">
+                  {/* Premium Player Photo Wrapper */}
+                  <div className="relative">
+                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-secondary border-2 border-accent/30 overflow-hidden shadow-2xl relative z-10">
+                      {/* Try to find MOTM photo */}
+                      {(() => {
+                        const motmInfo = getPlayerInfo(match.motm_player, match.home.players?.some((p:any) => p.full_name === match.motm_player) ? 'home' : 'away');
+                        return motmInfo?.photo_url ? (
+                          <img src={motmInfo.photo_url} alt={match.motm_player} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl font-black text-accent/30">
+                            {match.motm_player[0]}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {/* Floating Badge */}
+                    <div className="absolute -top-3 -right-3 md:-top-4 md:-right-4 w-10 h-10 md:w-14 md:h-14 rounded-full bg-accent text-background flex items-center justify-center shadow-2xl z-20 animate-bounce-slow">
+                      <Star className="w-5 h-5 md:w-8 md:h-8 fill-current" />
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-accent text-background px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-tighter z-20 shadow-lg">
+                      MVP ELITE
+                    </div>
+                  </div>
+
+                  <div className="flex-1 text-center sm:text-left space-y-2 md:space-y-4">
+                    <div>
+                      <h4 className="text-2xl md:text-5xl font-black font-outfit uppercase tracking-tighter leading-none italic">{match.motm_player}</h4>
+                      <p className="text-accent font-black uppercase tracking-[0.3em] text-[10px] md:text-xs mt-2 flex items-center justify-center sm:justify-start gap-2">
+                        <Award className="w-4 h-4" /> Homme du Match
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                      <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-muted">
+                        Performance Exceptionnelle
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
