@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { AlertDialog } from "@/components/ui/Modal";
+import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 
 export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<any[]>([]);
@@ -28,6 +29,8 @@ export default function AdminTeamsPage() {
     message: "",
     type: "success"
   });
+  const [selectedTeam, setSelectedTeam] = useState<any>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const supabase = createClient();
 
   const filteredTeams = filter === "all" ? teams : teams.filter(t => t.status === filter);
@@ -198,7 +201,14 @@ export default function AdminTeamsPage() {
                           </button>
                         </>
                       )}
-                      <button className="p-2 hover:bg-white/10 rounded-lg text-primary transition-colors" title="Voir les détails">
+                      <button 
+                        className="p-2 hover:bg-white/10 rounded-lg text-primary transition-colors" 
+                        title="Voir les détails"
+                        onClick={() => {
+                          setSelectedTeam(team);
+                          setIsDetailModalOpen(true);
+                        }}
+                      >
                         <Eye className="w-4 h-4" />
                       </button>
                     </div>
@@ -263,6 +273,19 @@ export default function AdminTeamsPage() {
           </div>
         ))}
       </div>
+
+      {/* Detail Modal */}
+      {selectedTeam && (
+        <TeamDetailModal 
+          team={selectedTeam}
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          onStatusUpdate={(teamId, status) => {
+            handleStatusUpdate(teamId, status);
+            setIsDetailModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

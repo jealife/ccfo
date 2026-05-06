@@ -48,7 +48,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="glass-card p-4 md:p-6 group hover:border-primary/30 transition-all duration-500">
             <div className="flex items-center justify-between mb-3 md:mb-4">
