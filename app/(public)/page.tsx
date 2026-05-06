@@ -3,11 +3,11 @@ import { Trophy, Calendar, Users, BarChart3, Star, Zap, Award, ChevronRight, Act
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { LiveHeroMatch } from "@/components/public/LiveHeroMatch";
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   
   // Fetch Latest Results (Matchs terminés ou en cours)
   const { data: matches } = await supabase

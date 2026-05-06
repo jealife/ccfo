@@ -1,11 +1,11 @@
 import { PublicNavbar } from "@/components/public/Navbar";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { MatchDetailClient } from "@/components/public/MatchDetailClient";
 
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { id } = await params;
   
   // Fetch Match Details
