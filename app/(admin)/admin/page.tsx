@@ -23,6 +23,8 @@ export default async function AdminDashboardPage() {
   const { count: validatedCount } = await supabase.from('teams').select('*', { count: 'exact', head: true }).eq('status', 'validated');
   const { count: playerCount } = await supabase.from('players').select('*', { count: 'exact', head: true });
   const { count: staffCount } = await supabase.from('staff').select('*', { count: 'exact', head: true });
+  const { count: finishedMatchCount } = await supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'finished');
+  
   const { data: teams } = await supabase
     .from('teams')
     .select('name, village, status, president_name')
@@ -57,7 +59,7 @@ export default async function AdminDashboardPage() {
     },
     { 
       label: "Matchs", 
-      value: "12", // Simulation or fetch finished matches
+      value: finishedMatchCount || 0,
       subValue: "Terminés",
       icon: <Trophy className="w-5 h-5" />, 
       color: "from-primary to-red-600",
