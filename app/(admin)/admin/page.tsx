@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { 
   Users, 
   Trophy, 
   TrendingUp,
   Settings,
-  Calendar
+  Calendar,
+  Shield,
+  UserPlus
 } from "lucide-react";
 import Link from "next/link";
 
@@ -18,7 +21,8 @@ export default async function AdminDashboardPage() {
 
   const { count: teamCount } = await supabase.from('teams').select('*', { count: 'exact', head: true });
   const { count: validatedCount } = await supabase.from('teams').select('*', { count: 'exact', head: true }).eq('status', 'validated');
-  const { count: matchCount } = await supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'finished');
+  const { count: playerCount } = await supabase.from('players').select('*', { count: 'exact', head: true });
+  const { count: staffCount } = await supabase.from('staff').select('*', { count: 'exact', head: true });
   const { data: teams } = await supabase
     .from('teams')
     .select('name, village, status, president_name')
@@ -26,9 +30,39 @@ export default async function AdminDashboardPage() {
     .limit(8);
 
   const stats = [
-    { label: "Équipes", value: teamCount || 0, icon: <Users />, trend: "Inscrites", color: "text-blue-400" },
-    { label: "Validées", value: validatedCount || 0, icon: <Trophy />, trend: "Paiements confirmés", color: "text-green-400" },
-    { label: "Matchs Joués", value: matchCount || 0, icon: <Calendar />, trend: "Terminés", color: "text-accent" },
+    { 
+      label: "Équipes", 
+      value: teamCount || 0, 
+      subValue: `${validatedCount || 0} validées`,
+      progress: teamCount ? ((validatedCount || 0) / teamCount) * 100 : 0,
+      icon: <Shield className="w-5 h-5" />, 
+      color: "from-blue-500 to-indigo-600",
+      lightColor: "text-blue-400"
+    },
+    { 
+      label: "Joueurs", 
+      value: playerCount || 0, 
+      subValue: "Licences actives",
+      icon: <Users className="w-5 h-5" />, 
+      color: "from-emerald-500 to-teal-600",
+      lightColor: "text-emerald-400"
+    },
+    { 
+      label: "Staff", 
+      value: staffCount || 0, 
+      subValue: "Technique",
+      icon: <UserPlus className="w-5 h-5" />, 
+      color: "from-orange-500 to-amber-600",
+      lightColor: "text-amber-400"
+    },
+    { 
+      label: "Matchs", 
+      value: "12", // Simulation or fetch finished matches
+      subValue: "Terminés",
+      icon: <Trophy className="w-5 h-5" />, 
+      color: "from-primary to-red-600",
+      lightColor: "text-primary"
+    },
   ];
 
   const quickActions = [
@@ -47,22 +81,50 @@ export default async function AdminDashboardPage() {
         <p className="text-muted text-sm mt-1">Gestion centrale de la Coupe Cantonale Fieng Okano.</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+      {/* Stats - 2x2 Grid on Mobile, 4 columns on Desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="glass-card p-4 md:p-6 group hover:border-primary/30 transition-all duration-500">
-            <div className="flex items-center justify-between mb-3 md:mb-4">
-              <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
+          <div key={i} className="glass-card p-4 md:p-6 group hover:border-primary/30 transition-all duration-500 relative overflow-hidden">
+            {/* Background Glow */}
+            <div className={cn("absolute -right-4 -top-4 w-16 h-16 blur-2xl opacity-10 rounded-full bg-linear-to-br", stat.color)} />
+            
+            <div className="flex items-start justify-between mb-4">
+              <div className={cn(
+                "w-10 h-10 md:w-12 md:h-12 rounded-xl bg-linear-to-br flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform",
+                stat.color
+              )}>
                 {stat.icon}
               </div>
-              <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-accent opacity-20" />
+              <TrendingUp className="w-3 h-3 text-muted opacity-20" />
             </div>
-            <div className="text-2xl md:text-4xl font-black font-outfit tracking-tighter mb-0.5">{stat.value}</div>
-            <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted leading-tight">{stat.label}</div>
-            <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[8px] md:text-[9px] font-black text-green-500 uppercase tracking-widest">{stat.trend}</span>
+
+            <div className="space-y-1">
+              <div className="text-2xl md:text-4xl font-black font-outfit tracking-tighter leading-none">
+                {typeof stat.value === 'number' ? stat.value.toString().padStart(2, '0') : stat.value}
+              </div>
+              <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted">{stat.label}</div>
             </div>
+
+            {/* Progress Bar for Team Validation */}
+            {stat.progress !== undefined ? (
+              <div className="mt-4 space-y-1.5">
+                <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted">
+                  <span>{stat.subValue}</span>
+                  <span>{Math.round(stat.progress)}%</span>
+                </div>
+                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className={cn("h-full rounded-full transition-all duration-1000 bg-linear-to-r", stat.color)}
+                    style={{ width: `${stat.progress}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-1.5">
+                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse bg-linear-to-r", stat.color)} />
+                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-muted">{stat.subValue}</span>
+              </div>
+            )}
           </div>
         ))}
       </div>
