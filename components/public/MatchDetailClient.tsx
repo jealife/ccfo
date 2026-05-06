@@ -159,9 +159,6 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
                     <div className="absolute -top-3 -right-3 md:-top-4 md:-right-4 w-10 h-10 md:w-14 md:h-14 rounded-full bg-accent text-background flex items-center justify-center shadow-2xl z-20 animate-bounce-slow">
                       <Star className="w-5 h-5 md:w-8 md:h-8 fill-current" />
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-accent text-background px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-tighter z-20 shadow-lg">
-                      MVP ELITE
-                    </div>
                   </div>
 
                   <div className="flex-1 text-center sm:text-left space-y-2 md:space-y-4">
