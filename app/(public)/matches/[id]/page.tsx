@@ -38,44 +38,50 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
             <ChevronLeft className="w-4 h-4" /> Retour au calendrier
           </Link>
 
-          <div className="flex items-center justify-between gap-4 md:gap-12">
+          <div className="flex items-center justify-between gap-2 md:gap-12 bg-white/5 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] border border-white/10 shadow-2xl relative overflow-hidden group">
+            {/* Background Glow */}
+            <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-accent/5 opacity-50" />
+            
             {/* HOME TEAM */}
-            <div className="flex-1 flex flex-col items-center gap-3">
-              <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-xl bg-background border border-white/10 flex items-center justify-center text-2xl md:text-4xl font-black shadow-xl">
+            <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 z-10">
+              <div className="w-14 h-14 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-secondary border border-white/10 flex items-center justify-center text-2xl md:text-5xl font-black text-white shadow-2xl group-hover:scale-105 transition-transform duration-500">
                 {match.home.name[0]}
               </div>
-              <h2 className="text-sm md:text-xl font-black font-outfit uppercase tracking-tight text-center leading-tight">
+              <h2 className="text-[10px] md:text-xl font-black font-outfit uppercase tracking-tighter text-center leading-tight text-white/90">
                 {match.home.name}
               </h2>
             </div>
 
             {/* SCOREBOARD CORE */}
-            <div className="flex flex-col items-center justify-center">
-              <div className="px-3 py-1 mb-2 rounded-md bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-muted">
-                {match.status === 'finished' ? 'Terminé' : match.status === 'live' ? <span className="text-primary animate-pulse">En Direct</span> : 'Prévu'}
+            <div className="flex flex-col items-center justify-center z-10 min-w-[100px] md:min-w-[200px]">
+              <div className="px-3 py-1 mb-4 rounded-full bg-primary/20 border border-primary/30 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-primary animate-pulse-slow">
+                {match.status === 'finished' ? <span className="text-muted">Terminé</span> : match.status === 'live' ? 'En Direct' : 'Prévu'}
               </div>
               
-              <div className="flex items-center justify-center gap-4 md:gap-8 bg-background/50 backdrop-blur-sm px-6 py-4 rounded-xl border border-white/5">
-                <span className="text-4xl md:text-7xl font-black font-outfit tabular-nums tracking-tighter text-white">
+              <div className="flex items-center justify-center gap-3 md:gap-8">
+                <span className="text-4xl md:text-8xl font-black font-outfit tabular-nums tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                   {match.status === 'scheduled' ? '-' : match.home_score}
                 </span>
-                <span className="text-xl md:text-3xl font-black text-white/20">-</span>
-                <span className="text-4xl md:text-7xl font-black font-outfit tabular-nums tracking-tighter text-white">
+                <div className="flex flex-col items-center gap-1 opacity-20">
+                  <div className="w-1 h-1 rounded-full bg-white" />
+                  <div className="w-1 h-1 rounded-full bg-white" />
+                </div>
+                <span className="text-4xl md:text-8xl font-black font-outfit tabular-nums tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                   {match.status === 'scheduled' ? '-' : match.away_score}
                 </span>
               </div>
               
-              <div className="mt-3 text-[10px] font-bold text-muted uppercase tracking-widest text-center">
-                {new Date(match.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} • Okano Central
+              <div className="mt-4 px-4 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[8px] md:text-[10px] font-bold text-muted/60 uppercase tracking-widest text-center">
+                {new Date(match.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} • Stade Central
               </div>
             </div>
 
             {/* AWAY TEAM */}
-            <div className="flex-1 flex flex-col items-center gap-3">
-              <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-xl bg-background border border-white/10 flex items-center justify-center text-2xl md:text-4xl font-black shadow-xl">
+            <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 z-10">
+              <div className="w-14 h-14 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-secondary border border-white/10 flex items-center justify-center text-2xl md:text-5xl font-black text-white shadow-2xl group-hover:scale-105 transition-transform duration-500">
                 {match.away.name[0]}
               </div>
-              <h2 className="text-sm md:text-xl font-black font-outfit uppercase tracking-tight text-center leading-tight">
+              <h2 className="text-[10px] md:text-xl font-black font-outfit uppercase tracking-tighter text-center leading-tight text-white/90">
                 {match.away.name}
               </h2>
             </div>

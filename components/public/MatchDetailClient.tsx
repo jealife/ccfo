@@ -138,7 +138,7 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
             {/* MAN OF THE MATCH (MOTM) */}
             {match.motm_player && (
               <div className="relative group">
-                <div className="absolute -inset-1 bg-linear-to-r from-accent/50 to-primary/50 rounded-[2rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                <div className="absolute -inset-1 bg-linear-to-r from-accent/50 to-primary/50 rounded-4xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
                 <div className="relative glass-card p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 md:gap-10 bg-linear-to-br from-accent/10 via-background to-background border-accent/20">
                   {/* Premium Player Photo Wrapper */}
                   <div className="relative">
@@ -203,15 +203,21 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
                 const homePerc = (homeVal / total) * 100;
                 
                 return (
-                  <div key={i} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm font-bold">
-                      <span className={homeVal >= awayVal ? "text-primary" : "text-white"}>{stat.home}</span>
-                      <span className="text-xs font-black uppercase tracking-widest text-muted">{stat.label}</span>
-                      <span className={awayVal >= homeVal ? "text-white" : "text-muted"}>{stat.away}</span>
+                  <div key={i} className="space-y-3">
+                    <div className="flex items-center justify-between text-xs md:text-sm font-black uppercase tracking-tight">
+                      <span className={homeVal >= awayVal ? "text-primary" : "text-white/60"}>{stat.home}</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted/40">{stat.label}</span>
+                      <span className={awayVal >= homeVal ? "text-white" : "text-white/60"}>{stat.away}</span>
                     </div>
-                    <div className="h-1.5 flex gap-1 rounded-full overflow-hidden bg-background">
-                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${homePerc}%` }} />
-                      <div className="h-full bg-white/20 rounded-full transition-all" style={{ width: `${100 - homePerc}%` }} />
+                    <div className="h-2 flex gap-1 rounded-full overflow-hidden bg-white/5 p-0.5">
+                      <div 
+                        className="h-full bg-linear-to-r from-primary to-primary/60 rounded-full transition-all duration-1000 ease-out" 
+                        style={{ width: `${homePerc}%` }} 
+                      />
+                      <div 
+                        className="h-full bg-linear-to-l from-white to-white/60 rounded-full transition-all duration-1000 ease-out" 
+                        style={{ width: `${100 - homePerc}%` }} 
+                      />
                     </div>
                   </div>
                 );
