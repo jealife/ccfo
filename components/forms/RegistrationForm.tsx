@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, 
@@ -34,12 +34,33 @@ export function RegistrationForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [config, setConfig] = useState<any>(null);
+  
   const [formData, setFormData] = useState({
     team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "" },
     staff: Array(6).fill({ name: "", role: "", origin: "" }),
     players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "" }),
     documents: { idCards: null, certificate: null, receipt: null }
   });
+
+  useEffect(() => {
+    async function loadConfig() {
+      const supabase = createClient();
+      const { data } = await supabase.from('tournament_config').select('*').single();
+      if (data) {
+        setConfig(data);
+        setFormData(prev => ({
+          ...prev,
+          staff: Array(data.staff_per_team || 6).fill({ name: "", role: "", origin: "" }),
+          players: Array(data.players_per_team || 24).fill({ name: "", number: "", dob: "", position: "", village: "" }),
+        }));
+      }
+    }
+    loadConfig();
+  }, []);
+
+  const playersLimit = config?.players_per_team || 24;
+  const staffLimit = config?.staff_per_team || 6;
 
   const nextStep = async () => {
     // Validations strictes
@@ -51,15 +72,15 @@ export function RegistrationForm() {
     }
     if (currentStep === 2) {
       const validStaff = formData.staff.filter(s => s.name.trim() !== "");
-      if (validStaff.length < 6) {
-        alert("Attention : Vous devez enregistrer exactement 6 membres du staff pour continuer.");
+      if (validStaff.length < staffLimit) {
+        alert(`Attention : Vous devez enregistrer exactement ${staffLimit} membres du staff pour continuer.`);
         return;
       }
     }
     if (currentStep === 3) {
       const validPlayers = formData.players.filter(p => p.name.trim() !== "");
-      if (validPlayers.length < 24) {
-        alert("Attention : Le règlement exige exactement 24 joueurs enregistrés. Il vous en manque " + (24 - validPlayers.length) + ".");
+      if (validPlayers.length < playersLimit) {
+        alert(`Attention : Le règlement exige exactement ${playersLimit} joueurs enregistrés. Il vous en manque ${playersLimit - validPlayers.length}.`);
         return;
       }
     }
@@ -157,12 +178,12 @@ export function RegistrationForm() {
             className="space-y-8"
           >
             {currentStep === 1 && <TeamStep data={formData.team} updateData={(val: any) => setFormData({...formData, team: {...formData.team, ...val}})} />}
-            {currentStep === 2 && <StaffStep data={formData.staff} updateData={(index: number, val: any) => {
+            {currentStep === 2 && <StaffStep data={formData.staff} limit={staffLimit} updateData={(index: number, val: any) => {
               const newStaff = [...formData.staff];
               newStaff[index] = {...newStaff[index], ...val};
               setFormData({...formData, staff: newStaff});
             }} />}
-            {currentStep === 3 && <PlayersStep data={formData.players} updateData={(index: number, val: any) => {
+            {currentStep === 3 && <PlayersStep data={formData.players} limit={playersLimit} updateData={(index: number, val: any) => {
               const newPlayers = [...formData.players];
               newPlayers[index] = {...newPlayers[index], ...val};
               setFormData({...formData, players: newPlayers});
@@ -231,16 +252,16 @@ function TeamStep({ data, updateData }: any) {
   );
 }
 
-function StaffStep({ data, updateData }: any) {
+function StaffStep({ data, updateData, limit }: any) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black font-outfit">Staff Technique</h2>
-          <p className="text-muted text-sm">Exactement 6 membres requis</p>
+          <p className="text-muted text-sm">Exactement {limit} membres requis</p>
         </div>
         <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase">
-          Requis: 6 / Actuel: {data.filter((s: any) => s.name).length}
+          Requis: {limit} / Actuel: {data.filter((s: any) => s.name).length}
         </div>
       </div>
 
@@ -261,16 +282,16 @@ function StaffStep({ data, updateData }: any) {
   );
 }
 
-function PlayersStep({ data, updateData }: any) {
+function PlayersStep({ data, updateData, limit }: any) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black font-outfit">Liste des Joueurs</h2>
-          <p className="text-muted text-sm">Exactement 24 joueurs requis pour valider l'inscription</p>
+          <p className="text-muted text-sm">Exactement {limit} joueurs requis pour valider l'inscription</p>
         </div>
         <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase">
-          Joueurs: 24 / Actuel: {data.filter((p: any) => p.name).length}
+          Joueurs: {limit} / Actuel: {data.filter((p: any) => p.name).length}
         </div>
       </div>
 

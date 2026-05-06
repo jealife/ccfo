@@ -24,14 +24,22 @@ function LoginContent() {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
-      router.push("/dashboard");
+      // Fetch role to redirect correctly
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user?.id)
+        .single();
+
+      const destination = profile?.role === 'admin' ? '/admin' : '/dashboard';
+      router.push(destination);
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Erreur de connexion");

@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         throw new Error("Accès refusé : Identifiants administrateur requis.");
       }
 
-      router.push("/admin/teams");
+      router.push("/admin");
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Erreur d'authentification");
@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-[#050505]">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#ef444410,transparent_50%)]" />
       
       <div className="w-full max-w-md relative">

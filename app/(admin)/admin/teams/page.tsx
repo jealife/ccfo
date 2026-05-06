@@ -19,6 +19,7 @@ import { AlertDialog } from "@/components/ui/Modal";
 
 export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<any[]>([]);
+  const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning"; onConfirm?: () => void; isConfirm?: boolean }>({
@@ -37,6 +38,10 @@ export default function AdminTeamsPage() {
 
   async function fetchTeams() {
     setLoading(true);
+    
+    const { data: configData } = await supabase.from('tournament_config').select('*').single();
+    setConfig(configData);
+
     const { data } = await supabase
       .from('teams')
       .select(`
@@ -47,6 +52,9 @@ export default function AdminTeamsPage() {
     setTeams(data || []);
     setLoading(false);
   }
+
+  const playersLimit = config?.players_per_team || 24;
+  const staffLimit = config?.staff_per_team || 6;
 
   const handleStatusUpdate = async (teamId: string, newStatus: string) => {
     const actionLabel = newStatus === 'validated' ? "valider" : "rejeter";
@@ -150,19 +158,19 @@ export default function AdminTeamsPage() {
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                           <span className="text-muted">J</span>
-                          <span className={team.players?.[0]?.count >= 24 ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/24</span>
+                          <span className={team.players?.[0]?.count >= playersLimit ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/{playersLimit}</span>
                         </div>
                         <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className={cn("h-full rounded-full transition-all", team.players?.[0]?.count >= 24 ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / 24) * 100)}%` }} />
+                          <div className={cn("h-full rounded-full transition-all", team.players?.[0]?.count >= playersLimit ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / playersLimit) * 100)}%` }} />
                         </div>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                           <span className="text-muted">S</span>
-                          <span className={team.staff?.[0]?.count >= 6 ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/6</span>
+                          <span className={team.staff?.[0]?.count >= staffLimit ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/{staffLimit}</span>
                         </div>
                         <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className={cn("h-full rounded-full transition-all", team.staff?.[0]?.count >= 6 ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / 6) * 100)}%` }} />
+                          <div className={cn("h-full rounded-full transition-all", team.staff?.[0]?.count >= staffLimit ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / staffLimit) * 100)}%` }} />
                         </div>
                       </div>
                     </div>
@@ -220,19 +228,19 @@ export default function AdminTeamsPage() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                   <span className="text-muted">Joueurs</span>
-                  <span className={team.players?.[0]?.count >= 24 ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/24</span>
+                  <span className={team.players?.[0]?.count >= playersLimit ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/{playersLimit}</span>
                 </div>
                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full", team.players?.[0]?.count >= 24 ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / 24) * 100)}%` }} />
+                  <div className={cn("h-full rounded-full", team.players?.[0]?.count >= playersLimit ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / playersLimit) * 100)}%` }} />
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                   <span className="text-muted">Staff</span>
-                  <span className={team.staff?.[0]?.count >= 6 ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/6</span>
+                  <span className={team.staff?.[0]?.count >= staffLimit ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/{staffLimit}</span>
                 </div>
                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full", team.staff?.[0]?.count >= 6 ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / 6) * 100)}%` }} />
+                  <div className={cn("h-full rounded-full", team.staff?.[0]?.count >= staffLimit ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / staffLimit) * 100)}%` }} />
                 </div>
               </div>
             </div>

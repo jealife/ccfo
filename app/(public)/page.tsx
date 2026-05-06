@@ -8,23 +8,27 @@ import { createClient } from "@/lib/supabase/server";
 export default async function HomePage() {
   const supabase = await createClient();
   
-  // Fetch Latest Matches (Derniers résultats)
+  // Fetch Latest Results (Matchs terminés ou en cours)
   const { data: matches } = await supabase
     .from('matches')
     .select('*, home:teams!home_team_id(name), away:teams!away_team_id(name)')
+    .in('status', ['finished', 'live'])
     .order('match_date', { ascending: false })
     .limit(5);
 
-  // Fetch Next Upcoming or Live Match
-  const { data: nextMatchData } = await supabase
+  // Fetch Live or Next Upcoming Match (Priorité au Direct, puis au prochain)
+  const { data: nextMatch } = await supabase
     .from('matches')
     .select('*, home:teams!home_team_id(name), away:teams!away_team_id(name)')
-    .in('status', ['pending', 'live'])
+    .in('status', ['live', 'scheduled'])
+    .order('status', { ascending: false }) // 'live' is alphabetically after 'pending'? No, 'live' < 'pending' alphabetically. 
+    // Actually better to do two queries or order by custom logic.
+    // Let's use a simpler logic: fetch live, if null fetch pending.
     .order('match_date', { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  const nextMatch = nextMatchData || matches?.[0];
+  const heroMatch = nextMatch || matches?.[0];
 
   // Fetch Standings
   const { data: standings } = await supabase
@@ -33,12 +37,47 @@ export default async function HomePage() {
     .order('points', { ascending: false })
     .limit(5);
 
-  // Mock Scorers with Gabonese names
-  const topScorers = [
-    { name: "Samuel Mba", team: "Village Bissobinam", goals: 12, rank: 1 },
-    { name: "Brice Ondo", team: "Okano Stars", goals: 9, rank: 2 },
-    { name: "Samuel Obame", team: "Elite de l'Ogooué", goals: 7, rank: 3 },
-  ];
+  // Fetch Tournament Config
+  const { data: config } = await supabase
+    .from('tournament_config')
+    .select('*')
+    .single();
+
+  const tournamentName = config?.name || "Coupe Cantonale Fieng Okano";
+  const tournamentYear = config?.start_date ? new Date(config.start_date).getFullYear() : 2026;
+
+  // Split name for styling (assuming "Coupe Cantonale Fieng Okano")
+  const nameParts = tournamentName.split(' ');
+  const mainName = nameParts.slice(0, 2).join(' '); // "Coupe Cantonale"
+  const subName = nameParts.slice(2).join(' '); // "Fieng Okano 2026"
+
+  // --- DYNAMISATION DES BUTEURS ---
+  const allEvents = (matches || []).flatMap(m => m.events || []);
+  const goals = allEvents.filter(e => e.type === 'goal');
+  const goalCounts = goals.reduce((acc: any, g: any) => {
+    acc[g.player] = (acc[g.player] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topScorerNames = Object.entries(goalCounts)
+    .sort(([, a]: any, [, b]: any) => b - a)
+    .slice(0, 3);
+
+  const { data: playerData } = await supabase
+    .from('players')
+    .select('full_name, photo_url, team:teams(name)')
+    .in('full_name', topScorerNames.map(([name]) => name));
+
+  const topScorers = topScorerNames.map(([name, goals], index) => {
+    const info = (playerData as any[])?.find(p => p.full_name === name);
+    return {
+      name,
+      goals: goals as number,
+      rank: index + 1,
+      team: info?.team?.name || "CCFO",
+      photo: info?.photo_url
+    };
+  });
 
   return (
     <main className="min-h-screen bg-background selection:bg-primary/30">
@@ -72,16 +111,16 @@ export default async function HomePage() {
                     </div>
                   ))}
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Saison 2026 • 8 Villages Engagés</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Saison {tournamentYear} • 8 Villages Engagés</span>
               </div>
 
               <div className="space-y-4">
-                <h1 className="text-6xl md:text-7xl font-outfit font-black leading-[0.9] tracking-tighter animate-slide-up">
-                  Coupe Cantonale <br />
-                  <span className="gradient-text-primary italic">Fieng Okano</span>
+                <h1 className="text-6xl md:text-7xl font-outfit font-black leading-[1.1] tracking-tighter animate-slide-up pb-2">
+                  {mainName} <br />
+                  <span className="gradient-text-primary italic py-1 block md:inline">{subName}</span>
                 </h1>
                 <p className="text-xl md:text-2xl text-muted/80 max-w-xl font-medium leading-relaxed animate-slide-up animation-delay-200">
-                  Vivez l'excellence du football au cœur du canton Fieng Okano. L'élite s'affronte, l'histoire s'écrit ici.
+                  Vivez l'excellence du football au cœur du canton {subName}. L'élite s'affronte, l'histoire s'écrit ici.
                 </p>
               </div>
 
@@ -108,18 +147,21 @@ export default async function HomePage() {
                   <ShieldCheck className="w-5 h-5 text-accent opacity-50" />
                 </div>
 
-                {nextMatch ? (
+                {heroMatch ? (
                   <div className="flex items-center justify-between gap-4">
-                    <TeamEmblem name={nextMatch.home?.name || 'TBA'} label={nextMatch.home?.name?.[0] || '?'} />
+                    <TeamEmblem name={heroMatch.home?.name || 'TBA'} label={heroMatch.home?.name?.[0] || '?'} />
                     <div className="flex flex-col items-center gap-2">
-                      <div className="text-3xl font-black font-outfit tracking-widest text-white/20 uppercase italic">
-                        {nextMatch.status === 'live' ? `${nextMatch.home_score} - ${nextMatch.away_score}` : 'VS'}
+                      <div className={cn(
+                        "text-3xl font-black font-outfit tracking-widest uppercase italic",
+                        heroMatch.status === 'live' ? "text-primary animate-pulse" : "text-white/20"
+                      )}>
+                        {heroMatch.status === 'scheduled' ? 'VS' : `${heroMatch.home_score} - ${heroMatch.away_score}`}
                       </div>
                       <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-center">
-                        {new Date(nextMatch.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} • {new Date(nextMatch.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        {heroMatch.status === 'live' ? 'En Direct' : `${new Date(heroMatch.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} • ${new Date(heroMatch.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
                       </div>
                     </div>
-                    <TeamEmblem name={nextMatch.away?.name || 'TBA'} label={nextMatch.away?.name?.[0] || '?'} />
+                    <TeamEmblem name={heroMatch.away?.name || 'TBA'} label={heroMatch.away?.name?.[0] || '?'} />
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted italic text-sm">Aucun match programmé.</div>
@@ -128,7 +170,9 @@ export default async function HomePage() {
                 <div className="pt-8 border-t border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="text-center">
-                      <div className="text-xl font-black font-outfit">{nextMatch?.status === 'live' ? 'En Direct' : 'Prévu'}</div>
+                      <div className={cn("text-xl font-black font-outfit", heroMatch?.status === 'live' && "text-primary")}>
+                        {heroMatch?.status === 'live' ? 'LIVE' : heroMatch?.status === 'finished' ? 'Terminé' : 'Prévu'}
+                      </div>
                       <div className="text-[8px] font-black uppercase tracking-widest text-muted">Statut</div>
                     </div>
                     <div className="w-px h-8 bg-white/5" />
@@ -208,6 +252,8 @@ export default async function HomePage() {
                     <tr>
                       <th className="p-4 text-[9px] font-black uppercase tracking-widest text-muted">Pos</th>
                       <th className="p-4 text-[9px] font-black uppercase tracking-widest text-muted">Club</th>
+                      <th className="p-4 text-[9px] font-black uppercase tracking-widest text-muted text-center">MJ</th>
+                      <th className="p-4 text-[9px] font-black uppercase tracking-widest text-muted text-center">Diff</th>
                       <th className="p-4 text-[9px] font-black uppercase tracking-widest text-muted text-center">PTS</th>
                     </tr>
                   </thead>
@@ -222,7 +268,9 @@ export default async function HomePage() {
                             {i + 1}
                           </div>
                         </td>
-                        <td className="p-4 font-bold text-xs uppercase tracking-tight">{row.teams?.name}</td>
+                        <td className="p-4 font-bold text-xs uppercase tracking-tight">{(row.teams as any)?.name}</td>
+                        <td className="p-4 font-black font-outfit text-center text-white/40 text-[10px]">{row.played || 0}</td>
+                        <td className="p-4 font-black font-outfit text-center text-white/40 text-[10px]">{row.goal_diff > 0 ? `+${row.goal_diff}` : row.goal_diff || 0}</td>
                         <td className="p-4 font-black font-outfit text-center text-accent">{row.points}</td>
                       </tr>
                     ))}
@@ -239,8 +287,12 @@ export default async function HomePage() {
                   <div key={i} className="glass-card rounded-2xl! p-4 flex items-center justify-between group hover:border-primary/30 transition-all duration-500">
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-bold text-lg border border-white/5">
-                          {player.name[0]}
+                        <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-bold text-lg border border-white/5 overflow-hidden">
+                          {player.photo ? (
+                            <img src={player.photo} alt={player.name} className="w-full h-full object-cover" />
+                          ) : (
+                            player.name[0]
+                          )}
                         </div>
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-[10px] font-black text-white border-4 border-background shadow-lg">
                           {player.rank}

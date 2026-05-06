@@ -5,9 +5,11 @@ import Link from "next/link";
 import { Trophy, Calendar, Users, BarChart3, Menu, LogIn, X, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 export function PublicNavbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   // Close menu on resize
   useEffect(() => {
@@ -43,10 +45,10 @@ export function PublicNavbar() {
 
           {/* Desktop Nav: Center */}
           <div className="hidden lg:flex items-center gap-10 bg-white/5 px-8 py-2 rounded-full border border-white/5 backdrop-blur-xl">
-            <NavLink href="/" icon={<Trophy className="w-4 h-4" />}>Accueil</NavLink>
-            <NavLink href="/matches" icon={<Calendar className="w-4 h-4" />}>Matchs</NavLink>
-            <NavLink href="/standings" icon={<BarChart3 className="w-4 h-4" />}>Classement</NavLink>
-            <NavLink href="/teams" icon={<Users className="w-4 h-4" />}>Équipes</NavLink>
+            <NavLink href="/" active={pathname === "/"} icon={<Trophy className="w-4 h-4" />}>Accueil</NavLink>
+            <NavLink href="/matches" active={pathname === "/matches"} icon={<Calendar className="w-4 h-4" />}>Matchs</NavLink>
+            <NavLink href="/standings" active={pathname === "/standings"} icon={<BarChart3 className="w-4 h-4" />}>Classement</NavLink>
+            <NavLink href="/teams" active={pathname === "/teams"} icon={<Users className="w-4 h-4" />}>Équipes</NavLink>
           </div>
 
           {/* Auth Actions */}
@@ -81,10 +83,10 @@ export function PublicNavbar() {
       )}>
         <div className="flex flex-col h-full pt-32 px-8 pb-10">
           <div className="space-y-4">
-            <MobileNavLink href="/" label="Accueil" icon={<Trophy />} onClick={() => setIsOpen(false)} />
-            <MobileNavLink href="/matches" label="Matchs" icon={<Calendar />} onClick={() => setIsOpen(false)} />
-            <MobileNavLink href="/standings" label="Classement" icon={<BarChart3 />} onClick={() => setIsOpen(false)} />
-            <MobileNavLink href="/teams" label="Équipes" icon={<Users />} onClick={() => setIsOpen(false)} />
+            <MobileNavLink href="/" active={pathname === "/"} label="Accueil" icon={<Trophy />} onClick={() => setIsOpen(false)} />
+            <MobileNavLink href="/matches" active={pathname === "/matches"} label="Matchs" icon={<Calendar />} onClick={() => setIsOpen(false)} />
+            <MobileNavLink href="/standings" active={pathname === "/standings"} label="Classement" icon={<BarChart3 />} onClick={() => setIsOpen(false)} />
+            <MobileNavLink href="/teams" active={pathname === "/teams"} label="Équipes" icon={<Users />} onClick={() => setIsOpen(false)} />
           </div>
 
           <div className="mt-auto space-y-4">
@@ -110,33 +112,51 @@ export function PublicNavbar() {
   );
 }
 
-function NavLink({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) {
+function NavLink({ href, icon, children, active }: { href: string; icon: React.ReactNode; children: React.ReactNode, active?: boolean }) {
   return (
     <Link 
       href={href} 
-      className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted hover:text-primary transition-all group relative py-2"
+      className={cn(
+        "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all group relative py-2",
+        active ? "text-primary" : "text-muted hover:text-primary"
+      )}
     >
       <span className="group-hover:scale-110 transition-transform">{icon}</span>
       <span>{children}</span>
-      <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-500 group-hover:w-full" />
+      <div className={cn(
+        "absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-500",
+        active ? "w-full" : "w-0 group-hover:w-full"
+      )} />
     </Link>
   );
 }
 
-function MobileNavLink({ href, label, icon, onClick }: { href: string; label: string; icon: React.ReactNode; onClick: () => void }) {
+function MobileNavLink({ href, label, icon, onClick, active }: { href: string; label: string; icon: React.ReactNode; onClick: () => void, active?: boolean }) {
   return (
     <Link 
       href={href}
       onClick={onClick}
-      className="flex items-center justify-between p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/30 group transition-all"
+      className={cn(
+        "flex items-center justify-between p-6 rounded-2xl bg-white/5 border transition-all group",
+        active ? "border-primary/50 bg-primary/5" : "border-white/5 hover:border-primary/30"
+      )}
     >
       <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-primary">
+        <div className={cn(
+          "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+          active ? "bg-primary text-white" : "bg-white/5 text-primary"
+        )}>
           {icon}
         </div>
-        <span className="text-xl font-black font-outfit uppercase tracking-tight">{label}</span>
+        <span className={cn(
+          "text-xl font-black font-outfit uppercase tracking-tight",
+          active ? "text-white" : "text-muted group-hover:text-white"
+        )}>{label}</span>
       </div>
-      <ChevronRight className="w-5 h-5 text-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
+      <ChevronRight className={cn(
+        "w-5 h-5 transition-all",
+        active ? "text-primary translate-x-1" : "text-muted group-hover:text-primary group-hover:translate-x-1"
+      )} />
     </Link>
   );
 }

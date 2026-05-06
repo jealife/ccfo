@@ -1,12 +1,40 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
-export function MatchDetailClient({ match, events, stats }: any) {
+export function MatchDetailClient({ match: initialMatch, events: initialEvents, stats: initialStats }: any) {
   const [activeTab, setActiveTab] = useState("details");
+  const [match, setMatch] = useState(initialMatch);
+  const [events, setEvents] = useState(initialEvents);
+  const [stats, setStats] = useState(initialStats);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`match-${match.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'matches',
+          filter: `id=eq.${match.id}`
+        },
+        (payload) => {
+          console.log('Realtime Update:', payload);
+          setMatch((prev: any) => ({ ...prev, ...payload.new }));
+          if (payload.new.events) setEvents(payload.new.events);
+          if (payload.new.stats) setStats(payload.new.stats);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [match.id, supabase]);
 
   const tabs = [
     { id: "details", label: "Détails", icon: <Clock className="w-4 h-4" /> },
@@ -82,23 +110,19 @@ export function MatchDetailClient({ match, events, stats }: any) {
               </div>
             </div>
             
-            {/* MOTM */}
-            <div className="glass-card p-6 flex flex-col sm:flex-row items-center gap-6 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.1),transparent_50%)]">
-              <div className="w-20 h-20 rounded-xl bg-secondary border border-accent/20 flex items-center justify-center text-3xl font-black text-accent relative shadow-lg">
-                <Star className="absolute -top-2 -right-2 w-6 h-6 text-accent fill-current" />
-                SM
-              </div>
-              <div className="flex-1 text-center sm:text-left">
-                <h4 className="text-xl font-black font-outfit uppercase">Samuel Mba</h4>
-                <p className="text-accent font-black uppercase tracking-widest text-[10px] mt-1">Homme du Match • 9.2 Note</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-center">
-                  <div className="text-xs font-black">2</div>
-                  <div className="text-[8px] uppercase tracking-widest text-muted">Buts</div>
+            {/* MOTM - Only if set */}
+            {match.motm_player && (
+              <div className="glass-card p-6 flex flex-col sm:flex-row items-center gap-6 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.1),transparent_50%)]">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-secondary border border-accent/20 flex items-center justify-center text-2xl md:text-3xl font-black text-accent relative shadow-lg shrink-0">
+                  <Star className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 text-accent fill-current" />
+                  {match.motm_player[0]}
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h4 className="text-xl font-black font-outfit uppercase">{match.motm_player}</h4>
+                  <p className="text-accent font-black uppercase tracking-widest text-[10px] mt-1">Homme du Match</p>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 

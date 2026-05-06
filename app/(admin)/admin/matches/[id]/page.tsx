@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock } from "lucide-react";
+import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
 
   // Editable State
   const [status, setStatus] = useState("scheduled");
+  const [motmPlayer, setMotmPlayer] = useState("");
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [events, setEvents] = useState<any[]>([]);
@@ -50,6 +51,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     if (data) {
       setMatch(data);
       setStatus(data.status || 'scheduled');
+      setMotmPlayer(data.motm_player || "");
       setHomeScore(data.home_score || 0);
       setAwayScore(data.away_score || 0);
       setEvents(data.events || []);
@@ -74,6 +76,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
 
     const result = await updateMatchLive(id, {
       status,
+      motm_player: motmPlayer,
       home_score: homeScore,
       away_score: awayScore,
       events: sortedEvents
@@ -101,11 +104,24 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
 
   const addEvent = () => {
     if (!newEvent.minute || !newEvent.player) return;
-    setEvents([...events, { ...newEvent, id: Date.now() }]);
+    const event = { ...newEvent, id: Date.now() };
+    setEvents([...events, event]);
+
+    // Automate Score Update
+    if (event.type === 'goal') {
+      if (event.team === 'home') setHomeScore(prev => prev + 1);
+      else setAwayScore(prev => prev + 1);
+    }
+
     setNewEvent({ minute: "", type: "goal", player: "", team: "home" });
   };
 
   const removeEvent = (eventId: number) => {
+    const eventToRemove = events.find(e => e.id === eventId);
+    if (eventToRemove?.type === 'goal') {
+      if (eventToRemove.team === 'home') setHomeScore(prev => Math.max(0, prev - 1));
+      else setAwayScore(prev => Math.max(0, prev - 1));
+    }
     setEvents(events.filter(e => e.id !== eventId));
   };
 
@@ -179,6 +195,25 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                 <SquareCheck className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase">Terminé</span>
               </button>
+            </div>
+          </div>
+          
+          <div className="glass-card p-8 space-y-6">
+            <h3 className="text-xs font-black uppercase tracking-widest text-muted">Homme du Match</h3>
+            <div className="relative">
+              <Star className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
+              <input 
+                list="all-players-list"
+                placeholder="Choisir l'homme du match..." 
+                value={motmPlayer}
+                onChange={(e) => setMotmPlayer(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-primary transition-all"
+              />
+              <datalist id="all-players-list">
+                {[...homePlayers, ...awayPlayers].map(p => (
+                  <option key={p.id} value={p.full_name}>{p.full_name} ({p.team_id === match.home_team_id ? match.home.name : match.away.name})</option>
+                ))}
+              </datalist>
             </div>
           </div>
         </div>
