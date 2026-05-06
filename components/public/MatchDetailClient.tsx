@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User } from "lucide-react";
 import { cn } from "@/lib/utils";

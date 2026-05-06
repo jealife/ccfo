@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import { LiveHeroMatch } from "@/components/public/LiveHeroMatch";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -136,56 +137,9 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* HERO FEATURE CARD */}
+            {/* HERO FEATURE CARD - REALTIME */}
             <div className="lg:col-span-5 hidden lg:block animate-fade-in animation-delay-600">
-              <div className="glass-card p-10 space-y-8 group hover:border-primary/20 transition-all duration-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Live Next Match</span>
-                  </div>
-                  <ShieldCheck className="w-5 h-5 text-accent opacity-50" />
-                </div>
-
-                {heroMatch ? (
-                  <div className="flex items-center justify-between gap-4">
-                    <TeamEmblem name={heroMatch.home?.name || 'TBA'} label={heroMatch.home?.name?.[0] || '?'} />
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={cn(
-                        "text-3xl font-black font-outfit tracking-widest uppercase italic",
-                        heroMatch.status === 'live' ? "text-primary animate-pulse" : "text-white/20"
-                      )}>
-                        {heroMatch.status === 'scheduled' ? 'VS' : `${heroMatch.home_score} - ${heroMatch.away_score}`}
-                      </div>
-                      <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-center">
-                        {heroMatch.status === 'live' ? 'En Direct' : `${new Date(heroMatch.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} • ${new Date(heroMatch.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
-                      </div>
-                    </div>
-                    <TeamEmblem name={heroMatch.away?.name || 'TBA'} label={heroMatch.away?.name?.[0] || '?'} />
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted italic text-sm">Aucun match programmé.</div>
-                )}
-
-                <div className="pt-8 border-t border-white/5 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <div className={cn("text-xl font-black font-outfit", heroMatch?.status === 'live' && "text-primary")}>
-                        {heroMatch?.status === 'live' ? 'LIVE' : heroMatch?.status === 'finished' ? 'Terminé' : 'Prévu'}
-                      </div>
-                      <div className="text-[8px] font-black uppercase tracking-widest text-muted">Statut</div>
-                    </div>
-                    <div className="w-px h-8 bg-white/5" />
-                    <div className="text-center">
-                      <div className="text-xl font-black font-outfit">Stade</div>
-                      <div className="text-[8px] font-black uppercase tracking-widest text-muted">Okano Central</div>
-                    </div>
-                  </div>
-                  <Link href="/matches" className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
-                    <TrendingUp className="w-5 h-5" />
-                  </Link>
-                </div>
-              </div>
+              <LiveHeroMatch initialMatch={heroMatch} />
             </div>
           </div>
         </div>

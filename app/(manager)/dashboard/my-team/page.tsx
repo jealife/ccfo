@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { updatePlayerPhoto } from "@/app/api/players/actions";
+import { addPlayer, addStaff } from "@/app/api/team/actions";
 
 export default function MyTeamPage() {
   const [team, setTeam] = useState<any>(null);
@@ -82,14 +83,40 @@ export default function MyTeamPage() {
       origin_village: team.village
     };
 
-    const { data, error } = await supabase.from('players').insert([newPlayer]).select().single();
+    const result = await addPlayer(newPlayer);
     
-    if (error) {
-      showToast("Erreur lors de l'ajout", "error");
+    if (!result.success) {
+      showToast(result.error || "Erreur lors de l'ajout", "error");
     } else {
-      setPlayers(prev => [...prev, data]);
-      setEditingPlayerId(data.id);
+      setPlayers(prev => [...prev, result.data]);
+      setEditingPlayerId(result.data.id);
       showToast("Joueur ajouté ✓", "success");
+    }
+  };
+
+  const handleAddStaff = async () => {
+    const { data: configData } = await supabase.from('tournament_config').select('staff_per_team').single();
+    const staffLimit = configData?.staff_per_team || 6;
+
+    if (staff.length >= staffLimit) {
+      showToast(`Limite de ${staffLimit} membres atteinte`, "error");
+      return;
+    }
+
+    const newMember = {
+      team_id: team.id,
+      first_name: "Nouveau",
+      last_name: "Membre",
+      role: "Assistant"
+    };
+
+    const result = await addStaff(newMember);
+    
+    if (!result.success) {
+      showToast(result.error || "Erreur lors de l'ajout", "error");
+    } else {
+      setStaff(prev => [...prev, result.data]);
+      showToast("Membre ajouté ✓", "success");
     }
   };
 
@@ -192,11 +219,25 @@ export default function MyTeamPage() {
 
       {/* Staff Section */}
       <section className="space-y-4">
-        <div className="flex items-center gap-3 px-1">
-          <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-primary border border-white/5">
-            <Users className="w-5 h-5" />
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-primary border border-white/5">
+              <Users className="w-5 h-5" />
+            </div>
+            <h2 className="text-xl md:text-2xl font-black font-outfit uppercase tracking-tighter">Staff Technique <span className="text-primary text-sm ml-2">({staff.length}/6)</span></h2>
           </div>
-          <h2 className="text-xl md:text-2xl font-black font-outfit uppercase tracking-tighter">Staff Technique</h2>
+          <button 
+            onClick={handleAddStaff}
+            disabled={staff.length >= 6}
+            className={cn(
+              "text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 px-3 py-2 rounded-xl border transition-all",
+              staff.length >= 6 
+                ? "bg-white/5 border-white/5 text-muted cursor-not-allowed opacity-50" 
+                : "text-primary bg-primary/5 border-primary/10 hover:bg-primary/10"
+            )}
+          >
+            <UserPlus className="w-3 h-3" /> {staff.length >= 6 ? "Quota Atteint" : "Ajouter"}
+          </button>
         </div>
         {staff.length === 0 ? (
           <p className="text-muted text-sm italic px-1">Aucun membre du staff enregistré.</p>
@@ -230,9 +271,15 @@ export default function MyTeamPage() {
           </div>
           <button 
             onClick={handleAddPlayer}
-            className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-all"
+            disabled={players.length >= 24}
+            className={cn(
+              "text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 px-3 py-2 rounded-xl border transition-all",
+              players.length >= 24
+                ? "bg-white/5 border-white/5 text-muted cursor-not-allowed opacity-50"
+                : "text-primary bg-primary/5 border-primary/10 hover:bg-primary/10"
+            )}
           >
-            <UserPlus className="w-3 h-3" /> Ajouter
+            <UserPlus className="w-3 h-3" /> {players.length >= 24 ? "Quota Atteint" : "Ajouter"}
           </button>
         </div>
 
@@ -318,10 +365,10 @@ function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload
                   className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-black uppercase outline-none"
                   onChange={(e) => setEditedPlayer({ ...editedPlayer, position: e.target.value })}
                 >
-                  <option value="GK">GK</option>
-                  <option value="DEF">DEF</option>
-                  <option value="MID">MID</option>
-                  <option value="FWD">FWD</option>
+                  <option value="GB">GB (Gardien)</option>
+                  <option value="DEF">DEF (Défenseur)</option>
+                  <option value="MIL">MIL (Milieu)</option>
+                  <option value="ATT">ATT (Attaquant)</option>
                 </select>
               ) : (
                 <span className="text-[10px] font-black text-primary uppercase tracking-widest">{player.position}</span>

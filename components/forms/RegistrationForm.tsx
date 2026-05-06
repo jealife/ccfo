@@ -44,19 +44,68 @@ export function RegistrationForm() {
   });
 
   useEffect(() => {
-    async function loadConfig() {
+    async function loadData() {
       const supabase = createClient();
-      const { data } = await supabase.from('tournament_config').select('*').single();
-      if (data) {
-        setConfig(data);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Load Tournament Config
+      const { data: configData } = await supabase.from('tournament_config').select('*').single();
+      if (!configData) return;
+      setConfig(configData);
+
+      const pLimit = configData.players_per_team || 24;
+      const sLimit = configData.staff_per_team || 6;
+
+      // 2. Load Existing Team
+      const { data: teamData } = await supabase.from('teams').select('*').eq('manager_id', user.id).maybeSingle();
+      
+      if (teamData) {
+        // 3. Load Existing Staff & Players
+        const { data: staffData } = await supabase.from('staff').select('*').eq('team_id', teamData.id);
+        const { data: playersData } = await supabase.from('players').select('*').eq('team_id', teamData.id).order('created_at', { ascending: true });
+
+        // Map existing staff into fixed-size array
+        const mappedStaff = Array(sLimit).fill({ name: "", role: "", origin: "" });
+        staffData?.forEach((s, i) => {
+          if (i < sLimit) mappedStaff[i] = { name: `${s.first_name} ${s.last_name}`, role: s.role, origin: s.origin_village || "" };
+        });
+
+        // Map existing players into fixed-size array
+        const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" });
+        playersData?.forEach((p, i) => {
+          if (i < pLimit) mappedPlayers[i] = { name: p.full_name, number: p.jersey_number, dob: "", position: p.position, village: p.origin_village };
+        });
+
+        setFormData({
+          team: { 
+            name: teamData.name || "", 
+            village: teamData.village || "", 
+            color: teamData.main_color || "", 
+            president: teamData.president_name || "", 
+            phone: teamData.phone || "", 
+            whatsapp: teamData.whatsapp || "", 
+            email: teamData.email || "" 
+          },
+          staff: mappedStaff,
+          players: mappedPlayers,
+          documents: { idCards: teamData.id_cards_url || null, certificate: teamData.certificate_url || null, receipt: teamData.receipt_url || null }
+        });
+
+        // If team is already validated or complete, show success
+        if (teamData.status === 'validated' || (staffData?.length === sLimit && playersData?.length === pLimit)) {
+          setIsSuccess(true);
+        }
+      } else {
+        // Default empty arrays if no team exists yet
         setFormData(prev => ({
           ...prev,
-          staff: Array(data.staff_per_team || 6).fill({ name: "", role: "", origin: "" }),
-          players: Array(data.players_per_team || 24).fill({ name: "", number: "", dob: "", position: "", village: "" }),
+          staff: Array(sLimit).fill({ name: "", role: "", origin: "" }),
+          players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" }),
         }));
       }
     }
-    loadConfig();
+    loadData();
   }, []);
 
   const playersLimit = config?.players_per_team || 24;
@@ -306,7 +355,7 @@ function PlayersStep({ data, updateData, limit }: any) {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <FormInput label="N°" placeholder="10" value={player.number} onChange={(e: any) => updateData(i, {number: e.target.value})} />
-              <FormInput label="Poste" placeholder="FW" value={player.position} onChange={(e: any) => updateData(i, {position: e.target.value})} />
+              <FormInput label="Poste" placeholder="ATT" value={player.position} onChange={(e: any) => updateData(i, {position: e.target.value})} />
               <FormInput label="Village" placeholder="Bassam" value={player.village} onChange={(e: any) => updateData(i, {village: e.target.value})} />
             </div>
           </div>
