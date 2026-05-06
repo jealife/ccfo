@@ -85,7 +85,7 @@ export default async function HomePage() {
       <PublicNavbar />
       
       {/* --- HERO SECTION: ELITE VISUALS --- */}
-      <section className="relative h-screen flex items-center pt-10 overflow-hidden">
+      <section className="relative min-h-screen flex items-center pt-24 pb-20 md:pt-10 md:pb-10 overflow-hidden">
         {/* Dynamic Background */}
         <div className="absolute inset-0 z-0">
           <Image 
@@ -116,7 +116,7 @@ export default async function HomePage() {
               </div>
 
               <div className="space-y-4">
-                <h1 className="text-6xl md:text-7xl font-outfit font-black leading-[1.1] tracking-tighter animate-slide-up pb-2">
+                <h1 className="text-5xl md:text-7xl font-outfit font-black leading-[1.1] tracking-tighter animate-slide-up pb-2">
                   {mainName} <br />
                   <span className="gradient-text-primary italic py-1 block md:inline">{subName}</span>
                 </h1>
