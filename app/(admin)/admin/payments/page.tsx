@@ -15,11 +15,21 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
+import { AlertDialog } from "@/components/ui/Modal";
 
 export default function AdminPaymentsPage() {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success"
+  });
   const supabase = createClient();
 
   useEffect(() => {
@@ -40,13 +50,12 @@ export default function AdminPaymentsPage() {
       // 2. Auto-sync missing payment records for validated teams
       const missingPayments = data.filter(t => t.status === 'validated' && (!t.payments || t.payments.length === 0));
       if (missingPayments.length > 0) {
-        console.log(`Syncing ${missingPayments.length} missing payments...`);
         for (const team of missingPayments) {
           await supabase.from('payments').upsert({
             team_id: team.id,
             amount: 400000,
             status: 'paid',
-            created_at: team.created_at // Use team creation date as fallback
+            created_at: team.created_at
           }, { onConflict: 'team_id' });
         }
         // Refresh after sync
@@ -66,6 +75,36 @@ export default function AdminPaymentsPage() {
     pending: teams.filter(t => t.status === 'pending').length,
     validated: teams.filter(t => t.status === 'validated').length,
     totalAmount: teams.filter(t => t.status === 'validated').length * 400000
+  };
+
+  const handleStatusUpdate = async (teamId: string, newStatus: string) => {
+    const { error: teamError } = await supabase.from('teams').update({ status: newStatus }).eq('id', teamId);
+    
+    if (!teamError && newStatus === 'validated') {
+      await supabase.from('payments').upsert({
+        team_id: teamId,
+        amount: 400000,
+        status: 'paid',
+        created_at: new Date().toISOString()
+      }, { onConflict: 'team_id' });
+    }
+
+    if (teamError) {
+      setAlert({
+        isOpen: true,
+        title: "Erreur",
+        message: "Erreur lors de la mise à jour : " + teamError.message,
+        type: "error"
+      });
+    } else {
+      fetchPayments();
+      setAlert({
+        isOpen: true,
+        title: "Succès",
+        message: `L'équipe a été ${newStatus === 'validated' ? 'validée (Paiement 400k confirmé)' : 'rejetée'} avec succès.`,
+        type: "success"
+      });
+    }
   };
 
   return (
@@ -137,7 +176,14 @@ export default function AdminPaymentsPage() {
                   </td>
                 </tr>
               ) : filteredTeams.map((team) => (
-                <tr key={team.id} className="hover:bg-white/5 transition-colors group">
+                <tr 
+                  key={team.id} 
+                  className="hover:bg-white/5 transition-colors group cursor-pointer"
+                  onClick={() => {
+                    setSelectedTeam(team);
+                    setIsModalOpen(true);
+                  }}
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center font-bold text-xs text-primary">
@@ -149,7 +195,13 @@ export default function AdminPaymentsPage() {
                   <td className="px-6 py-4 text-xs font-bold text-muted uppercase">{team.village}</td>
                   <td className="px-6 py-4">
                     {team.payment_receipt_url ? (
-                      <a href={team.payment_receipt_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black text-primary hover:underline">
+                      <a 
+                        href={team.payment_receipt_url} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-2 text-[10px] font-black text-primary hover:underline"
+                      >
                         <FileText className="w-3 h-3" /> VOIR REÇU
                       </a>
                     ) : (
@@ -170,7 +222,14 @@ export default function AdminPaymentsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="p-2 rounded-lg bg-white/5 border border-white/10 hover:border-primary/50 text-muted hover:text-primary transition-all">
+                    <button 
+                      className="p-2 rounded-lg bg-white/5 border border-white/10 hover:border-primary/50 text-muted hover:text-primary transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTeam(team);
+                        setIsModalOpen(true);
+                      }}
+                    >
                       <ExternalLink className="w-4 h-4" />
                     </button>
                   </td>
@@ -180,6 +239,25 @@ export default function AdminPaymentsPage() {
           </table>
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {selectedTeam && (
+        <TeamDetailModal 
+          team={selectedTeam}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onStatusUpdate={handleStatusUpdate}
+        />
+      )}
+
+      {/* Alert Dialog */}
+      <AlertDialog 
+        isOpen={alert.isOpen}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type as any}
+      />
     </div>
   );
 }
