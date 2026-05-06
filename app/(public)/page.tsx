@@ -157,42 +157,57 @@ export default async function HomePage() {
             
             <div className="space-y-4">
               {(matches || []).map((match: any) => (
-                <div key={match.id} className="sports-card p-6 flex items-center justify-between group cursor-pointer overflow-hidden">
+                <Link 
+                  href={`/matches/${match.id}`}
+                  key={match.id} 
+                  className="sports-card p-4 md:p-6 flex items-center justify-between group cursor-pointer overflow-hidden gap-3 md:gap-10 transition-all duration-500 hover:border-primary/30 shadow-lg shadow-black/20"
+                >
                   {/* Glowing line overlay */}
                   <div className="absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-all" />
                   
-                  <div className="flex items-center gap-10 flex-1">
-                    <div className="flex flex-col items-center gap-1.5 min-w-[80px] border-r border-white/5 pr-10">
-                      <span className="text-[10px] font-black text-muted uppercase tracking-widest">{new Date(match.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
-                      <span className={cn(
-                        "text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-widest",
-                        match.status === 'finished' ? "bg-white/5 text-muted" : "bg-primary/20 text-primary animate-pulse"
-                      )}>{match.status === 'finished' ? 'Final' : 'Direct'}</span>
+                  <div className="flex items-center gap-3 md:gap-10 flex-1 min-w-0">
+                    {/* Date/Status Info */}
+                    <div className="flex flex-col items-center justify-center gap-1 min-w-[50px] md:min-w-[80px] border-r border-white/5 pr-3 md:pr-10 shrink-0">
+                      <span className="text-[8px] md:text-[10px] font-black text-white/40 uppercase tracking-widest">{new Date(match.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+                      <div className={cn(
+                        "px-2 py-0.5 rounded-full text-[7px] md:text-[9px] font-black uppercase tracking-widest",
+                        match.status === 'live' ? "bg-primary/20 text-primary animate-pulse" : "bg-white/5 text-muted"
+                      )}>
+                        {match.status === 'live' ? 'Live' : match.status === 'finished' ? 'Fin' : 'À ven'}
+                      </div>
                     </div>
                     
-                    <div className="flex-1 flex items-center justify-between gap-4">
-                      <div className="flex-1 flex items-center justify-end gap-5">
-                        <span className="font-bold text-sm text-right hidden md:block uppercase tracking-tight">{match.home?.name}</span>
-                        <div className="w-10 h-10 rounded-2xl bg-secondary border border-white/5 flex items-center justify-center font-black text-sm shadow-xl group-hover:scale-110 transition-transform">
+                    {/* Scoreboard Style Layout */}
+                    <div className="flex-1 flex items-center justify-between gap-2 md:gap-10 min-w-0">
+                      {/* HOME */}
+                      <div className="flex-1 flex items-center justify-end gap-2 md:gap-5 min-w-0">
+                        <span className="font-bold text-[10px] md:text-sm text-right uppercase tracking-tight text-white/80 group-hover:text-white truncate hidden sm:block">{match.home?.name}</span>
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-secondary border border-white/5 flex items-center justify-center font-black text-xs md:text-sm shadow-xl group-hover:scale-110 transition-transform shrink-0">
                           {match.home?.name?.[0]}
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-6 bg-white/5 px-8 py-3 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-all">
-                        <span className="text-3xl font-black font-outfit tabular-nums tracking-tighter">{match.home_score}</span>
-                        <div className="w-px h-6 bg-white/10" />
-                        <span className="text-3xl font-black font-outfit tabular-nums tracking-tighter">{match.away_score}</span>
+
+                      {/* SCORE BOX */}
+                      <div className="bg-background/50 px-3 md:px-5 py-1.5 md:py-2 rounded-2xl border border-white/5 flex items-center gap-2 md:gap-4 shrink-0 shadow-inner">
+                        <span className="text-xl md:text-3xl font-black font-outfit tabular-nums tracking-tighter text-white">
+                          {match.status === 'scheduled' ? '-' : match.home_score}
+                        </span>
+                        <div className="w-px h-4 bg-white/10" />
+                        <span className="text-xl md:text-3xl font-black font-outfit tabular-nums tracking-tighter text-white">
+                          {match.status === 'scheduled' ? '-' : match.away_score}
+                        </span>
                       </div>
 
-                      <div className="flex-1 flex items-center justify-start gap-5">
-                        <div className="w-10 h-10 rounded-2xl bg-secondary border border-white/5 flex items-center justify-center font-black text-sm shadow-xl group-hover:scale-110 transition-transform">
+                      {/* AWAY */}
+                      <div className="flex-1 flex items-center justify-start gap-2 md:gap-5 min-w-0">
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-secondary border border-white/5 flex items-center justify-center font-black text-xs md:text-sm shadow-xl group-hover:scale-110 transition-transform shrink-0">
                           {match.away?.name?.[0]}
                         </div>
-                        <span className="font-bold text-sm text-left hidden md:block uppercase tracking-tight">{match.away?.name}</span>
+                        <span className="font-bold text-[10px] md:text-sm text-left uppercase tracking-tight text-white/80 group-hover:text-white truncate hidden sm:block">{match.away?.name}</span>
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
