@@ -1,11 +1,11 @@
 import { PublicNavbar } from "@/components/public/Navbar";
 import { Calendar, Activity, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 export default async function PublicMatchesPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: matches } = await supabase
     .from('matches')
     .select('*, home:teams!home_team_id(name), away:teams!away_team_id(name)')
