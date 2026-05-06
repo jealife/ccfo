@@ -1,11 +1,11 @@
 import { PublicNavbar } from "@/components/public/Navbar";
 import { Users, MapPin, Award, ChevronRight, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 export default async function PublicTeamsPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: teams } = await supabase
     .from('teams')
     .select('*, players(count)')
@@ -20,8 +20,8 @@ export default async function PublicTeamsPage() {
         <div className="max-w-6xl mx-auto space-y-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h1 className="text-5xl font-black font-outfit uppercase tracking-tighter">Les Équipes <span className="text-primary italic">2026</span></h1>
-              <p className="text-muted mt-2 text-lg">Découvrez les clubs qui participent à l'édition CCFO de cette année.</p>
+              <h1 className="text-3xl md:text-5xl font-black font-outfit uppercase tracking-tighter">Les Équipes <span className="text-primary italic">2026</span></h1>
+              <p className="text-muted mt-2 text-sm md:text-lg">Découvrez les clubs qui participent à l'édition CCFO de cette année.</p>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-bold uppercase tracking-widest">
               <Shield className="w-4 h-4" /> {teams?.length || 0} Équipes Validées
@@ -34,9 +34,9 @@ export default async function PublicTeamsPage() {
                 {/* Decoration */}
                 <div className="absolute -inset-0.5 bg-linear-to-r from-primary to-accent rounded-xl blur opacity-0 group-hover:opacity-20 transition duration-500" />
                 
-                <div className="relative sports-card bg-card/60 backdrop-blur-xl border-white/5 p-8 flex flex-col h-full">
-                  <div className="flex items-start justify-between mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-3xl font-black shadow-2xl border border-white/5 group-hover:scale-110 transition-transform duration-500">
+                <div className="relative sports-card bg-card/60 backdrop-blur-xl border-white/5 p-5 md:p-8 flex flex-col h-full shadow-2xl">
+                  <div className="flex items-start justify-between mb-6 md:mb-8">
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-secondary border border-white/10 flex items-center justify-center text-xl md:text-3xl font-black shadow-2xl group-hover:scale-110 transition-transform duration-500">
                       {team.name[0]}
                     </div>
                     <div className="text-right">
@@ -47,7 +47,7 @@ export default async function PublicTeamsPage() {
                     </div>
                   </div>
 
-                  <h3 className="text-2xl font-black font-outfit uppercase tracking-tight mb-6 group-hover:text-primary transition-colors">
+                  <h3 className="text-xl md:text-2xl font-black font-outfit uppercase tracking-tight mb-6 group-hover:text-primary transition-colors">
                     {team.name}
                   </h3>
 
