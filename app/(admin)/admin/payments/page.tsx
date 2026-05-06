@@ -27,13 +27,32 @@ export default function AdminPaymentsPage() {
   }, []);
 
   async function fetchPayments() {
+    setLoading(true);
+    
+    // 1. Fetch teams with their associated payments
     const { data, error } = await supabase
       .from('teams')
-      .select('id, name, village, payment_receipt_url, status, created_at')
-      .order('created_at', { ascending: false });
+      .select('*, payments(*)');
 
     if (!error && data) {
       setTeams(data);
+      
+      // 2. Auto-sync missing payment records for validated teams
+      const missingPayments = data.filter(t => t.status === 'validated' && (!t.payments || t.payments.length === 0));
+      if (missingPayments.length > 0) {
+        console.log(`Syncing ${missingPayments.length} missing payments...`);
+        for (const team of missingPayments) {
+          await supabase.from('payments').upsert({
+            team_id: team.id,
+            amount: 400000,
+            status: 'paid',
+            created_at: team.created_at // Use team creation date as fallback
+          }, { onConflict: 'team_id' });
+        }
+        // Refresh after sync
+        const { data: refreshedData } = await supabase.from('teams').select('*, payments(*)');
+        if (refreshedData) setTeams(refreshedData);
+      }
     }
     setLoading(false);
   }
