@@ -58,7 +58,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] 
               <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
                 <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-white/60">{dateStr}</h3>
               </div>
-              <div className="h-px flex-1 bg-linear-to-l from-transparent via-white/10 to-transparent md:to-white/10 hidden md:block" />
+              <div className="h-px flex-1 bg-linear-to-l from-transparent via-white/10 to-transparent md:to-white/10" />
             </div>
 
             {/* MATCHES LIST */}
