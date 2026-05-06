@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
+import { updateTeamStatus } from "@/app/api/teams/actions";
 
 export default function AdminPaymentsPage() {
   const [teams, setTeams] = useState<any[]>([]);
@@ -78,22 +79,13 @@ export default function AdminPaymentsPage() {
   };
 
   const handleStatusUpdate = async (teamId: string, newStatus: string) => {
-    const { error: teamError } = await supabase.from('teams').update({ status: newStatus }).eq('id', teamId);
+    const result = await updateTeamStatus(teamId, newStatus);
     
-    if (!teamError && newStatus === 'validated') {
-      await supabase.from('payments').upsert({
-        team_id: teamId,
-        amount: 400000,
-        status: 'paid',
-        created_at: new Date().toISOString()
-      }, { onConflict: 'team_id' });
-    }
-
-    if (teamError) {
+    if (!result.success) {
       setAlert({
         isOpen: true,
         title: "Erreur",
-        message: "Erreur lors de la mise à jour : " + teamError.message,
+        message: "Erreur lors de la mise à jour : " + result.error,
         type: "error"
       });
     } else {
