@@ -10,8 +10,10 @@ import {
   XCircle,
   Activity,
   Shield,
-  Loader2
+  Loader2,
+  Printer
 } from "lucide-react";
+import { PlayerLicense } from "@/components/dashboard/PlayerLicense";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
@@ -27,6 +29,8 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"players" | "staff">("players");
+  const [printingPlayer, setPrintingPlayer] = useState<any>(null);
+  const [printingAll, setPrintingAll] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -46,6 +50,14 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
     setStaff(staffRes.data || []);
     setLoading(false);
   }
+
+  const handlePrint = (player: any) => {
+    setPrintingPlayer(player);
+  };
+
+  const handleConfirmPrint = () => {
+    window.print();
+  };
 
   if (!isOpen) return null;
 
@@ -96,6 +108,16 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
           >
             Staff Technique ({staff.length})
           </button>
+          {activeTab === "players" && players.length > 0 && (
+            <button 
+              onClick={() => {
+                setPrintingAll(true);
+              }}
+              className="ml-auto flex items-center gap-2 px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:text-primary/80 transition-all"
+            >
+              <Printer className="w-4 h-4" /> Tout Imprimer
+            </button>
+          )}
         </div>
 
         {/* Content Scroll Area */}
@@ -132,8 +154,17 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
                             {player.position || "Poste non défini"}
                           </div>
                         </div>
-                        <div className="px-2 py-1 rounded bg-white/5 text-[8px] font-black uppercase tracking-widest text-muted">
-                          ID: {player.id.slice(0, 5)}
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="px-2 py-1 rounded bg-white/5 text-[8px] font-black uppercase tracking-widest text-muted">
+                            ID: {player.id.slice(0, 5)}
+                          </div>
+                          <button 
+                            onClick={() => handlePrint(player)}
+                            className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors border border-primary/10"
+                            title="Imprimer la licence"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     ))
@@ -209,6 +240,93 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
         </div>
 
       </div>
+
+      {/* Print Preview Overlay */}
+      {(printingPlayer || printingAll) && (
+        <div className="fixed inset-0 z-100 bg-black/90 flex flex-col items-center gap-8 p-8 overflow-y-auto print-content backdrop-blur-md">
+          {/* Preview Controls - Hidden during print */}
+          <div className="flex items-center gap-4 sticky top-0 z-50 bg-black/50 p-4 rounded-2xl border border-white/10 backdrop-blur-md no-print">
+            <button 
+              onClick={() => {
+                setPrintingPlayer(null);
+                setPrintingAll(false);
+              }}
+              className="px-6 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all"
+            >
+              Fermer l'Aperçu
+            </button>
+            <button 
+              onClick={handleConfirmPrint}
+              className="px-8 py-2 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 hover:scale-105 transition-all flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4" /> Confirmer l'Impression
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center gap-8 w-full max-w-4xl py-12">
+            {printingAll ? (
+              players.map((p) => (
+                <div key={p.id} className="break-after-page">
+                  <PlayerLicense 
+                    player={{
+                      firstName: p.full_name.split(' ').slice(1).join(' ') || p.full_name,
+                      lastName: p.full_name.split(' ')[0],
+                      team: team.name,
+                      number: p.jersey_number?.toString() || "00",
+                      position: p.position || "Joueur",
+                      village: team.village,
+                      nationality: p.nationality || "Gabonaise",
+                      photoUrl: p.photo_url,
+                    }}
+                  />
+                </div>
+              ))
+            ) : (
+              <PlayerLicense 
+                player={{
+                  firstName: printingPlayer.full_name.split(' ').slice(1).join(' ') || printingPlayer.full_name,
+                  lastName: printingPlayer.full_name.split(' ')[0],
+                  team: team.name,
+                  number: printingPlayer.jersey_number?.toString() || "00",
+                  position: printingPlayer.position || "Joueur",
+                  village: team.village,
+                  nationality: printingPlayer.nationality || "Gabonaise",
+                  photoUrl: printingPlayer.photo_url,
+                }}
+              />
+            )}
+          </div>
+
+          <style jsx global>{`
+            @media print {
+              .no-print {
+                display: none !important;
+              }
+              body > *:not(.print-content) {
+                display: none !important;
+              }
+              .print-content {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                display: block !important;
+                background: white !important;
+                z-index: 9999;
+                padding: 0 !important;
+                overflow: visible !important;
+              }
+              .break-after-page {
+                page-break-after: always;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+              }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }

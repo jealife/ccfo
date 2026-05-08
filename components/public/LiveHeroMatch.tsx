@@ -5,6 +5,7 @@ import { ShieldCheck, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { MatchTimer } from "./MatchTimer";
 
 function TeamEmblem({ name, label }: { name: string; label: string }) {
   return (
@@ -49,6 +50,8 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
 
   if (!match) return null;
 
+  const startedAt = match.stats?.find((s: any) => s.label === 'started_at')?.value;
+
   return (
     <div className="glass-card p-10 space-y-8 group hover:border-primary/20 transition-all duration-700">
       <div className="flex items-center justify-between">
@@ -81,9 +84,13 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
         <div className="flex items-center gap-4">
           <div className="text-center">
             <div className={cn("text-xl font-black font-outfit", match.status === 'live' && "text-primary")}>
-              {match.status === 'live' ? 'LIVE' : match.status === 'finished' ? 'Terminé' : 'Prévu'}
+              {match.status === 'live' ? (
+                <MatchTimer startedAt={startedAt || undefined} status={match.status} />
+              ) : match.status === 'finished' ? 'Terminé' : 'Prévu'}
             </div>
-            <div className="text-[8px] font-black uppercase tracking-widest text-muted">Statut</div>
+            <div className="text-[8px] font-black uppercase tracking-widest text-muted">
+              {match.status === 'live' ? 'Temps Écoulé' : 'Statut'}
+            </div>
           </div>
           <div className="w-px h-8 bg-white/5" />
           <div className="text-center">

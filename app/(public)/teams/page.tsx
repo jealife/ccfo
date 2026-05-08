@@ -3,6 +3,7 @@ import { Users, MapPin, Award, ChevronRight, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { PublicFooter } from "@/components/public/Footer";
 
 export default async function PublicTeamsPage() {
   const supabase = createAdminClient();
@@ -16,7 +17,7 @@ export default async function PublicTeamsPage() {
     <main className="min-h-screen pt-24 pb-12">
       <PublicNavbar />
       
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 pb-20">
         <div className="max-w-6xl mx-auto space-y-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
@@ -84,6 +85,7 @@ export default async function PublicTeamsPage() {
           )}
         </div>
       </div>
+      <PublicFooter />
     </main>
   );
 }

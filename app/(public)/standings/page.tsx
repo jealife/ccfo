@@ -2,6 +2,7 @@ import { PublicNavbar } from "@/components/public/Navbar";
 import { Trophy, ArrowUp, ArrowDown, Minus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import { PublicFooter } from "@/components/public/Footer";
 
 export default async function StandingsPage() {
   const supabase = await createClient();
@@ -14,7 +15,7 @@ export default async function StandingsPage() {
     <main className="min-h-screen pt-24 pb-12">
       <PublicNavbar />
       
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 pb-16">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -105,6 +106,7 @@ export default async function StandingsPage() {
           </div>
         </div>
       </div>
+      <PublicFooter />
     </main>
   );
 }

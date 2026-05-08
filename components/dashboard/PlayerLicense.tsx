@@ -1,111 +1,98 @@
-import { Shield, MapPin, Calendar, Award } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface PlayerLicenseProps {
   player: {
-    name: string;
+    firstName: string;
+    lastName: string;
     team: string;
     number: string;
     position: string;
     village: string;
+    nationality: string;
     photoUrl?: string;
-    idNumber: string;
   };
 }
 
 export function PlayerLicense({ player }: PlayerLicenseProps) {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = currentYear.toString().slice(-2);
+  const villageCode = player.village.substring(0, 3).toUpperCase();
+  const licenseNumber = `CCFO${yearSuffix}${villageCode}${player.number.padStart(2, '0')}`;
+
   return (
-    <div className="w-[400px] h-[250px] relative rounded-2xl overflow-hidden bg-[#0a0a0a] border border-white/10 shadow-2xl group flex">
-      {/* Design Elements */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-[60px] group-hover:bg-primary/30 transition-all" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-accent/10 rounded-full blur-[50px]" />
-      
-      {/* Left Strip */}
-      <div className="w-4 bg-primary h-full relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full opacity-20 flex flex-col items-center py-4 gap-4">
-          <Shield className="w-2 h-2 text-background fill-current" />
-          <Shield className="w-2 h-2 text-background fill-current" />
-          <Shield className="w-2 h-2 text-background fill-current" />
+    <div className="w-[800px] h-[500px] relative rounded-4xl overflow-hidden shadow-2xl bg-black flex font-outfit text-white border-4 border-yellow-400/20">
+      {/* Background Image */}
+      <div className="absolute inset-0">
+        <Image 
+          src="/bg-licence-joueurs.png" 
+          alt="Background" 
+          fill 
+          className="object-cover opacity-90"
+          priority
+        />
+        {/* Subtle overlay for better readability if needed */}
+        <div className="absolute inset-0 bg-linear-to-r from-black/40 via-transparent to-black/20" />
+      </div>
+
+      {/* Top Header */}
+      <div className="absolute top-8 left-0 right-0 px-12 flex justify-between items-start z-10">
+        <div className="w-20 h-20 relative">
+          <Image src="/Logo-CCFO-Blanc.png" alt="Logo CCFO" fill className="object-contain" priority />
+        </div>
+        <div className="text-right">
+          <h3 className="text-xs font-bold uppercase tracking-tight text-white/80 leading-tight">
+            BUREAU DIRECTEUR COUPE CANTONALE<br />
+            FIENG OKANO - LASSIO {currentYear}
+          </h3>
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-yellow-400 mt-1 leading-none drop-shadow-lg">
+            LICENCE JOUEUR
+          </h1>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-6 flex flex-col justify-between">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center">
-              <TrophyIcon className="w-6 h-6 text-accent" />
+      {/* Main Content Area */}
+      <div className="absolute inset-0 flex justify-evenly items-center px-12 pt-24 pb-20 gap-12 z-10">
+        {/* Photo Container */}
+        <div className="w-48 h-56 rounded-4xl overflow-hidden border-[6px] border-yellow-400 bg-zinc-800 shadow-2xl relative shrink-0">
+          {player.photoUrl ? (
+            <Image src={player.photoUrl} alt={`${player.firstName} ${player.lastName}`} fill className="object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600">
+               <UsersIcon className="w-16 h-16" />
             </div>
-            <div>
-              <h3 className="text-sm font-black font-outfit uppercase tracking-tighter leading-none">CCFO 2026</h3>
-              <p className="text-[8px] font-bold text-muted uppercase tracking-widest mt-1">Licence Officielle</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-[8px] font-black uppercase tracking-widest text-muted">ID: {player.idNumber}</span>
-          </div>
+          )}
         </div>
 
-        <div className="flex gap-4 items-center">
-          <div className="w-24 h-24 rounded-xl overflow-hidden bg-secondary border border-white/10 relative">
-            {player.photoUrl ? (
-              <Image src={player.photoUrl} alt={player.name} fill className="object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <UsersIcon className="w-10 h-10 text-muted/30" />
-              </div>
-            )}
-            <div className="absolute bottom-0 left-0 right-0 bg-primary/90 text-background text-[10px] font-black text-center py-0.5">
-              N° {player.number}
-            </div>
-          </div>
-
-          <div className="flex-1 space-y-1">
-            <h2 className="text-xl font-black font-outfit uppercase leading-tight">{player.name}</h2>
-            <div className="flex items-center gap-2 text-accent font-bold text-[10px] uppercase tracking-wider">
-              <Award className="w-3 h-3" />
-              {player.position}
-            </div>
-            <div className="space-y-0.5 pt-1">
-              <div className="flex items-center gap-1.5 text-muted">
-                <Shield className="w-3 h-3" />
-                <span className="text-[10px] font-bold">{player.team}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-muted">
-                <MapPin className="w-3 h-3" />
-                <span className="text-[10px] font-bold">{player.village}</span>
-              </div>
-            </div>
-          </div>
+        {/* Data Fields */}
+        <div className="flex-1 space-y-2">
+          <DataField label="ÉQUIPE" value={player.team} />
+          <DataField label="NOM" value={player.lastName} />
+          <DataField label="PRÉNOM" value={player.firstName} />
+          <DataField label="NATIONALITÉ" value={player.nationality} />
+          <DataField label="VILLAGE" value={player.village} />
+          <DataField label="POSTE" value={player.position} />
+          <DataField label="DOSSARD" value={player.number} />
         </div>
+      </div>
 
-        <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
-          <div className="flex gap-4">
-            <div className="space-y-0.5">
-              <p className="text-[6px] font-black text-muted uppercase tracking-widest">Expiration</p>
-              <p className="text-[8px] font-bold">DEC 2026</p>
-            </div>
-          </div>
-          <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center p-1">
-            {/* Mock QR Code */}
-            <div className="w-full h-full grid grid-cols-4 grid-rows-4 gap-0.5 opacity-40">
-              {Array.from({ length: 16 }).map((_, i) => (
-                <div key={i} className={cn("bg-white", Math.random() > 0.5 ? "opacity-100" : "opacity-0")} />
-              ))}
-            </div>
-          </div>
+      {/* License Number Footer - Centered */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
+        <div className="bg-yellow-400 text-black px-8 py-2 rounded-xl shadow-2xl flex flex-col items-center min-w-[220px]">
+          <span className="text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1 text-black/60">NUMERO DE LICENCE</span>
+          <span className="text-xl font-black font-mono tracking-tight">{licenseNumber}</span>
         </div>
       </div>
     </div>
   );
 }
 
-function TrophyIcon({ className }: any) {
+function DataField({ label, value }: { label: string; value: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-    </svg>
+    <div className="flex items-baseline gap-4">
+      <span className="text-base font-black uppercase text-white/40 min-w-[140px] tracking-widest">{label} :</span>
+      <span className="text-lg font-black uppercase text-white tracking-normal drop-shadow-sm truncate max-w-[320px]">{value}</span>
+    </div>
   );
 }
 

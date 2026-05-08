@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { MatchDetailClient } from "@/components/public/MatchDetailClient";
+import { PublicFooter } from "@/components/public/Footer";
 
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createAdminClient();
@@ -91,7 +92,8 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
       {/* CLIENT TABS COMPONENT */}
       <MatchDetailClient match={match} events={events} stats={stats} />
-
+      
+      <PublicFooter />
     </main>
   );
 }

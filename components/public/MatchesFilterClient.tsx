@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { MatchTimer } from "./MatchTimer";
 
 export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] }) {
   const [filter, setFilter] = useState("Tous");
@@ -86,7 +87,13 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] 
                         )}>
                           {isLive ? 'LIVE' : isFinished ? 'FIN' : time}
                         </span>
-                        {isLive && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />}
+                        {isLive && (
+                          <MatchTimer 
+                            startedAt={match.stats?.find((s: any) => s.label === 'started_at')?.value} 
+                            status={match.status} 
+                            className="mt-1" 
+                          />
+                        )}
                       </div>
 
                       {/* TEAM DOMICILE */}

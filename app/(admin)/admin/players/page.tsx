@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { PlayerLicense } from "@/components/dashboard/PlayerLicense";
 
 export default function AdminPlayersPage() {
   const [teams, setTeams] = useState<any[]>([]);
@@ -22,6 +23,8 @@ export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [printingPlayer, setPrintingPlayer] = useState<any>(null);
+  const [printingAll, setPrintingAll] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -45,7 +48,7 @@ export default function AdminPlayersPage() {
     setLoading(true);
     let query = supabase
       .from('players')
-      .select('*, teams(name)');
+      .select('*, teams(name, village)');
     
     if (selectedTeamId !== "all") {
       query = query.eq('team_id', selectedTeamId);
@@ -55,6 +58,14 @@ export default function AdminPlayersPage() {
     setPlayers(data || []);
     setLoading(false);
   }
+
+  const handlePrint = (player: any) => {
+    setPrintingPlayer(player);
+  };
+
+  const handleConfirmPrint = () => {
+    window.print();
+  };
 
   const filteredPlayers = players.filter(p => 
     p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,8 +81,15 @@ export default function AdminPlayersPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button className="p-3 rounded-xl bg-white/5 border border-white/10 text-muted hover:text-white transition-all">
+          <button 
+            onClick={() => {
+              setPrintingAll(true);
+            }}
+            className="p-3 rounded-xl bg-white/5 border border-white/10 text-muted hover:text-white transition-all flex items-center gap-2"
+            title="Imprimer toutes les licences filtrées"
+          >
             <Printer className="w-4 h-4" />
+            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Tout Imprimer</span>
           </button>
           <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:scale-105 transition-all">
             <Download className="w-4 h-4" /> Exporter PDF
@@ -142,6 +160,19 @@ export default function AdminPlayersPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Print Button - Visible on mobile, hover on desktop */}
+              <div className="absolute top-2 right-2 md:inset-0 md:bg-primary/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center md:backdrop-blur-[2px]">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrint(player);
+                  }}
+                  className="p-2 md:px-4 md:py-2 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-xl flex items-center gap-2 hover:scale-110 transition-all"
+                >
+                  <Printer className="w-4 h-4" /> <span className="hidden md:inline">Imprimer Licence</span>
+                </button>
+              </div>
             </div>
           ))
         ) : (
@@ -151,6 +182,93 @@ export default function AdminPlayersPage() {
           </div>
         )}
       </div>
+
+      {/* Print Preview Overlay */}
+      {(printingPlayer || printingAll) && (
+        <div className="fixed inset-0 z-100 bg-black/90 flex flex-col items-center gap-8 p-8 overflow-y-auto print-content backdrop-blur-md">
+          {/* Preview Controls - Hidden during print */}
+          <div className="flex items-center gap-4 sticky top-0 z-50 bg-black/50 p-4 rounded-2xl border border-white/10 backdrop-blur-md no-print">
+            <button 
+              onClick={() => {
+                setPrintingPlayer(null);
+                setPrintingAll(false);
+              }}
+              className="px-6 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all"
+            >
+              Fermer l'Aperçu
+            </button>
+            <button 
+              onClick={handleConfirmPrint}
+              className="px-8 py-2 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 hover:scale-105 transition-all flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4" /> Confirmer l'Impression
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center gap-8 w-full max-w-4xl py-12">
+            {printingAll ? (
+              filteredPlayers.map((p) => (
+                <div key={p.id} className="break-after-page">
+                  <PlayerLicense 
+                    player={{
+                      firstName: p.full_name.split(' ').slice(1).join(' ') || p.full_name,
+                      lastName: p.full_name.split(' ')[0],
+                      team: p.teams?.name || "Équipe",
+                      number: p.jersey_number?.toString() || "00",
+                      position: p.position || "Joueur",
+                      village: p.teams?.village || "",
+                      nationality: p.nationality || "Gabonaise",
+                      photoUrl: p.photo_url,
+                    }}
+                  />
+                </div>
+              ))
+            ) : (
+              <PlayerLicense 
+                player={{
+                  firstName: printingPlayer.full_name.split(' ').slice(1).join(' ') || printingPlayer.full_name,
+                  lastName: printingPlayer.full_name.split(' ')[0],
+                  team: printingPlayer.teams?.name || "Équipe",
+                  number: printingPlayer.jersey_number?.toString() || "00",
+                  position: printingPlayer.position || "Joueur",
+                  village: printingPlayer.teams?.village || "",
+                  nationality: printingPlayer.nationality || "Gabonaise",
+                  photoUrl: printingPlayer.photo_url,
+                }}
+              />
+            )}
+          </div>
+
+          <style jsx global>{`
+            @media print {
+              .no-print {
+                display: none !important;
+              }
+              body > *:not(.print-content) {
+                display: none !important;
+              }
+              .print-content {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                display: block !important;
+                background: white !important;
+                z-index: 9999;
+                padding: 0 !important;
+                overflow: visible !important;
+              }
+              .break-after-page {
+                page-break-after: always;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+              }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }

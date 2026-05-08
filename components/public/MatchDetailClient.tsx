@@ -5,15 +5,25 @@ import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User, Awa
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { MatchTimer } from "./MatchTimer";
 
 export function MatchDetailClient({ match: initialMatch, events: initialEvents, stats: initialStats }: any) {
   const [activeTab, setActiveTab] = useState("details");
   const [match, setMatch] = useState(initialMatch);
   const [events, setEvents] = useState(initialEvents);
-  const [stats, setStats] = useState(initialStats);
+  const [stats, setStats] = useState(initialStats || []);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
+    const processStats = (rawStats: any[]) => {
+      const startedAtEntry = rawStats?.find((s: any) => s.label === 'started_at');
+      if (startedAtEntry) setStartedAt(startedAtEntry.value);
+      return rawStats?.filter((s: any) => s.label !== 'started_at') || [];
+    };
+
+    setStats(processStats(initialStats));
+
     const channel = supabase
       .channel(`match-${match.id}`)
       .on(
@@ -25,10 +35,9 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
           filter: `id=eq.${match.id}`
         },
         (payload) => {
-          console.log('Realtime Update:', payload);
           setMatch((prev: any) => ({ ...prev, ...payload.new }));
           if (payload.new.events) setEvents(payload.new.events);
-          if (payload.new.stats) setStats(payload.new.stats);
+          if (payload.new.stats) setStats(processStats(payload.new.stats));
         }
       )
       .subscribe();
@@ -36,7 +45,7 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [match.id, supabase]);
+  }, [match.id, supabase, initialStats]);
 
   const tabs = [
     { id: "details", label: "Détails", icon: <Clock className="w-4 h-4" /> },
@@ -135,8 +144,9 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
               </div>
             </div>
             
-            {/* MAN OF THE MATCH (MOTM) */}
-            {match.motm_player && (
+                <MatchTimer startedAt={startedAt || undefined} status={match.status} className="mb-4" />
+                
+                {match.motm_player && (
               <div className="relative group">
                 <div className="absolute -inset-1 bg-linear-to-r from-accent/50 to-primary/50 rounded-4xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
                 <div className="relative glass-card p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 md:gap-10 bg-linear-to-br from-accent/10 via-background to-background border-accent/20">

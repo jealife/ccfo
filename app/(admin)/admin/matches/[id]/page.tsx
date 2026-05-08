@@ -24,6 +24,8 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
   const [events, setEvents] = useState<any[]>([]);
   const [homePlayers, setHomePlayers] = useState<any[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<any[]>([]);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [matchStats, setMatchStats] = useState<any[]>([]);
   
   // New Event Form
   const [newEvent, setNewEvent] = useState({ minute: "", type: "goal", player: "", team: "home" });
@@ -55,6 +57,10 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
       setHomeScore(data.home_score || 0);
       setAwayScore(data.away_score || 0);
       setEvents(data.events || []);
+      const stats = data.stats || [];
+      const startedAtEntry = stats.find((s: any) => s.label === 'started_at');
+      setStartedAt(startedAtEntry ? startedAtEntry.value : null);
+      setMatchStats(stats.filter((s: any) => s.label !== 'started_at'));
 
       // Fetch players for both teams
       const [hRes, aRes] = await Promise.all([
@@ -74,12 +80,19 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     const sortedEvents = [...events].sort((a, b) => parseInt(a.minute) - parseInt(b.minute));
     setEvents(sortedEvents);
 
+    const currentStartedAt = status === 'live' ? (startedAt || new Date().toISOString()) : startedAt;
+    const finalStats = [...matchStats];
+    if (currentStartedAt) {
+      finalStats.push({ label: 'started_at', value: currentStartedAt });
+    }
+
     const result = await updateMatchLive(id, {
       status,
       motm_player: motmPlayer,
       home_score: homeScore,
       away_score: awayScore,
-      events: sortedEvents
+      events: sortedEvents,
+      stats: finalStats
     });
 
     setSaving(false);
@@ -187,7 +200,13 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                 <Clock className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase">Prévu</span>
               </button>
-              <button onClick={() => setStatus('live')} className={cn("p-3 rounded-xl border flex flex-col items-center gap-2 transition-all", status === 'live' ? "bg-primary/20 border-primary text-primary" : "bg-card border-white/5 opacity-50")}>
+              <button 
+                onClick={() => {
+                  setStatus('live');
+                  if (!startedAt) setStartedAt(new Date().toISOString());
+                }} 
+                className={cn("p-3 rounded-xl border flex flex-col items-center gap-2 transition-all", status === 'live' ? "bg-primary/20 border-primary text-primary" : "bg-card border-white/5 opacity-50")}
+              >
                 <Play className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase">En Direct</span>
               </button>

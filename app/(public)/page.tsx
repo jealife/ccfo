@@ -5,6 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { LiveHeroMatch } from "@/components/public/LiveHeroMatch";
+import { PublicFooter } from "@/components/public/Footer";
 
 export default async function HomePage() {
   const supabase = createAdminClient();
@@ -116,7 +117,7 @@ export default async function HomePage() {
               </div>
 
               <div className="space-y-4 md:space-y-6">
-                <h1 className="text-3xl md:text-7xl lg:text-8xl font-black font-outfit uppercase tracking-tighter leading-[0.9] text-white">
+                <h1 className="text-3xl md:text-6xl lg:text7xl font-black font-outfit uppercase tracking-tighter leading-[0.9] text-white">
                   <span className="block opacity-60">Coupe Cantonale</span>
                   <span className="block text-primary italic drop-shadow-[0_0_30px_rgba(239,68,68,0.3)]">Fieng Okano</span>
                   <span className="block">2026</span>
@@ -286,6 +287,7 @@ export default async function HomePage() {
 
         </div>
       </section>
+      <PublicFooter />
     </main>
   );
 }
