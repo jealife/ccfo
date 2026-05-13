@@ -3,12 +3,12 @@ import { Trophy, Calendar, Users, BarChart3, Star, Zap, Award, ChevronRight, Act
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { LiveHeroMatch } from "@/components/public/LiveHeroMatch";
 import { PublicFooter } from "@/components/public/Footer";
 
 export default async function HomePage() {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   
   // Fetch Latest Results (Matchs terminés ou en cours)
   const { data: matches } = await supabase

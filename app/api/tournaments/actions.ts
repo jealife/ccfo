@@ -19,15 +19,33 @@ export async function getTournamentConfig() {
   return data;
 }
 
-export async function updateTournamentConfig(configData: any) {
+export async function updateTournamentConfig(configData: {
+  name?: string;
+  start_date?: string;
+  end_date?: string;
+  registration_deadline?: string;
+  max_teams?: number;
+  players_per_team?: number;
+  staff_per_team?: number;
+  is_active?: boolean;
+}) {
   const supabase = await createClient();
-  
-  // We assume there's only one config row (id: 1 or similar)
-  // or we upsert based on a known key
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Non authentifié" };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') return { success: false, error: "Accès refusé" };
+
   const { error } = await supabase
     .from('tournament_config')
-    .upsert({ 
-      id: 1, // Global config
+    .upsert({
+      id: 1,
       ...configData,
       updated_at: new Date().toISOString()
     });
@@ -38,8 +56,7 @@ export async function updateTournamentConfig(configData: any) {
   }
 
   revalidatePath('/admin/tournaments');
-  revalidatePath('/(public)');
   revalidatePath('/');
-  
+
   return { success: true };
 }

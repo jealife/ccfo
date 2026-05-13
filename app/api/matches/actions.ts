@@ -1,9 +1,32 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function updateMatchLive(id: string, updates: any) {
+async function requireAdmin() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non authentifié" };
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  if (profile?.role !== 'admin') return { error: "Accès refusé" };
+  return { error: null };
+}
+
+export async function updateMatchLive(id: string, updates: {
+  status?: string;
+  motm_player?: string;
+  home_score?: number;
+  away_score?: number;
+  events?: unknown[];
+  stats?: unknown[];
+}) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
+
   const supabase = await createClient();
 
   const { data: matchData, error: updateError } = await supabase
@@ -18,35 +41,59 @@ export async function updateMatchLive(id: string, updates: any) {
     return { success: false, error: updateError.message };
   }
 
-  // If match is finished, recalculate standings
   if (updates.status === 'finished' || matchData.status === 'finished') {
     await recalculateStandings();
   }
 
-  // Revalidate both admin and public pages
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath(`/matches/${id}`);
   revalidatePath('/matches');
+  revalidatePath('/standings');
   revalidatePath('/');
 
   return { success: true, data: matchData };
 }
 
-async function recalculateStandings() {
+export async function deleteMatch(id: string) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
+
   const supabase = await createClient();
-  
-  // 1. Get all finished matches
+  const { error } = await supabase.from('matches').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+
+  await recalculateStandings();
+
+  revalidatePath('/admin/matches');
+  revalidatePath('/matches');
+  revalidatePath('/standings');
+  revalidatePath('/');
+
+  return { success: true };
+}
+
+async function recalculateStandings() {
+  const supabase = createAdminClient();
+
   const { data: finishedMatches } = await supabase
     .from('matches')
-    .select('*')
+    .select('home_team_id, away_team_id, home_score, away_score')
     .eq('status', 'finished');
 
-  if (!finishedMatches) return;
+  if (!finishedMatches || finishedMatches.length === 0) return;
 
-  // 2. Map to calculate stats per team
-  const stats: Record<string, any> = {};
+  const stats: Record<string, {
+    team_id: string;
+    played: number;
+    won: number;
+    drawn: number;
+    lost: number;
+    goals_for: number;
+    goals_against: number;
+    points: number;
+  }> = {};
 
-  finishedMatches.forEach(match => {
+  for (const match of finishedMatches) {
     const homeId = match.home_team_id;
     const awayId = match.away_team_id;
 
@@ -55,10 +102,10 @@ async function recalculateStandings() {
 
     stats[homeId].played++;
     stats[awayId].played++;
-    stats[homeId].goals_for += match.home_score;
-    stats[homeId].goals_against += match.away_score;
-    stats[awayId].goals_for += match.away_score;
-    stats[awayId].goals_against += match.home_score;
+    stats[homeId].goals_for += match.home_score ?? 0;
+    stats[homeId].goals_against += match.away_score ?? 0;
+    stats[awayId].goals_for += match.away_score ?? 0;
+    stats[awayId].goals_against += match.home_score ?? 0;
 
     if (match.home_score > match.away_score) {
       stats[homeId].won++;
@@ -74,14 +121,11 @@ async function recalculateStandings() {
       stats[awayId].drawn++;
       stats[awayId].points += 1;
     }
-  });
-
-  // 3. Update standings table
-  for (const teamId in stats) {
-    const { error } = await supabase
-      .from('standings')
-      .upsert(stats[teamId], { onConflict: 'team_id' });
-    
-    if (error) console.error(`Error updating standings for team ${teamId}:`, error);
   }
+
+  await Promise.all(
+    Object.values(stats).map(stat =>
+      supabase.from('standings').upsert(stat, { onConflict: 'team_id' })
+    )
+  );
 }

@@ -1,10 +1,10 @@
 import { PublicNavbar } from "@/components/public/Navbar";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { MatchesFilterClient } from "@/components/public/MatchesFilterClient";
 import { PublicFooter } from "@/components/public/Footer";
 
 export default async function PublicMatchesPage() {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data: matches } = await supabase
     .from('matches')
     .select('*, home:teams!home_team_id(name), away:teams!away_team_id(name)')

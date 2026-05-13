@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { AlertDialog } from "@/components/ui/Modal";
+import { deleteMatch } from "@/app/api/matches/actions";
 
 export default function AdminMatchesPage() {
   const [matches, setMatches] = useState<any[]>([]);
@@ -89,16 +90,25 @@ export default function AdminMatchesPage() {
     setIsLoading(false);
   };
 
-  const handleDeleteMatch = async (id: string) => {
+  const handleDeleteMatch = (id: string) => {
     setAlert({
       isOpen: true,
       title: "Confirmation",
-      message: "Voulez-vous vraiment supprimer ce match ?",
+      message: "Voulez-vous vraiment supprimer ce match ? Le classement sera recalculé automatiquement.",
       type: "warning",
       isConfirm: true,
       onConfirm: async () => {
-        await supabase.from('matches').delete().eq('id', id);
-        fetchData();
+        const result = await deleteMatch(id);
+        if (!result.success) {
+          setAlert({
+            isOpen: true,
+            title: "Erreur",
+            message: result.error || "Erreur lors de la suppression.",
+            type: "error"
+          });
+        } else {
+          fetchData();
+        }
       }
     });
   };

@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { submitTeamRegistration } from "@/app/api/registration/actions";
 import { createClient } from "@/lib/supabase/client";
+import { AlertDialog } from "@/components/ui/Modal";
 import Link from "next/link";
 
 const STEPS = [
@@ -35,6 +36,12 @@ export function RegistrationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [config, setConfig] = useState<any>(null);
+  const [alertDialog, setAlertDialog] = useState<{ isOpen: boolean; title: string; message: string; type: "error" | "warning" | "info" }>({
+    isOpen: false, title: "", message: "", type: "info"
+  });
+
+  const showAlert = (title: string, message: string, type: "error" | "warning" | "info" = "warning") =>
+    setAlertDialog({ isOpen: true, title, message, type });
   
   const [formData, setFormData] = useState({
     team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "" },
@@ -112,24 +119,23 @@ export function RegistrationForm() {
   const staffLimit = config?.staff_per_team || 6;
 
   const nextStep = async () => {
-    // Validations strictes
     if (currentStep === 1) {
       if (!formData.team.name || !formData.team.village || !formData.team.president || !formData.team.phone) {
-        alert("Veuillez remplir les informations obligatoires de l'équipe (Nom, Village, Président, Téléphone).");
+        showAlert("Champs manquants", "Veuillez remplir les informations obligatoires de l'équipe : Nom, Village, Président et Téléphone.");
         return;
       }
     }
     if (currentStep === 2) {
       const validStaff = formData.staff.filter(s => s.name.trim() !== "");
       if (validStaff.length < staffLimit) {
-        alert(`Attention : Vous devez enregistrer exactement ${staffLimit} membres du staff pour continuer.`);
+        showAlert("Staff incomplet", `Vous devez enregistrer exactement ${staffLimit} membres du staff pour continuer.`);
         return;
       }
     }
     if (currentStep === 3) {
       const validPlayers = formData.players.filter(p => p.name.trim() !== "");
       if (validPlayers.length < playersLimit) {
-        alert(`Attention : Le règlement exige exactement ${playersLimit} joueurs enregistrés. Il vous en manque ${playersLimit - validPlayers.length}.`);
+        showAlert("Liste incomplète", `Le règlement exige ${playersLimit} joueurs. Il vous en manque ${playersLimit - validPlayers.length}.`);
         return;
       }
     }
@@ -152,10 +158,10 @@ export function RegistrationForm() {
       if (result.success) {
         setIsSuccess(true);
       } else {
-        alert("Erreur lors de l'inscription");
+        showAlert("Erreur", "Erreur lors de l'inscription. Veuillez réessayer.", "error");
       }
     } catch (err) {
-      alert("Une erreur imprévue est survenue.");
+      showAlert("Erreur", "Une erreur imprévue est survenue. Veuillez réessayer.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -272,6 +278,14 @@ export function RegistrationForm() {
           </button>
         </div>
       </div>
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
     </div>
   );
 }
@@ -386,7 +400,8 @@ function DocumentsStep({ data, updateData, teamName }: any) {
       const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
       updateData({ [key]: publicUrlData.publicUrl });
     } else {
-      alert("Erreur lors de l'upload du fichier.");
+      console.error("[upload] Error:", uploadError.message);
+      window.alert("Erreur lors de l'upload. Vérifiez le format du fichier et réessayez.");
     }
     setUploading(null);
   };
@@ -435,7 +450,8 @@ function PaymentStep({ data, updateData, receiptData }: any) {
       const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
       updateData({ receipt: publicUrlData.publicUrl });
     } else {
-      alert("Erreur lors de l'upload du reçu.");
+      console.error("[upload] Error:", uploadError.message);
+      window.alert("Erreur lors de l'upload du reçu. Vérifiez le format et réessayez.");
     }
     setUploading(false);
   };
@@ -447,7 +463,7 @@ function PaymentStep({ data, updateData, receiptData }: any) {
       </div>
       <div>
         <h2 className="text-3xl font-black font-outfit">Frais d'Affiliation</h2>
-        <p className="text-muted text-lg mt-2">Montant à régler : <span className="text-white font-bold">150,000 CFA</span></p>
+        <p className="text-muted text-lg mt-2">Montant à régler : <span className="text-white font-bold">400,000 FCFA</span></p>
       </div>
 
       <div className="p-6 rounded-2xl bg-secondary border border-border max-w-sm mx-auto space-y-4 text-left">

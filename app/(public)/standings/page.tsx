@@ -1,15 +1,38 @@
 import { PublicNavbar } from "@/components/public/Navbar";
-import { Trophy, ArrowUp, ArrowDown, Minus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { PublicFooter } from "@/components/public/Footer";
 
 export default async function StandingsPage() {
   const supabase = await createClient();
-  const { data: standings, error } = await supabase
+  const { data: standings } = await supabase
     .from('standings')
     .select('*, teams(name)')
     .order('points', { ascending: false });
+
+  // Fetch finished matches to compute recent form per team
+  const { data: finishedMatches } = await supabase
+    .from('matches')
+    .select('home_team_id, away_team_id, home_score, away_score, match_date')
+    .eq('status', 'finished')
+    .order('match_date', { ascending: false });
+
+  const teamForm: Record<string, string[]> = {};
+  for (const match of finishedMatches || []) {
+    if (!teamForm[match.home_team_id]) teamForm[match.home_team_id] = [];
+    if (!teamForm[match.away_team_id]) teamForm[match.away_team_id] = [];
+
+    if (teamForm[match.home_team_id].length < 5) {
+      teamForm[match.home_team_id].push(
+        match.home_score > match.away_score ? 'W' : match.home_score < match.away_score ? 'L' : 'D'
+      );
+    }
+    if (teamForm[match.away_team_id].length < 5) {
+      teamForm[match.away_team_id].push(
+        match.away_score > match.home_score ? 'W' : match.away_score < match.home_score ? 'L' : 'D'
+      );
+    }
+  }
 
   return (
     <main className="min-h-screen pt-24 pb-12">
@@ -27,7 +50,7 @@ export default async function StandingsPage() {
             </div>
             
             <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-muted bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-              Dernière mise à jour: <span className="text-foreground">Il y a 2h</span>
+              Mis à jour après chaque match
             </div>
           </div>
 
@@ -55,6 +78,7 @@ export default async function StandingsPage() {
                       "hover:bg-white/5 transition-colors group",
                       index < 4 && "bg-primary/5"
                     )}>
+
                       <td className="px-6 py-4">
                         <div className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center font-black font-outfit text-sm mx-auto",
@@ -87,8 +111,10 @@ export default async function StandingsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-1">
-                          <FormIcon result="W" />
-                          <FormIcon result="D" />
+                          {(teamForm[row.team_id] || []).length > 0
+                            ? (teamForm[row.team_id] || []).map((r, i) => <FormIcon key={i} result={r} />)
+                            : <span className="text-[9px] text-muted">—</span>
+                          }
                         </div>
                       </td>
                     </tr>
