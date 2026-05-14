@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 export async function getTournamentConfig() {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('tournament_config')
     .select('*')
@@ -28,6 +28,10 @@ export async function updateTournamentConfig(configData: {
   players_per_team?: number;
   staff_per_team?: number;
   is_active?: boolean;
+  points_win?: number;
+  points_draw?: number;
+  points_loss?: number;
+  qualification_spots?: number;
 }) {
   const supabase = await createClient();
 
@@ -56,6 +60,7 @@ export async function updateTournamentConfig(configData: {
   }
 
   revalidatePath('/admin/tournaments');
+  revalidatePath('/standings');
   revalidatePath('/');
 
   return { success: true };

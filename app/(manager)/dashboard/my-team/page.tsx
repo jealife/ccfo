@@ -204,9 +204,21 @@ export default function MyTeamPage() {
           <div className="text-center sm:text-left space-y-2">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
               <h1 className="text-xl md:text-4xl lg:text-5xl font-black font-outfit uppercase tracking-tighter">{team.name}</h1>
-              <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest border border-green-500/20">
-                {team.status}
-              </span>
+              {(() => {
+                const statusMap: Record<string, { label: string; cls: string }> = {
+                  validated: { label: "Validé", cls: "bg-green-500/10 text-green-500 border-green-500/20" },
+                  pending:   { label: "En attente", cls: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" },
+                  incomplete: { label: "Incomplet", cls: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+                  rejected:  { label: "Rejeté", cls: "bg-red-500/10 text-red-500 border-red-500/20" },
+                  locked:    { label: "Verrouillé", cls: "bg-gray-500/10 text-gray-400 border-gray-500/20" },
+                };
+                const s = statusMap[team.status] ?? { label: team.status, cls: "bg-white/5 text-muted border-white/10" };
+                return (
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${s.cls}`}>
+                    {s.label}
+                  </span>
+                );
+              })()}
             </div>
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-muted font-bold text-sm">
               <span className="flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> {team.village}</span>

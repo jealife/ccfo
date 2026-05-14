@@ -1,7 +1,7 @@
 {
-  "name": "CCFO Gabon",
-  "short_name": "CCFO",
-  "description": "Plateforme officielle de la Coupe Cantonale Fieng Okano",
+  "name": "CCFO26",
+  "short_name": "CCFO26",
+  "description": "Plateforme officielle de la Coupe Cantonale Fieng Okano 2026",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#050505",

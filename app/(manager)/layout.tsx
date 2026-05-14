@@ -29,7 +29,7 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CCFO Manager",
+    title: "CCFO26 Manager",
   },
 };
 
@@ -50,6 +50,12 @@ export default async function ManagerLayout({ children }: { children: React.Reac
 
   const userName = profile?.full_name || "Manager";
 
+  const { data: team } = await supabase
+    .from('teams')
+    .select('status')
+    .eq('manager_id', user?.id)
+    .maybeSingle();
+
   const navLinks = [
     { href: "/dashboard", icon: <LayoutDashboard />, label: "Dashboard" },
     { href: "/manager/registration", icon: <PlusCircle />, label: "Inscription" },
@@ -67,7 +73,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
               <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={20} height={20} />
             </div>
             <div>
-              <span className="font-outfit font-bold text-xl tracking-tight uppercase">CCFO</span>
+              <span className="font-outfit font-bold text-xl tracking-tight uppercase">CCFO26</span>
               <span className="block text-[9px] font-black uppercase tracking-widest text-muted">Manager</span>
             </div>
           </Link>
@@ -107,7 +113,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={18} height={18} />
               </div>
-              <span className="font-outfit font-bold text-lg tracking-tight uppercase">CCFO</span>
+              <span className="font-outfit font-bold text-lg tracking-tight uppercase">CCFO26</span>
             </div>
           </div>
 
@@ -135,7 +141,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
       </main>
 
       {/* Mobile PWA */}
-      <ManagerBottomNav />
+      <ManagerBottomNav teamStatus={team?.status} />
       <InstallPrompt />
     </div>
   );

@@ -22,7 +22,7 @@ export default async function PublicTeamsPage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-black font-outfit uppercase tracking-tighter">Les Équipes <span className="text-primary">2026</span></h1>
-              <p className="text-muted text-xs mt-1">Découvrez les clubs qui participent à l'édition CCFO de cette année.</p>
+              <p className="text-muted text-xs mt-1">Découvrez les clubs qui participent à l'édition CCFO26 de cette année.</p>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-bold uppercase tracking-widest">
               <Shield className="w-4 h-4" /> {teams?.length || 0} Équipes Validées

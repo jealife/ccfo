@@ -15,30 +15,30 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Coupe Cantonale Fieng Okano",
-    default: "CCFO | Coupe Cantonale Fieng Okano - Tournoi de Football Amateur",
+    template: "%s | CCFO26",
+    default: "CCFO26 | Coupe Cantonale Fieng Okano 2026",
   },
-  description: "Le système de gestion numérique officiel de la Coupe Cantonale Fieng Okano (CCFO). Suivez les résultats en direct, le classement des équipes et inscrivez votre village pour le tournoi de football amateur.",
-  keywords: ["CCFO", "Coupe Cantonale", "Fieng Okano", "Football Amateur", "Tournoi", "Gabon", "Sport", "Gestion Sportive"],
-  authors: [{ name: "CCFO Admin" }],
-  creator: "CCFO",
-  publisher: "CCFO",
+  description: "Plateforme officielle de la Coupe Cantonale Fieng Okano 2026. Suivez les résultats en direct, le classement et inscrivez votre équipe.",
+  keywords: ["CCFO26", "CCFO", "Coupe Cantonale", "Fieng Okano", "Football Amateur", "Tournoi", "Gabon", "2026"],
+  authors: [{ name: "CCFO26" }],
+  creator: "CCFO26",
+  publisher: "CCFO26",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
   openGraph: {
-    title: "Coupe Cantonale Fieng Okano (CCFO)",
+    title: "CCFO26 — Coupe Cantonale Fieng Okano 2026",
     description: "Vivez l'excellence du football au cœur du canton Fieng Okano. L'élite s'affronte, l'histoire s'écrit ici.",
     url: "https://ccfo.vercel.app",
-    siteName: "CCFO",
+    siteName: "CCFO26",
     images: [
       {
         url: "/image-1.jpg",
         width: 1200,
         height: 630,
-        alt: "CCFO Stadium Atmosphere",
+        alt: "CCFO26 Stadium Atmosphere",
       },
     ],
     locale: "fr_FR",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Coupe Cantonale Fieng Okano (CCFO)",
+    title: "CCFO26 — Coupe Cantonale Fieng Okano 2026",
     description: "Vivez l'excellence du football au cœur du canton Fieng Okano.",
     images: ["/image-1.jpg"],
   },

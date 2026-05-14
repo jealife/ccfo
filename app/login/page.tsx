@@ -61,7 +61,7 @@ function LoginContent() {
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <Shield className="w-6 h-6 text-background fill-current" />
             </div>
-            <span className="font-outfit font-bold text-2xl tracking-tight">CCFO Admin</span>
+            <span className="font-outfit font-bold text-2xl tracking-tight">CCFO26</span>
           </Link>
           <h1 className="text-3xl font-black font-outfit">Bon retour !</h1>
           <p className="text-muted">Connectez-vous pour gérer votre équipe ou le tournoi.</p>

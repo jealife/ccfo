@@ -38,8 +38,8 @@ export function PublicNavbar() {
               <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={24} height={24} className="brightness-200" />
             </div>
             <div className="flex flex-col">
-              <span className="font-outfit font-black text-2xl tracking-tighter leading-none">CCFO</span>
-              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-primary">Okano 2026</span>
+              <span className="font-outfit font-black text-2xl tracking-tighter leading-none">CCFO26</span>
+              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-primary">Fieng Okano</span>
             </div>
           </Link>
 

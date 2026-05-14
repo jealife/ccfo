@@ -72,60 +72,98 @@ export async function deleteMatch(id: string) {
   return { success: true };
 }
 
+type TeamStats = {
+  team_id: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goals_for: number;
+  goals_against: number;
+  goal_diff: number;
+  points: number;
+  position: number;
+};
+
 async function recalculateStandings() {
   const supabase = createAdminClient();
 
-  const { data: finishedMatches } = await supabase
-    .from('matches')
-    .select('home_team_id, away_team_id, home_score, away_score')
-    .eq('status', 'finished');
+  // Fetch config, matches and team names in parallel
+  const [configResult, matchesResult, teamsResult] = await Promise.all([
+    supabase
+      .from('tournament_config')
+      .select('points_win, points_draw, points_loss')
+      .single(),
+    supabase
+      .from('matches')
+      .select('home_team_id, away_team_id, home_score, away_score')
+      .eq('status', 'finished'),
+    supabase
+      .from('teams')
+      .select('id, name'),
+  ]);
 
-  if (!finishedMatches || finishedMatches.length === 0) return;
+  // Scoring rules with safe fallbacks to FIFA standard (3-1-0)
+  const pointsWin  = configResult.data?.points_win  ?? 3;
+  const pointsDraw = configResult.data?.points_draw ?? 1;
+  const pointsLoss = configResult.data?.points_loss ?? 0;
 
-  const stats: Record<string, {
-    team_id: string;
-    played: number;
-    won: number;
-    drawn: number;
-    lost: number;
-    goals_for: number;
-    goals_against: number;
-    points: number;
-  }> = {};
+  const finishedMatches = matchesResult.data || [];
+  const teamNames: Record<string, string> = {};
+  for (const t of teamsResult.data || []) teamNames[t.id] = t.name;
+
+  // Build stats from scratch for all finished matches
+  const stats: Record<string, Omit<TeamStats, 'goal_diff' | 'position'>> = {};
 
   for (const match of finishedMatches) {
-    const homeId = match.home_team_id;
-    const awayId = match.away_team_id;
+    const h = match.home_team_id;
+    const a = match.away_team_id;
 
-    if (!stats[homeId]) stats[homeId] = { team_id: homeId, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0 };
-    if (!stats[awayId]) stats[awayId] = { team_id: awayId, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0 };
+    if (!stats[h]) stats[h] = { team_id: h, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0 };
+    if (!stats[a]) stats[a] = { team_id: a, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0 };
 
-    stats[homeId].played++;
-    stats[awayId].played++;
-    stats[homeId].goals_for += match.home_score ?? 0;
-    stats[homeId].goals_against += match.away_score ?? 0;
-    stats[awayId].goals_for += match.away_score ?? 0;
-    stats[awayId].goals_against += match.home_score ?? 0;
+    stats[h].played++;
+    stats[a].played++;
+    stats[h].goals_for  += match.home_score ?? 0;
+    stats[h].goals_against += match.away_score ?? 0;
+    stats[a].goals_for  += match.away_score ?? 0;
+    stats[a].goals_against += match.home_score ?? 0;
 
-    if (match.home_score > match.away_score) {
-      stats[homeId].won++;
-      stats[homeId].points += 3;
-      stats[awayId].lost++;
-    } else if (match.home_score < match.away_score) {
-      stats[awayId].won++;
-      stats[awayId].points += 3;
-      stats[homeId].lost++;
+    const hs = match.home_score ?? 0;
+    const as = match.away_score ?? 0;
+
+    if (hs > as) {
+      stats[h].won++;   stats[h].points += pointsWin;
+      stats[a].lost++;  stats[a].points += pointsLoss;
+    } else if (hs < as) {
+      stats[a].won++;   stats[a].points += pointsWin;
+      stats[h].lost++;  stats[h].points += pointsLoss;
     } else {
-      stats[homeId].drawn++;
-      stats[homeId].points += 1;
-      stats[awayId].drawn++;
-      stats[awayId].points += 1;
+      stats[h].drawn++; stats[h].points += pointsDraw;
+      stats[a].drawn++; stats[a].points += pointsDraw;
     }
   }
 
-  await Promise.all(
-    Object.values(stats).map(stat =>
-      supabase.from('standings').upsert(stat, { onConflict: 'team_id' })
+  // Compute goal_diff then sort: points → goal_diff → goals_for → alphabetical
+  const sorted: TeamStats[] = Object.values(stats)
+    .map(s => ({ ...s, goal_diff: s.goals_for - s.goals_against, position: 0 }))
+    .sort((a, b) =>
+      b.points - a.points ||
+      b.goal_diff - a.goal_diff ||
+      b.goals_for - a.goals_for ||
+      (teamNames[a.team_id] || '').localeCompare(teamNames[b.team_id] || '')
     )
-  );
+    .map((s, i) => ({ ...s, position: i + 1 }));
+
+  // Delete all existing standings, then insert fresh sorted data
+  const { data: existing } = await supabase.from('standings').select('team_id');
+  const existingIds = (existing || []).map(r => r.team_id);
+
+  if (existingIds.length > 0) {
+    await supabase.from('standings').delete().in('team_id', existingIds);
+  }
+
+  if (sorted.length > 0) {
+    await supabase.from('standings').insert(sorted);
+  }
 }

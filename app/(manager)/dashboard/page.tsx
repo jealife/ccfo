@@ -1,18 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
-import { 
-  Users, 
-  Trophy, 
+import {
+  Users,
+  Trophy,
   PlusCircle,
   AlertCircle,
   CheckCircle2,
-  Clock
+  Clock,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Mon Dashboard — CCFO",
-  description: "Tableau de bord manager de la Coupe Cantonale Fieng Okano",
+  title: "Mon Dashboard — CCFO26",
+  description: "Tableau de bord manager de la Coupe Cantonale Fieng Okano 2026",
 };
 
 export default async function ManagerDashboardPage() {
@@ -25,18 +26,23 @@ export default async function ManagerDashboardPage() {
     .eq('manager_id', user?.id)
     .single();
 
-  const { data: nextMatch } = await supabase
-    .from('matches')
-    .select('*, home:teams!home_team_id(name), away:teams!away_team_id(name)')
-    .in('status', ['scheduled', 'live'])
-    .order('match_date', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
   const { data: config } = await supabase
     .from('tournament_config')
     .select('*')
     .single();
+
+  let nextMatch = null;
+  if (team) {
+    const { data } = await supabase
+      .from('matches')
+      .select('*, home:teams!home_team_id(name), away:teams!away_team_id(name)')
+      .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
+      .in('status', ['scheduled', 'live'])
+      .order('match_date', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    nextMatch = data;
+  }
 
   const playersLimit = config?.players_per_team || 24;
   const staffLimit = config?.staff_per_team || 6;
@@ -55,6 +61,19 @@ export default async function ManagerDashboardPage() {
   };
 
   const currentStatus = team?.status ? statusConfig[team.status] : statusConfig.incomplete;
+
+  const rappelItems: string[] = !team
+    ? ["Démarrez votre inscription pour participer au tournoi."]
+    : team.status === 'validated'
+    ? [
+        "Votre équipe est officiellement inscrite. Bonne chance !",
+        ...(nextMatch ? ["Préparez-vous pour votre prochain match."] : []),
+      ]
+    : team.status === 'pending'
+    ? ["Votre dossier est en cours de vérification par l'administration."]
+    : team.status === 'rejected'
+    ? ["Corrigez les éléments signalés dans votre dossier.", "Paiement de 400 000 FCFA requis."]
+    : ["Complétez votre dossier avant la date limite.", "Paiement de 400 000 FCFA requis."];
 
   return (
     <div className="space-y-6 animate-fade-in pb-24">
@@ -143,23 +162,38 @@ export default async function ManagerDashboardPage() {
           <div className="sports-card bg-card/40 border-white/5 p-5 md:p-6">
             <h3 className="font-black uppercase tracking-widest text-xs mb-5">Prochain Match</h3>
             {nextMatch && nextMatch.home && nextMatch.away ? (
-              <div className="flex items-center justify-around gap-4">
-                <div className="flex-1 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-black text-lg mx-auto">
-                    {nextMatch.home.name[0]}
+              <Link href={`/matches/${nextMatch.id}`} className="block group/match hover:bg-white/5 rounded-xl transition-all -m-3 p-3">
+                <div className="flex items-center justify-around gap-4">
+                  <div className="flex-1 text-center space-y-2">
+                    <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-black text-lg mx-auto group-hover/match:scale-105 transition-transform">
+                      {nextMatch.home.name[0]}
+                    </div>
+                    <div className="font-bold text-sm">{nextMatch.home.name}</div>
                   </div>
-                  <div className="font-bold text-sm">{nextMatch.home.name}</div>
-                </div>
-                <div className="text-2xl font-black font-outfit italic text-white/20">VS</div>
-                <div className="flex-1 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-black text-lg mx-auto">
-                    {nextMatch.away.name[0]}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="text-2xl font-black font-outfit italic text-white/20">VS</div>
+                    <div className="text-[10px] font-bold text-primary text-center">
+                      {new Date(nextMatch.match_date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </div>
+                    <div className="text-[10px] font-black text-primary/60 text-center">
+                      {new Date(nextMatch.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </div>
-                  <div className="font-bold text-sm">{nextMatch.away.name}</div>
+                  <div className="flex-1 text-center space-y-2">
+                    <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-black text-lg mx-auto group-hover/match:scale-105 transition-transform">
+                      {nextMatch.away.name[0]}
+                    </div>
+                    <div className="font-bold text-sm">{nextMatch.away.name}</div>
+                  </div>
                 </div>
-              </div>
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted group-hover/match:text-primary transition-colors">
+                  Voir le match <ChevronRight className="w-3 h-3" />
+                </div>
+              </Link>
             ) : (
-              <p className="text-center py-4 text-muted italic text-sm">Aucun match programmé.</p>
+              <p className="text-center py-4 text-muted italic text-sm">
+                {team ? "Aucun match programmé pour votre équipe." : "Aucun match programmé."}
+              </p>
             )}
           </div>
         </div>
@@ -170,10 +204,12 @@ export default async function ManagerDashboardPage() {
             <AlertCircle className="w-4 h-4 text-accent" /> Rappels
           </h3>
           <ul className="space-y-3">
-            <li className="text-xs text-muted flex gap-2 items-start">
-              <div className="w-1 h-1 bg-accent rounded-full mt-1.5 shrink-0" />
-              Paiement affiliation requis.
-            </li>
+            {rappelItems.map((item, i) => (
+              <li key={i} className="text-xs text-muted flex gap-2 items-start">
+                <div className="w-1 h-1 bg-accent rounded-full mt-1.5 shrink-0" />
+                {item}
+              </li>
+            ))}
           </ul>
         </div>
       </div>

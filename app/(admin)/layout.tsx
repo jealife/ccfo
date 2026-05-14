@@ -34,7 +34,7 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CCFO Admin",
+    title: "CCFO26 Admin",
   },
 };
 
@@ -76,7 +76,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={20} height={20} />
             </div>
             <div>
-              <span className="font-outfit font-bold text-xl tracking-tight uppercase">CCFO</span>
+              <span className="font-outfit font-bold text-xl tracking-tight uppercase">CCFO26</span>
               <span className="block text-[9px] font-black uppercase tracking-widest text-primary">Administration</span>
             </div>
           </Link>
@@ -117,7 +117,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={18} height={18} />
               </div>
               <div>
-                <span className="font-outfit font-bold text-base tracking-tight uppercase">CCFO</span>
+                <span className="font-outfit font-bold text-base tracking-tight uppercase">CCFO26</span>
                 <span className="block text-[8px] font-black uppercase tracking-widest text-primary leading-none">Admin</span>
               </div>
             </div>

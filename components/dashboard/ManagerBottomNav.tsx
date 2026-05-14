@@ -3,33 +3,38 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Users, 
+import {
+  LayoutDashboard,
+  Users,
   PlusCircle,
-  Calendar
+  Calendar,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Accueil" },
-  { href: "/manager/registration", icon: PlusCircle, label: "S'inscrire" },
-  { href: "/dashboard/my-team", icon: Users, label: "Équipe" },
-  { href: "/dashboard/matches", icon: Calendar, label: "Calendrier" },
-];
-
-export function ManagerBottomNav() {
+export function ManagerBottomNav({ teamStatus }: { teamStatus?: string | null }) {
   const pathname = usePathname();
+
+  const registrationDone = teamStatus === 'pending' || teamStatus === 'validated' || teamStatus === 'locked';
+
+  const items = [
+    { href: "/dashboard", icon: LayoutDashboard, label: "Accueil" },
+    registrationDone
+      ? { href: "/manager/registration", icon: FileText, label: "Dossier" }
+      : { href: "/manager/registration", icon: PlusCircle, label: "S'inscrire" },
+    { href: "/dashboard/my-team", icon: Users, label: "Équipe" },
+    { href: "/dashboard/matches", icon: Calendar, label: "Calendrier" },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-100 bg-card/80 backdrop-blur-2xl border-t border-white/5 lg:hidden px-4 pb-safe-area-inset-bottom">
       <div className="flex items-center justify-around h-20">
         {items.map((item) => {
-          const isActive = pathname === item.href || 
+          const isActive = pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
             <Link
-              key={item.href}
+              key={item.href + item.label}
               href={item.href}
               className={cn(
                 "flex flex-col items-center gap-1.5 transition-all duration-300 relative",

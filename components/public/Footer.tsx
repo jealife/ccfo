@@ -20,8 +20,8 @@ export function PublicFooter() {
                 <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={28} height={28} className="brightness-200" />
               </div>
               <div className="flex flex-col">
-                <span className="font-outfit font-black text-3xl tracking-tighter leading-none text-white">CCFO</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Okano 2026</span>
+                <span className="font-outfit font-black text-3xl tracking-tighter leading-none text-white">CCFO26</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Fieng Okano</span>
               </div>
             </Link>
             <p className="text-muted text-sm leading-relaxed max-w-xs">

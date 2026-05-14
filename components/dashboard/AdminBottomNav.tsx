@@ -45,7 +45,7 @@ export function AdminBottomNav() {
           <div className="p-6 flex justify-between items-center border-b border-white/5">
             <div>
               <h2 className="text-xl font-black font-outfit uppercase tracking-tighter">Menu Admin</h2>
-              <p className="text-[10px] font-black uppercase tracking-widest text-primary">Administration CCFO</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary">Administration CCFO26</p>
             </div>
             <button 
               onClick={() => setIsMenuOpen(false)} 
