@@ -86,7 +86,7 @@ export default async function HomePage() {
       <PublicNavbar />
       
       {/* --- HERO SECTION: ELITE VISUALS --- */}
-      <section className="relative min-h-screen flex items-center pt-24 pb-20 md:pt-10 md:pb-10 overflow-hidden">
+      <section className="relative lg:min-h-screen flex items-center pt-24 pb-10 lg:pb-16 overflow-hidden">
         {/* Dynamic Background */}
         <div className="absolute inset-0 z-0">
           <Image 
@@ -103,7 +103,7 @@ export default async function HomePage() {
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center">
             <div className="lg:col-span-7 space-y-6 md:space-y-10">
               <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl animate-fade-in">
                 <div className="flex -space-x-2">
@@ -117,7 +117,7 @@ export default async function HomePage() {
               </div>
 
               <div className="space-y-4 md:space-y-6">
-                <h1 className="text-3xl md:text-6xl lg:text7xl font-black font-outfit uppercase tracking-tighter leading-[0.9] text-white">
+                <h1 className="text-3xl md:text-6xl lg:text-7xl font-black font-outfit uppercase tracking-tighter leading-[0.9] text-white">
                   <span className="block opacity-60">Coupe Cantonale</span>
                   <span className="block text-primary italic drop-shadow-[0_0_30px_rgba(239,68,68,0.3)]">Fieng Okano</span>
                   <span className="block">2026</span>
@@ -141,7 +141,7 @@ export default async function HomePage() {
             </div>
 
             {/* HERO FEATURE CARD - REALTIME */}
-            <div className="lg:col-span-5 hidden lg:block animate-fade-in animation-delay-600">
+            <div className="lg:col-span-5 animate-fade-in animation-delay-600">
               <LiveHeroMatch initialMatch={heroMatch} />
             </div>
           </div>
@@ -149,7 +149,7 @@ export default async function HomePage() {
       </section>
 
       {/* --- CONTENT GRID: SOFASCORE EVOLUTION --- */}
-      <section className="container mx-auto px-4 -mt-24 relative z-20 pb-32">
+      <section className="container mx-auto px-4 mt-8 lg:-mt-24 relative z-20 pb-32">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
           {/* MAIN COLUMN: MATCHES & ACTION */}
@@ -182,7 +182,7 @@ export default async function HomePage() {
                     <div className="flex-1 flex items-center justify-between gap-2 md:gap-10 min-w-0">
                       {/* HOME */}
                       <div className="flex-1 flex items-center justify-end gap-2 md:gap-5 min-w-0">
-                        <span className="font-bold text-[10px] md:text-sm text-right uppercase tracking-tight text-white/80 group-hover:text-white truncate hidden sm:block">{match.home?.name}</span>
+                        <span className="font-bold text-[10px] md:text-sm text-right uppercase tracking-tight text-white/80 group-hover:text-white truncate">{match.home?.name}</span>
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-secondary border border-white/5 flex items-center justify-center font-black text-xs md:text-sm shadow-xl group-hover:scale-110 transition-transform shrink-0">
                           {match.home?.name?.[0]}
                         </div>
@@ -204,7 +204,7 @@ export default async function HomePage() {
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-secondary border border-white/5 flex items-center justify-center font-black text-xs md:text-sm shadow-xl group-hover:scale-110 transition-transform shrink-0">
                           {match.away?.name?.[0]}
                         </div>
-                        <span className="font-bold text-[10px] md:text-sm text-left uppercase tracking-tight text-white/80 group-hover:text-white truncate hidden sm:block">{match.away?.name}</span>
+                        <span className="font-bold text-[10px] md:text-sm text-left uppercase tracking-tight text-white/80 group-hover:text-white truncate">{match.away?.name}</span>
                       </div>
                     </div>
                   </div>

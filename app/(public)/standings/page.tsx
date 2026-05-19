@@ -60,7 +60,7 @@ export default async function StandingsPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-[10px] font-black uppercase tracking-widest mb-4">
                 Saison 2026 — Phase de Groupe
               </div>
-              <h1 className="text-4xl font-black font-outfit">Classement Officiel</h1>
+              <h1 className="text-3xl md:text-4xl font-black font-outfit uppercase tracking-tighter">Classement Officiel</h1>
               <p className="text-muted">Suivez la progression de toutes les équipes en temps réel.</p>
             </div>
 
@@ -84,11 +84,11 @@ export default async function StandingsPage() {
                     <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center w-14">Pos</th>
                     <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
                     <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Matchs joués">MJ</th>
-                    <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Victoires">G</th>
-                    <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Nuls">N</th>
-                    <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Défaites">P</th>
-                    <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Buts pour">BP</th>
-                    <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Buts contre">BC</th>
+                    <th className="hidden md:table-cell px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Victoires">G</th>
+                    <th className="hidden md:table-cell px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Nuls">N</th>
+                    <th className="hidden md:table-cell px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Défaites">P</th>
+                    <th className="hidden md:table-cell px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Buts pour">BP</th>
+                    <th className="hidden md:table-cell px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Buts contre">BC</th>
                     <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Différence de buts">Diff</th>
                     <th className="px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center" title="Points">Pts</th>
                     <th className="hidden sm:table-cell px-4 md:px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center">Forme</th>
@@ -110,10 +110,13 @@ export default async function StandingsPage() {
                         "hover:bg-white/5 transition-colors group",
                         isQualified && "bg-primary/5"
                       )}>
-                        <td className="px-4 md:px-6 py-4">
+                        <td className={cn(
+                          "px-4 md:px-6 py-4 border-l-2",
+                          isQualified ? "border-accent" : "border-transparent"
+                        )}>
                           <div className={cn(
                             "w-8 h-8 rounded-lg flex items-center justify-center font-black font-outfit text-sm mx-auto",
-                            isQualified ? "bg-accent text-secondary" : "bg-secondary text-muted"
+                            isQualified ? "bg-accent text-background shadow-lg shadow-accent/30" : "bg-secondary text-muted"
                           )}>
                             {rank}
                           </div>
@@ -127,11 +130,11 @@ export default async function StandingsPage() {
                           </div>
                         </td>
                         <td className="px-4 md:px-6 py-4 text-center text-sm font-medium">{row.played}</td>
-                        <td className="px-4 md:px-6 py-4 text-center text-sm font-medium">{row.won}</td>
-                        <td className="px-4 md:px-6 py-4 text-center text-sm font-medium">{row.drawn}</td>
-                        <td className="px-4 md:px-6 py-4 text-center text-sm font-medium">{row.lost}</td>
-                        <td className="px-4 md:px-6 py-4 text-center text-sm text-muted">{row.goals_for}</td>
-                        <td className="px-4 md:px-6 py-4 text-center text-sm text-muted">{row.goals_against}</td>
+                        <td className="hidden md:table-cell px-4 md:px-6 py-4 text-center text-sm font-medium">{row.won}</td>
+                        <td className="hidden md:table-cell px-4 md:px-6 py-4 text-center text-sm font-medium">{row.drawn}</td>
+                        <td className="hidden md:table-cell px-4 md:px-6 py-4 text-center text-sm font-medium">{row.lost}</td>
+                        <td className="hidden md:table-cell px-4 md:px-6 py-4 text-center text-sm text-muted">{row.goals_for}</td>
+                        <td className="hidden md:table-cell px-4 md:px-6 py-4 text-center text-sm text-muted">{row.goals_against}</td>
                         <td className="px-4 md:px-6 py-4 text-center text-sm font-bold">
                           <span className={cn(
                             diff > 0 ? "text-green-500" : diff < 0 ? "text-red-500" : "text-muted"

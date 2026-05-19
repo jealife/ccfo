@@ -46,27 +46,29 @@ export function PublicNavbar() {
           {/* Desktop Nav: Center */}
           <div className="hidden lg:flex items-center gap-10 bg-white/5 px-8 py-2 rounded-full border border-white/5 backdrop-blur-xl">
             <NavLink href="/" active={pathname === "/"} icon={<Trophy className="w-4 h-4" />}>Accueil</NavLink>
-            <NavLink href="/matches" active={pathname === "/matches"} icon={<Calendar className="w-4 h-4" />}>Matchs</NavLink>
-            <NavLink href="/standings" active={pathname === "/standings"} icon={<BarChart3 className="w-4 h-4" />}>Classement</NavLink>
-            <NavLink href="/teams" active={pathname === "/teams"} icon={<Users className="w-4 h-4" />}>Équipes</NavLink>
+            <NavLink href="/matches" active={pathname.startsWith("/matches")} icon={<Calendar className="w-4 h-4" />}>Matchs</NavLink>
+            <NavLink href="/standings" active={pathname.startsWith("/standings")} icon={<BarChart3 className="w-4 h-4" />}>Classement</NavLink>
+            <NavLink href="/teams" active={pathname.startsWith("/teams")} icon={<Users className="w-4 h-4" />}>Équipes</NavLink>
           </div>
 
           {/* Auth Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 lg:gap-3">
+            {/* S'inscrire — desktop only, accessible via menu on mobile */}
             <Link
               href="/register"
-              className="flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors"
+              className="hidden lg:flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors"
             >
               S'inscrire
             </Link>
-            <Link 
-              href="/login" 
-              className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-background text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all duration-500 shadow-xl shadow-white/5 hover:shadow-primary/20"
+            {/* Login — full label on desktop, icon-only on mobile */}
+            <Link
+              href="/login"
+              className="flex items-center gap-2 px-3 lg:px-6 py-2.5 rounded-full bg-white text-background text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all duration-500 shadow-xl shadow-white/5 hover:shadow-primary/20"
             >
               <LogIn className="w-4 h-4" />
-              <span className="hidden xs:inline">Espace Équipe</span>
+              <span className="hidden lg:inline">Espace Équipe</span>
             </Link>
-            <button 
+            <button
               onClick={() => setIsOpen(!isOpen)}
               className="lg:hidden p-2 text-white bg-white/5 rounded-xl border border-white/10 relative z-110"
             >
@@ -84,9 +86,9 @@ export function PublicNavbar() {
         <div className="flex flex-col h-full pt-32 px-8 pb-10">
           <div className="space-y-4">
             <MobileNavLink href="/" active={pathname === "/"} label="Accueil" icon={<Trophy />} onClick={() => setIsOpen(false)} />
-            <MobileNavLink href="/matches" active={pathname === "/matches"} label="Matchs" icon={<Calendar />} onClick={() => setIsOpen(false)} />
-            <MobileNavLink href="/standings" active={pathname === "/standings"} label="Classement" icon={<BarChart3 />} onClick={() => setIsOpen(false)} />
-            <MobileNavLink href="/teams" active={pathname === "/teams"} label="Équipes" icon={<Users />} onClick={() => setIsOpen(false)} />
+            <MobileNavLink href="/matches" active={pathname.startsWith("/matches")} label="Matchs" icon={<Calendar />} onClick={() => setIsOpen(false)} />
+            <MobileNavLink href="/standings" active={pathname.startsWith("/standings")} label="Classement" icon={<BarChart3 />} onClick={() => setIsOpen(false)} />
+            <MobileNavLink href="/teams" active={pathname.startsWith("/teams")} label="Équipes" icon={<Users />} onClick={() => setIsOpen(false)} />
           </div>
 
           <div className="mt-auto space-y-4">

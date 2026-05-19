@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Calendar } from "lucide-react";
 import { MatchTimer } from "./MatchTimer";
 
 export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] }) {
@@ -98,7 +98,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] 
 
                       {/* TEAM DOMICILE */}
                       <div className="flex-1 flex flex-row md:flex-row-reverse items-center justify-end gap-3 md:gap-5">
-                        <span className="hidden md:block text-sm font-bold uppercase tracking-tight text-white/80 group-hover:text-white transition-colors truncate">
+                        <span className="block text-[10px] md:text-sm font-bold uppercase tracking-tight text-white/80 group-hover:text-white transition-colors truncate">
                           {match.home?.name}
                         </span>
                         <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-secondary border border-white/10 flex items-center justify-center text-sm md:text-xl font-black shadow-lg group-hover:scale-110 transition-transform duration-500 shrink-0">
@@ -128,7 +128,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] 
                         <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-secondary border border-white/10 flex items-center justify-center text-sm md:text-xl font-black shadow-lg group-hover:scale-110 transition-transform duration-500 shrink-0">
                           {match.away?.name?.[0]}
                         </div>
-                        <span className="hidden md:block text-sm font-bold uppercase tracking-tight text-white/80 group-hover:text-white transition-colors truncate">
+                        <span className="block text-[10px] md:text-sm font-bold uppercase tracking-tight text-white/80 group-hover:text-white transition-colors truncate">
                           {match.away?.name}
                         </span>
                       </div>
@@ -145,8 +145,17 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] 
         ))}
 
         {filteredMatches.length === 0 && (
-          <div className="text-center py-20 glass-card">
-            <p className="text-muted font-bold">Aucun match ne correspond à ce filtre.</p>
+          <div className="text-center py-24 glass-card space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mx-auto">
+              <Calendar className="w-8 h-8 text-muted/40" />
+            </div>
+            <p className="font-black font-outfit uppercase tracking-tight text-lg">Aucun match</p>
+            <p className="text-muted text-sm">
+              {filter === "live" ? "Aucun match en direct pour le moment." :
+               filter === "finished" ? "Aucun match terminé pour le moment." :
+               filter === "scheduled" ? "Aucun match à venir programmé." :
+               "Aucun match disponible."}
+            </p>
           </div>
         )}
       </div>
