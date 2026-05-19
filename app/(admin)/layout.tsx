@@ -6,9 +6,6 @@ import {
   Users,
   Settings,
   LogOut,
-  Bell,
-  Search,
-  Calendar,
   Award,
   CreditCard,
   FileText,
@@ -16,6 +13,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AdminBottomNav } from "@/components/dashboard/AdminBottomNav";
+import { AdminTopBar } from "@/components/admin/AdminTopBar";
 import { SidebarItem } from "@/components/dashboard/SidebarItem";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { redirect } from "next/navigation";
@@ -55,6 +53,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (profile?.role !== "admin") redirect("/dashboard");
 
   const userName = profile?.full_name || "Admin";
+
+  const { count: pendingCount } = await supabase
+    .from('teams')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending');
 
   const navLinks = [
     { href: "/admin", icon: <LayoutDashboard />, label: "Dashboard" },
@@ -110,47 +113,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* Main Content */}
       <main className="flex-1 lg:pl-64 pb-24 lg:pb-0">
-        {/* Top Bar */}
-        <header className="h-16 lg:h-20 border-b border-white/5 bg-background/50 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-4 lg:px-8">
-          <div className="flex items-center gap-4">
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={18} height={18} />
-              </div>
-              <div>
-                <span className="font-outfit font-bold text-base tracking-tight uppercase">CCFO26</span>
-                <span className="block text-[8px] font-black uppercase tracking-widest text-primary leading-none">Admin</span>
-              </div>
-            </div>
-            
-            {/* Desktop Search */}
-            <div className="relative hidden lg:block">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-              <input 
-                placeholder="Rechercher..." 
-                className="pl-10 pr-4 py-2 rounded-lg bg-secondary/50 border border-border text-sm focus:border-primary outline-none transition-all w-64"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 lg:gap-4">
-            <button className="relative p-2 text-muted hover:text-foreground">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full border-2 border-background" />
-            </button>
-            <div className="h-8 w-px bg-white/5 hidden lg:block" />
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold leading-tight">{userName}</p>
-                <p className="text-[10px] text-primary font-black uppercase tracking-widest">Admin</p>
-              </div>
-              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-sm text-primary">
-                {userName[0]}
-              </div>
-            </div>
-          </div>
-        </header>
+        <AdminTopBar userName={userName} pendingCount={pendingCount ?? 0} />
 
         <div className="p-4 lg:p-8">
           {children}
