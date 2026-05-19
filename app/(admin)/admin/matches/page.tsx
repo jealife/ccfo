@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Calendar, 
-  Plus, 
-  Trophy, 
-  MapPin, 
-  Clock, 
+import {
+  Calendar,
+  Plus,
+  Trophy,
+  MapPin,
+  Clock,
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Activity
+  Activity,
+  XCircle,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -171,12 +173,12 @@ export default function AdminMatchesPage() {
               />
             </div>
 
-            <button 
+            <button
               type="submit"
               disabled={isLoading}
-              className="py-3.5 rounded-xl bg-white text-primary font-black uppercase tracking-widest text-xs hover:bg-white/90 transition-all"
+              className="py-3.5 rounded-xl bg-white text-primary font-black uppercase tracking-widest text-xs hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? "Enregistrement..." : "Confirmer le Match"}
+              {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Enregistrement...</> : "Confirmer le Match"}
             </button>
           </form>
         </div>
@@ -258,21 +260,3 @@ export default function AdminMatchesPage() {
   );
 }
 
-function XCircle({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
-    </svg>
-  );
-}

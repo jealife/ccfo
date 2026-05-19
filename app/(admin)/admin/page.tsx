@@ -1,13 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { 
-  Users, 
-  Trophy, 
+import {
+  Users,
+  Trophy,
   TrendingUp,
   Settings,
-  Calendar,
   Shield,
-  UserPlus
+  UserPlus,
+  FileText,
+  ShieldAlert,
+  CreditCard
 } from "lucide-react";
 import Link from "next/link";
 
@@ -19,17 +21,21 @@ export const metadata = {
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
-  const { count: teamCount } = await supabase.from('teams').select('*', { count: 'exact', head: true });
-  const { count: validatedCount } = await supabase.from('teams').select('*', { count: 'exact', head: true }).eq('status', 'validated');
-  const { count: playerCount } = await supabase.from('players').select('*', { count: 'exact', head: true });
-  const { count: staffCount } = await supabase.from('staff').select('*', { count: 'exact', head: true });
-  const { count: finishedMatchCount } = await supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'finished');
-  
-  const { data: teams } = await supabase
-    .from('teams')
-    .select('name, village, status, president_name')
-    .order('created_at', { ascending: false })
-    .limit(8);
+  const [
+    { count: teamCount },
+    { count: validatedCount },
+    { count: playerCount },
+    { count: staffCount },
+    { count: finishedMatchCount },
+    { data: teams },
+  ] = await Promise.all([
+    supabase.from('teams').select('*', { count: 'exact', head: true }),
+    supabase.from('teams').select('*', { count: 'exact', head: true }).eq('status', 'validated'),
+    supabase.from('players').select('*', { count: 'exact', head: true }),
+    supabase.from('staff').select('*', { count: 'exact', head: true }),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'finished'),
+    supabase.from('teams').select('name, village, status').order('created_at', { ascending: false }).limit(8),
+  ]);
 
   const stats = [
     { 
@@ -68,10 +74,12 @@ export default async function AdminDashboardPage() {
   ];
 
   const quickActions = [
-    { href: "/admin/tournaments", icon: <Settings className="w-5 h-5" />, label: "Configuration tournoi", desc: "Gérer les paramètres" },
-    { href: "/admin/teams", icon: <Users className="w-5 h-5" />, label: "Gérer les équipes", desc: "Valider les dossiers" },
-    { href: "/admin/matches", icon: <Trophy className="w-5 h-5" />, label: "Programmer matchs", desc: "Calendrier & résultats" },
-    { href: "/admin/payments", icon: <TrendingUp className="w-5 h-5" />, label: "Suivi paiements", desc: "Affiliations & frais" },
+    { href: "/admin/tournaments", icon: <Settings className="w-5 h-5" />, label: "Configuration", desc: "Paramètres du tournoi" },
+    { href: "/admin/teams", icon: <Users className="w-5 h-5" />, label: "Équipes", desc: "Valider les dossiers" },
+    { href: "/admin/matches", icon: <Trophy className="w-5 h-5" />, label: "Matchs", desc: "Calendrier & résultats" },
+    { href: "/admin/payments", icon: <CreditCard className="w-5 h-5" />, label: "Paiements", desc: "Affiliations & frais" },
+    { href: "/admin/documents", icon: <FileText className="w-5 h-5" />, label: "Documents", desc: "Vérifier les pièces" },
+    { href: "/admin/suspensions", icon: <ShieldAlert className="w-5 h-5" />, label: "Suspensions", desc: "Cartons & sanctions" },
   ];
 
   return (
@@ -134,7 +142,7 @@ export default async function AdminDashboardPage() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-xs font-black uppercase tracking-widest text-muted mb-4">Actions Rapides</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {quickActions.map((action) => (
             <Link
               key={action.href}
@@ -180,9 +188,11 @@ export default async function AdminDashboardPage() {
                   <td className="px-4 py-3 text-sm text-muted hidden md:table-cell">{team.village}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                      team.status === 'validated' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
+                      team.status === 'validated' ? "bg-green-500/10 text-green-500" :
+                      team.status === 'rejected' ? "bg-red-500/10 text-red-500" :
+                      "bg-yellow-500/10 text-yellow-500"
                     }`}>
-                      {team.status === 'validated' ? 'Validé' : 'Attente'}
+                      {team.status === 'validated' ? 'Validé' : team.status === 'rejected' ? 'Rejeté' : 'Attente'}
                     </span>
                   </td>
                 </tr>
@@ -208,9 +218,11 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
             <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0 ml-2 ${
-              team.status === 'validated' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
+              team.status === 'validated' ? "bg-green-500/10 text-green-500" :
+              team.status === 'rejected' ? "bg-red-500/10 text-red-500" :
+              "bg-yellow-500/10 text-yellow-500"
             }`}>
-              {team.status === 'validated' ? 'Validé' : 'Attente'}
+              {team.status === 'validated' ? 'Validé' : team.status === 'rejected' ? 'Rejeté' : 'Attente'}
             </span>
           </div>
         ))}

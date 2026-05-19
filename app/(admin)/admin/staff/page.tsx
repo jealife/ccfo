@@ -1,15 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Users, 
-  Search, 
+import {
+  Users,
+  Search,
   Filter,
-  Download,
   Printer,
-  ChevronRight,
   Shield,
-  MapPin,
   UserSquare2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,15 +47,16 @@ export default function AdminStaffPage() {
       query = query.eq('team_id', selectedTeamId);
     }
 
-    const { data } = await query.order('full_name', { ascending: true });
+    const { data } = await query.order('first_name', { ascending: true });
     setStaff(data || []);
     setLoading(false);
   }
 
-  const filteredStaff = staff.filter(s => 
-    s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.role?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStaff = staff.filter(s => {
+    const fullName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase()) ||
+      s.role?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -68,14 +66,13 @@ export default function AdminStaffPage() {
           <p className="text-muted text-sm mt-1">Consultez les membres techniques de chaque club.</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <button className="p-3 rounded-xl bg-white/5 border border-white/10 text-muted hover:text-white transition-all">
-            <Printer className="w-4 h-4" />
-          </button>
-          <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-accent text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-accent/20 hover:scale-105 transition-all">
-            <Download className="w-4 h-4" /> Exporter Staff
-          </button>
-        </div>
+        <button
+          onClick={() => window.print()}
+          className="p-3 rounded-xl bg-white/5 border border-white/10 text-muted hover:text-white transition-all"
+          title="Imprimer"
+        >
+          <Printer className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Filters Bar */}
@@ -118,7 +115,7 @@ export default function AdminStaffPage() {
                 <UserSquare2 className="w-6 h-6 text-muted group-hover:text-accent transition-colors" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-sm truncate group-hover:text-accent transition-colors">{member.full_name}</h3>
+                <h3 className="font-bold text-sm truncate group-hover:text-accent transition-colors">{member.first_name} {member.last_name}</h3>
                 <div className="flex flex-col gap-1 mt-2">
                   <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-white/80">
                     {member.role || "Staff Technique"}

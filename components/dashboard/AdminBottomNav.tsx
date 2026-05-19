@@ -3,16 +3,17 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Trophy, 
-  Users, 
+import {
+  LayoutDashboard,
+  Trophy,
+  Users,
   Award,
   CreditCard,
   FileText,
   Settings,
   Menu,
-  X
+  X,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ const adminMenuLinks = [
   { href: "/admin/matches", icon: Trophy, label: "Matchs & Résultats" },
   { href: "/admin/payments", icon: CreditCard, label: "Paiements" },
   { href: "/admin/documents", icon: FileText, label: "Documents" },
+  { href: "/admin/suspensions", icon: ShieldAlert, label: "Suspensions" },
 ];
 
 const bottomItems = [
@@ -56,7 +58,8 @@ export function AdminBottomNav() {
           </div>
           <div className="p-6 overflow-y-auto pb-32 space-y-2 flex-1">
             {adminMenuLinks.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
+              const depth = link.href.split("/").filter(Boolean).length;
+              const isActive = pathname === link.href || (depth > 1 && pathname.startsWith(link.href + "/"));
               return (
                 <Link 
                   key={link.href} 

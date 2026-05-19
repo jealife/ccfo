@@ -25,6 +25,7 @@ export default function AdminPlayersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [printingPlayer, setPrintingPlayer] = useState<any>(null);
   const [printingAll, setPrintingAll] = useState(false);
+  const [printAllConfirm, setPrintAllConfirm] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -67,6 +68,28 @@ export default function AdminPlayersPage() {
     window.print();
   };
 
+  const handleExportCSV = () => {
+    const rows = [
+      ["Nom", "Équipe", "Village", "Numéro", "Poste", "Origine"],
+      ...filteredPlayers.map(p => [
+        p.full_name,
+        p.teams?.name || "",
+        p.teams?.village || "",
+        p.jersey_number || "",
+        p.position || "",
+        p.origin_village || "",
+      ])
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `joueurs_ccfo_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredPlayers = players.filter(p => 
     p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.jersey_number?.toString().includes(searchQuery)
@@ -81,18 +104,19 @@ export default function AdminPlayersPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              setPrintingAll(true);
-            }}
+          <button
+            onClick={() => filteredPlayers.length > 5 ? setPrintAllConfirm(true) : setPrintingAll(true)}
             className="p-3 rounded-xl bg-white/5 border border-white/10 text-muted hover:text-white transition-all flex items-center gap-2"
             title="Imprimer toutes les licences filtrées"
           >
             <Printer className="w-4 h-4" />
             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Tout Imprimer</span>
           </button>
-          <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:scale-105 transition-all">
-            <Download className="w-4 h-4" /> Exporter PDF
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+          >
+            <Download className="w-4 h-4" /> Exporter CSV
           </button>
         </div>
       </div>
@@ -182,6 +206,35 @@ export default function AdminPlayersPage() {
           </div>
         )}
       </div>
+
+      {/* Print All Confirmation */}
+      {printAllConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-white/10 rounded-2xl p-8 max-w-sm w-full mx-4 space-y-6 shadow-2xl">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Printer className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg">Impression en volume</h3>
+                <p className="text-sm text-muted">{filteredPlayers.length} licences à imprimer</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted">Vous allez générer un aperçu de <span className="text-white font-bold">{filteredPlayers.length} licences</span>. Affinez le filtre par équipe pour réduire le volume si nécessaire.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setPrintAllConfirm(false)} className="flex-1 py-2.5 rounded-xl bg-white/5 text-sm font-bold hover:bg-white/10 transition-colors">
+                Annuler
+              </button>
+              <button
+                onClick={() => { setPrintAllConfirm(false); setPrintingAll(true); }}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/80 transition-colors"
+              >
+                Continuer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Print Preview Overlay */}
       {(printingPlayer || printingAll) && (

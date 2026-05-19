@@ -43,7 +43,7 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
     setLoading(true);
     const [playersRes, staffRes] = await Promise.all([
       supabase.from('players').select('*').eq('team_id', team.id).order('jersey_number', { ascending: true }),
-      supabase.from('staff').select('*').eq('team_id', team.id).order('created_at', { ascending: true })
+      supabase.from('staff').select('*').eq('team_id', team.id).order('first_name', { ascending: true })
     ]);
     
     setPlayers(playersRes.data || []);
@@ -178,10 +178,10 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
                     staff.map((member) => (
                       <div key={member.id} className="sports-card p-3 flex items-center gap-4 bg-white/3 border-white/5 hover:border-accent/20 transition-all">
                         <div className="w-12 h-12 rounded-xl bg-secondary border border-white/5 flex items-center justify-center font-bold text-lg shrink-0">
-                          {member.full_name[0]}
+                          {(member.first_name || member.last_name || '?')[0]}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm truncate">{member.full_name}</div>
+                          <div className="font-bold text-sm truncate">{member.first_name} {member.last_name}</div>
                           <div className="text-[9px] font-black uppercase tracking-widest text-muted mt-1">
                             {member.role || "Membre du Staff"}
                           </div>

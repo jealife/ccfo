@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
+import { AlertDialog } from "@/components/ui/Modal";
 import { updateTeamStatus } from "@/app/api/teams/actions";
 
 export default function AdminTeamsPage() {
@@ -136,7 +137,6 @@ export default function AdminTeamsPage() {
             <thead className="bg-white/5 border-b border-white/5">
               <tr>
                 <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
-                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Village</th>
                 <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Joueurs/Staff</th>
                 <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Statut</th>
                 <th className="px-4 py-3 text-right"></th>
@@ -156,7 +156,6 @@ export default function AdminTeamsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-sm text-muted hidden lg:table-cell">{team.village}</td>
                   <td className="px-4 py-4">
                     <div className="flex flex-col gap-2 w-28">
                       <div className="space-y-1">
@@ -277,16 +276,28 @@ export default function AdminTeamsPage() {
 
       {/* Detail Modal */}
       {selectedTeam && (
-        <TeamDetailModal 
+        <TeamDetailModal
           team={selectedTeam}
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
           onStatusUpdate={(teamId, status) => {
-            handleStatusUpdate(teamId, status);
             setIsDetailModalOpen(false);
+            handleStatusUpdate(teamId, status);
           }}
         />
       )}
+
+      {/* Alert / Confirmation Dialog */}
+      <AlertDialog
+        isOpen={alert.isOpen}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type as any}
+        isConfirm={alert.isConfirm}
+        onConfirm={alert.onConfirm}
+        confirmLabel={alert.isConfirm ? (alert.title === "Confirmation" ? "Confirmer" : "OK") : "OK"}
+      />
     </div>
   );
 }

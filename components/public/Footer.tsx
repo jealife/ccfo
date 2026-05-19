@@ -54,13 +54,17 @@ export function PublicFooter() {
                 <MapPin className="w-5 h-5 text-primary shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="text-sm font-medium">Stade Central, Fieng Okano, Gabon</span>
               </li>
-              <li className="flex items-center gap-3 group text-muted hover:text-white transition-colors cursor-pointer">
-                <Phone className="w-5 h-5 text-primary shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-medium">+241 00 00 00 00</span>
+              <li>
+                <a href="tel:+24100000000" className="flex items-center gap-3 group text-muted hover:text-white transition-colors">
+                  <Phone className="w-5 h-5 text-primary shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">+241 00 00 00 00</span>
+                </a>
               </li>
-              <li className="flex items-center gap-3 group text-muted hover:text-white transition-colors cursor-pointer">
-                <Mail className="w-5 h-5 text-primary shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-medium">contact@ccfo-gabon.com</span>
+              <li>
+                <a href="mailto:contact@ccfo-gabon.com" className="flex items-center gap-3 group text-muted hover:text-white transition-colors">
+                  <Mail className="w-5 h-5 text-primary shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">contact@ccfo-gabon.com</span>
+                </a>
               </li>
             </ul>
           </div>

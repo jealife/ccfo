@@ -76,7 +76,7 @@ export default function MyTeamPage() {
     if (result.success) {
       setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
       setEditingPlayerId(null);
-      showToast("Joueur mis à jour ✓", "success");
+      showToast("Joueur mis à jour", "success");
     } else {
       showToast(result.error || "Erreur lors de la mise à jour", "error");
     }
@@ -143,7 +143,7 @@ export default function MyTeamPage() {
       showToast(result.error || "Erreur lors de l'ajout", "error");
     } else {
       setStaff(prev => [...prev, result.data]);
-      showToast("Membre ajouté ✓", "success");
+      showToast("Membre ajouté", "success");
     }
   };
 
@@ -190,7 +190,7 @@ export default function MyTeamPage() {
     }
 
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, photo_url: publicUrl } : p));
-    showToast("Photo mise à jour ✓", "success");
+    showToast("Photo mise à jour", "success");
     return true;
   };
 

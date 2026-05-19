@@ -274,10 +274,10 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                   <option value="away">{match.away.name} (Ext)</option>
                 </select>
                 <select value={newEvent.type} onChange={(e) => setNewEvent({...newEvent, type: e.target.value})} className="bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none">
-                  <option value="goal">⚽ But</option>
-                  <option value="yellow">🟨 Carton Jaune</option>
-                  <option value="red">🟥 Carton Rouge</option>
-                  <option value="substitution">🔄 Changement</option>
+                  <option value="goal">But</option>
+                  <option value="yellow">Carton Jaune</option>
+                  <option value="red">Carton Rouge</option>
+                  <option value="substitution">Changement</option>
                 </select>
               </div>
               <div className="grid grid-cols-12 gap-4">

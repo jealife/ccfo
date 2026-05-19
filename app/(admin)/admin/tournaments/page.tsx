@@ -41,6 +41,7 @@ export default function AdminTournamentsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
+  const [savedConfig, setSavedConfig] = useState<Config>(DEFAULT_CONFIG);
 
   useEffect(() => {
     fetchConfig();
@@ -50,20 +51,42 @@ export default function AdminTournamentsPage() {
     setIsLoading(true);
     const data = await getTournamentConfig();
     if (data) {
-      setConfig({
+      const loaded: Config = {
         ...DEFAULT_CONFIG,
         ...data,
         start_date: data.start_date || DEFAULT_CONFIG.start_date,
         end_date: data.end_date || DEFAULT_CONFIG.end_date,
         registration_deadline: data.registration_deadline || DEFAULT_CONFIG.registration_deadline,
-      });
+      };
+      setConfig(loaded);
+      setSavedConfig(loaded);
     }
     setIsLoading(false);
+  }
+
+  function handleCancel() {
+    setConfig(savedConfig);
+    setIsEditing(false);
+    setMessage(null);
   }
 
   async function handleSave() {
     if (!isEditing) {
       setIsEditing(true);
+      return;
+    }
+
+    // Date validation
+    if (config.start_date && config.end_date && config.end_date <= config.start_date) {
+      setMessage({ type: 'error', text: "La date de fin doit être après la date de début." });
+      return;
+    }
+    if (config.registration_deadline && config.start_date && config.registration_deadline > config.start_date) {
+      setMessage({ type: 'error', text: "La deadline d'inscription doit être avant le début du tournoi." });
+      return;
+    }
+    if (Number(config.max_teams) <= 0 || Number(config.players_per_team) <= 0 || Number(config.staff_per_team) <= 0) {
+      setMessage({ type: 'error', text: "Les quotas (équipes, joueurs, staff) doivent être supérieurs à 0." });
       return;
     }
 
@@ -82,6 +105,7 @@ export default function AdminTournamentsPage() {
     });
 
     if (result.success) {
+      setSavedConfig({ ...config, max_teams: Number(config.max_teams), players_per_team: Number(config.players_per_team), staff_per_team: Number(config.staff_per_team), points_win: Number(config.points_win), points_draw: Number(config.points_draw), points_loss: Number(config.points_loss), qualification_spots: Number(config.qualification_spots) });
       setMessage({ type: 'success', text: "Paramètres mis à jour avec succès !" });
       setIsEditing(false);
       setTimeout(() => setMessage(null), 3000);
@@ -123,17 +147,28 @@ export default function AdminTournamentsPage() {
             </div>
           )}
 
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all w-full sm:w-auto justify-center",
-              isEditing ? "bg-primary text-white" : "bg-white text-primary"
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {isEditing && (
+              <button
+                onClick={handleCancel}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+              >
+                Annuler
+              </button>
             )}
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEditing ? <Save className="w-4 h-4" /> : <Settings className="w-4 h-4" />)}
-            {isSaving ? "Enregistrement..." : (isEditing ? "Confirmer les changements" : "Modifier la configuration")}
-          </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className={cn(
+                "flex items-center gap-2 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all justify-center flex-1 sm:flex-none",
+                isEditing ? "bg-primary text-white" : "bg-white text-primary"
+              )}
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEditing ? <Save className="w-4 h-4" /> : <Settings className="w-4 h-4" />)}
+              {isSaving ? "Enregistrement..." : (isEditing ? "Confirmer les changements" : "Modifier la configuration")}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -213,18 +248,29 @@ export default function AdminTournamentsPage() {
                 <p className="text-sm font-bold">Statut du Tournoi</p>
                 <p className="text-xs text-muted">Active les inscriptions et les matchs.</p>
               </div>
-              <button
-                onClick={() => isEditing && set('is_active', !config.is_active)}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-xs font-black uppercase transition-all",
+              {isEditing ? (
+                <button
+                  onClick={() => set('is_active', !config.is_active)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-black uppercase transition-all cursor-pointer hover:scale-105 border",
+                    config.is_active
+                      ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500 hover:text-white"
+                      : "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500 hover:text-white"
+                  )}
+                  title="Cliquer pour basculer"
+                >
+                  {config.is_active ? "Actif" : "Suspendu"}
+                </button>
+              ) : (
+                <span className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-black uppercase border",
                   config.is_active
-                    ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                    : "bg-red-500/10 text-red-500 border border-red-500/20",
-                  isEditing && "cursor-pointer hover:scale-105"
-                )}
-              >
-                {config.is_active ? "Actif" : "Suspendu"}
-              </button>
+                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : "bg-red-500/10 text-red-500 border-red-500/20"
+                )}>
+                  {config.is_active ? "Actif" : "Suspendu"}
+                </span>
+              )}
             </div>
           </div>
         </div>

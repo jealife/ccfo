@@ -13,7 +13,8 @@ interface SidebarItemProps {
 
 export function SidebarItem({ href, icon, label, variant = "admin" }: SidebarItemProps) {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== "/admin" && href !== "/dashboard" && pathname.startsWith(href));
+  const depth = href.split("/").filter(Boolean).length;
+  const isActive = pathname === href || (depth > 1 && pathname.startsWith(href + "/"));
 
   return (
     <Link 
