@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User, Award } from "lucide-react";
+import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User, Award, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -97,43 +97,87 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
                 
                 {events.map((event: any) => {
                   const playerInfo = getPlayerInfo(event.player, event.team);
+                  const playerInInfo = event.playerIn ? getPlayerInfo(event.playerIn, event.team) : null;
+                  const isSubstitution = event.type === 'substitution';
                   return (
                     <div key={event.id} className="relative flex items-center gap-4 md:gap-6">
                       <div className={cn(
                         "absolute left-[-29px] w-6 h-6 rounded-full border-4 border-background bg-card flex items-center justify-center z-10",
-                        event.type === 'goal' ? "border-primary bg-primary/20 text-primary" : "border-white/10"
+                        event.type === 'goal' ? "border-primary bg-primary/20 text-primary" : isSubstitution ? "border-green-500/40 bg-green-500/10 text-green-400" : "border-white/10"
                       )}>
-                        {event.type === 'goal' ? <Goal className="w-3 h-3" /> : <Square className={cn("w-3 h-3 fill-current", event.type === 'yellow' ? "text-yellow-500" : "text-red-500")} />}
+                        {event.type === 'goal' ? (
+                          <Goal className="w-3 h-3" />
+                        ) : isSubstitution ? (
+                          <ArrowLeftRight className="w-3 h-3" />
+                        ) : (
+                          <Square className={cn("w-3 h-3 fill-current", event.type === 'yellow' ? "text-yellow-500" : "text-red-500")} />
+                        )}
                       </div>
-                      
+
                       <div className="w-10 md:w-12 text-right">
                         <span className="text-[10px] md:text-sm font-black font-outfit text-white/60">{event.minute}'</span>
                       </div>
-                      
+
                       <div className={cn(
                         "flex-1 p-3 md:p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4",
-                        event.type === 'goal' ? "bg-primary/5 border-primary/20" : "bg-white/5"
+                        event.type === 'goal' ? "bg-primary/5 border-primary/20" : isSubstitution ? "bg-green-500/5 border-green-500/10" : "bg-white/5"
                       )}>
-                        <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                          {/* Player Photo in Event */}
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
-                            {playerInfo?.photo_url ? (
-                              <img src={playerInfo.photo_url} alt={event.player} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">
-                                {event.player?.[0] || "?"}
+                        {isSubstitution ? (
+                          <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                              {/* Joueur sortant */}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
+                                  {playerInfo?.photo_url ? (
+                                    <img src={playerInfo.photo_url} alt={event.player} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">{event.player?.[0] || "?"}</div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-red-400 text-xs font-black shrink-0">↓</span>
+                                  <span className="font-bold text-sm text-white truncate">{event.player}</span>
+                                </div>
                               </div>
-                            )}
+                              {/* Joueur entrant */}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
+                                  {playerInInfo?.photo_url ? (
+                                    <img src={playerInInfo.photo_url} alt={event.playerIn} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">{event.playerIn?.[0] || "?"}</div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-green-400 text-xs font-black shrink-0">↑</span>
+                                  <span className="font-bold text-sm text-white truncate">{event.playerIn}</span>
+                                </div>
+                              </div>
+                              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted">
+                                Changement • {event.team === 'home' ? match.home.name : match.away.name}
+                              </span>
+                            </div>
                           </div>
-                          
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-sm md:text-base text-white truncate leading-tight">{event.player}</span>
-                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted mt-0.5">
-                              {event.type === 'goal' ? 'But' : 'Carton'} • {event.team === 'home' ? match.home.name : match.away.name}
-                            </span>
+                        ) : (
+                          <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
+                              {playerInfo?.photo_url ? (
+                                <img src={playerInfo.photo_url} alt={event.player} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">
+                                  {event.player?.[0] || "?"}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-sm md:text-base text-white truncate leading-tight">{event.player}</span>
+                              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted mt-0.5">
+                                {event.type === 'goal' ? 'But' : 'Carton'} • {event.team === 'home' ? match.home.name : match.away.name}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        
+                        )}
+
                         <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-background/50 flex items-center justify-center font-black text-[9px] md:text-xs shrink-0 border border-white/5">
                           {event.team === 'home' ? match.home.name[0] : match.away.name[0]}
                         </div>

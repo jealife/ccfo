@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock, Star } from "lucide-react";
+import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock, Star, ArrowLeftRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
   const [matchStats, setMatchStats] = useState<any[]>([]);
   
   // New Event Form
-  const [newEvent, setNewEvent] = useState({ minute: "", type: "goal", player: "", team: "home" });
+  const [newEvent, setNewEvent] = useState({ minute: "", type: "goal", player: "", playerIn: "", team: "home" });
 
   // Modal State
   const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" }>({
@@ -117,6 +117,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
 
   const addEvent = () => {
     if (!newEvent.minute || !newEvent.player) return;
+    if (newEvent.type === 'substitution' && !newEvent.playerIn) return;
     const event = { ...newEvent, id: Date.now() };
     setEvents([...events, event]);
 
@@ -126,7 +127,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
       else setAwayScore(prev => prev + 1);
     }
 
-    setNewEvent({ minute: "", type: "goal", player: "", team: "home" });
+    setNewEvent({ minute: "", type: "goal", player: "", playerIn: "", team: "home" });
   };
 
   const removeEvent = (eventId: number) => {
@@ -253,20 +254,21 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                   <option value="goal">⚽ But</option>
                   <option value="yellow">🟨 Carton Jaune</option>
                   <option value="red">🟥 Carton Rouge</option>
+                  <option value="substitution">🔄 Changement</option>
                 </select>
               </div>
               <div className="grid grid-cols-12 gap-4">
                 <input type="number" placeholder="Min" value={newEvent.minute} onChange={(e) => setNewEvent({...newEvent, minute: e.target.value})} className="col-span-3 bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none text-center tabular-nums" />
                 <div className="col-span-6 relative">
-                  <input 
-                    list="player-list"
-                    type="text" 
-                    placeholder="Nom du joueur" 
-                    value={newEvent.player} 
-                    onChange={(e) => setNewEvent({...newEvent, player: e.target.value})} 
-                    className="w-full bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" 
+                  <input
+                    list="player-list-out"
+                    type="text"
+                    placeholder={newEvent.type === 'substitution' ? "Joueur sortant" : "Nom du joueur"}
+                    value={newEvent.player}
+                    onChange={(e) => setNewEvent({...newEvent, player: e.target.value})}
+                    className="w-full bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
                   />
-                  <datalist id="player-list">
+                  <datalist id="player-list-out">
                     {(newEvent.team === 'home' ? homePlayers : awayPlayers).map(p => (
                       <option key={p.id} value={p.full_name}>{p.full_name} (#{p.jersey_number})</option>
                     ))}
@@ -276,6 +278,23 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                   <Plus className="w-5 h-5" />
                 </button>
               </div>
+              {newEvent.type === 'substitution' && (
+                <div className="relative">
+                  <input
+                    list="player-list-in"
+                    type="text"
+                    placeholder="Joueur entrant"
+                    value={newEvent.playerIn}
+                    onChange={(e) => setNewEvent({...newEvent, playerIn: e.target.value})}
+                    className="w-full bg-card border border-primary/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-all"
+                  />
+                  <datalist id="player-list-in">
+                    {(newEvent.team === 'home' ? homePlayers : awayPlayers).map(p => (
+                      <option key={p.id} value={p.full_name}>{p.full_name} (#{p.jersey_number})</option>
+                    ))}
+                  </datalist>
+                </div>
+              )}
             </div>
 
             {/* EVENT LIST */}
@@ -286,10 +305,29 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                 <div key={evt.id} className="flex items-center gap-4 p-3 bg-white/5 rounded-lg border border-white/5">
                   <div className="w-12 text-center text-sm font-black font-outfit text-primary">{evt.minute}'</div>
                   <div className="flex items-center justify-center w-8 h-8 bg-background rounded-lg border border-white/10">
-                    {evt.type === 'goal' ? <Goal className="w-4 h-4 text-white" /> : <Square className={cn("w-4 h-4 fill-current", evt.type === 'yellow' ? "text-yellow-500" : "text-red-500")} />}
+                    {evt.type === 'goal' ? (
+                      <Goal className="w-4 h-4 text-white" />
+                    ) : evt.type === 'substitution' ? (
+                      <ArrowLeftRight className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <Square className={cn("w-4 h-4 fill-current", evt.type === 'yellow' ? "text-yellow-500" : "text-red-500")} />
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-sm">{evt.player}</div>
+                  <div className="flex-1 min-w-0">
+                    {evt.type === 'substitution' ? (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5 text-sm font-bold">
+                          <span className="text-red-400 text-[10px]">↓</span>
+                          <span className="truncate">{evt.player}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm font-bold">
+                          <span className="text-green-400 text-[10px]">↑</span>
+                          <span className="truncate">{evt.playerIn}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="font-bold text-sm">{evt.player}</div>
+                    )}
                     <div className="text-[10px] text-muted uppercase tracking-widest font-black">{evt.team === 'home' ? match.home.name : match.away.name}</div>
                   </div>
                   <button onClick={() => removeEvent(evt.id)} className="p-2 text-muted hover:text-red-500 transition-colors">
