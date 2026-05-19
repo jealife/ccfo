@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock, Star, ArrowLeftRight } from "lucide-react";
+import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock, Star, ArrowLeftRight, RefreshCw, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -139,6 +139,16 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     setEvents(events.filter(e => e.id !== eventId));
   };
 
+  // Detect score/events desync
+  const goalCountHome = events.filter(e => e.type === 'goal' && e.team === 'home').length;
+  const goalCountAway = events.filter(e => e.type === 'goal' && e.team === 'away').length;
+  const scoreOutOfSync = goalCountHome !== homeScore || goalCountAway !== awayScore;
+
+  const syncScoreFromEvents = () => {
+    setHomeScore(goalCountHome);
+    setAwayScore(goalCountAway);
+  };
+
   if (loading) return <div className="p-20 text-center animate-pulse">Chargement de la régie...</div>;
   if (!match) return <div className="p-20 text-center">Match introuvable</div>;
 
@@ -170,7 +180,20 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
         <div className="lg:col-span-5 space-y-6">
           <div className="glass-card p-8 space-y-8">
             <h3 className="text-xs font-black uppercase tracking-widest text-muted">Contrôle du Score</h3>
-            
+
+            {scoreOutOfSync && (
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-yellow-500">Score désynchronisé</p>
+                  <p className="text-[10px] text-yellow-500/70 mt-0.5">Buts comptés : {goalCountHome} – {goalCountAway}</p>
+                </div>
+                <button onClick={syncScoreFromEvents} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-400 text-[10px] font-black uppercase tracking-widest hover:bg-yellow-500/30 transition-colors shrink-0">
+                  <RefreshCw className="w-3 h-3" /> Sync
+                </button>
+              </div>
+            )}
+
             <div className="flex flex-col gap-6">
               {/* HOME */}
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">

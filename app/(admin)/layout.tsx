@@ -1,17 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
-import { 
-  LayoutDashboard, 
-  Trophy, 
-  Users, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Trophy,
+  Users,
+  Settings,
+  LogOut,
   Bell,
   Search,
   Calendar,
   Award,
   CreditCard,
   FileText,
+  ShieldAlert,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AdminBottomNav } from "@/components/dashboard/AdminBottomNav";
@@ -64,6 +65,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/matches", icon: <Trophy />, label: "Matchs & Résultats" },
     { href: "/admin/payments", icon: <CreditCard />, label: "Paiements" },
     { href: "/admin/documents", icon: <FileText />, label: "Documents" },
+    { href: "/admin/suspensions", icon: <ShieldAlert />, label: "Suspensions" },
   ];
 
   return (

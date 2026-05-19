@@ -155,15 +155,16 @@ async function recalculateStandings() {
     )
     .map((s, i) => ({ ...s, position: i + 1 }));
 
-  // Delete all existing standings, then insert fresh sorted data
-  const { data: existing } = await supabase.from('standings').select('team_id');
-  const existingIds = (existing || []).map(r => r.team_id);
-
-  if (existingIds.length > 0) {
-    await supabase.from('standings').delete().in('team_id', existingIds);
+  // Upsert fresh standings — avoids race condition from delete+insert
+  if (sorted.length > 0) {
+    await supabase.from('standings').upsert(sorted, { onConflict: 'team_id' });
   }
 
-  if (sorted.length > 0) {
-    await supabase.from('standings').insert(sorted);
+  // Remove standings for teams that no longer have finished matches
+  const activeTeamIds = sorted.map(s => s.team_id);
+  const { data: existing } = await supabase.from('standings').select('team_id');
+  const toDelete = (existing || []).map(r => r.team_id).filter(id => !activeTeamIds.includes(id));
+  if (toDelete.length > 0) {
+    await supabase.from('standings').delete().in('team_id', toDelete);
   }
 }
