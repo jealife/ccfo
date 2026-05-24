@@ -151,9 +151,9 @@
   will-change: transform;
 }
 
-/* ── Match detail hero background — noir avec accent rouge ── */
+/* ── Match detail hero background — rouge vif ── */
 .match-hero-bg {
-  background: linear-gradient(160deg, #060000 0%, #120101 35%, #1C0202 55%, #120101 80%, #060000 100%);
+  background: linear-gradient(160deg, #A3101A 0%, #CC1F2B 35%, #E02535 55%, #CC1F2B 80%, #A3101A 100%);
 }
 
 /* ── Football pitch background ── */
