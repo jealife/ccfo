@@ -3,138 +3,188 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { ChevronRight, Calendar } from "lucide-react";
+import { Calendar, ChevronRight } from "lucide-react";
 import { MatchTimer } from "./MatchTimer";
 
 export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] }) {
   const [filter, setFilter] = useState("Tous");
 
   const filters = [
-    { label: 'Tous', value: 'Tous' },
-    { label: 'Live', value: 'live' },
-    { label: 'Terminés', value: 'finished' },
-    { label: 'À venir', value: 'scheduled' }
+    { label: "Tous",     value: "Tous" },
+    { label: "Live",     value: "live" },
+    { label: "Terminés", value: "finished" },
+    { label: "À venir",  value: "scheduled" },
   ];
 
-  const filteredMatches = (initialMatches || []).filter((match: any) => {
-    if (filter === "Tous") return true;
-    return match.status === filter;
-  });
+  const filteredMatches = (initialMatches || []).filter((match: any) =>
+    filter === "Tous" || match.status === filter
+  );
 
-  // Group by date
-  const groupedMatches = filteredMatches.reduce((acc: any, match: any) => {
-    const dateObj = new Date(match.match_date);
-    let dateStr = dateObj.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-    
-    if (!acc[dateStr]) acc[dateStr] = [];
-    acc[dateStr].push(match);
+  const groupedMatches = filteredMatches.reduce((acc: Record<string, any[]>, match: any) => {
+    const d = new Date(match.match_date);
+    let label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    if (!acc[label]) acc[label] = [];
+    acc[label].push(match);
     return acc;
   }, {});
 
   return (
     <div className="space-y-8">
-      {/* QUICK FILTERS */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+
+      {/* ── Filtres pills ── */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         {filters.map((f) => (
-          <button 
-            key={f.value} 
+          <button
+            key={f.value}
+            type="button"
             onClick={() => setFilter(f.value)}
-            className={cn(
-              "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap",
-              filter === f.value ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" : "bg-white/5 border-white/10 text-muted hover:text-white"
-            )}
+            className={cn("pill-filter", filter === f.value ? "pill-active" : "pill-inactive")}
           >
             {f.label}
           </button>
         ))}
       </div>
 
-      <div className="space-y-12">
+      {/* ── Groupes par date ── */}
+      <div className="space-y-10">
         {Object.keys(groupedMatches).map((dateStr, i) => (
-          <div key={i} className="space-y-4 animate-fade-in">
-            {/* DATE HEADER */}
-            <div className="flex items-center gap-4">
-              <div className="h-px flex-1 bg-linear-to-r from-transparent via-white/10 to-transparent md:to-white/10" />
-              <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-                <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-white/60">{dateStr}</h3>
+          <div key={i} className="space-y-3 animate-fade-in">
+
+            {/* Date header */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary border border-border shrink-0">
+                <Calendar className="w-3 h-3 text-muted" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted">{dateStr}</h3>
               </div>
-              <div className="h-px flex-1 bg-linear-to-l from-transparent via-white/10 to-transparent md:to-white/10" />
+              <div className="h-px flex-1 bg-border" />
             </div>
 
-            {/* MATCHES LIST */}
-            <div className="grid grid-cols-1 gap-3">
+            {/* Match cards */}
+            <div className="space-y-2.5">
               {groupedMatches[dateStr].map((match: any) => {
-                const isLive = match.status === 'live';
-                const isFinished = match.status === 'finished';
-                const time = new Date(match.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                const isLive     = match.status === "live";
+                const isFinished = match.status === "finished";
+                const matchDate  = new Date(match.match_date);
+                const time       = matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                const startedAt  = match.stats?.find((s: any) => s.label === "started_at")?.value;
 
                 return (
-                  <Link 
-                    href={`/matches/${match.id}`} 
-                    key={match.id}
-                    className="group relative"
-                  >
+                  <Link href={`/matches/${match.id}`} key={match.id} className="block touch-manipulation group">
                     <div className={cn(
-                      "sports-card p-5 flex items-center justify-between gap-2 md:gap-8 hover:border-primary/30 transition-all duration-500",
-                      isLive && "border-primary/20 bg-primary/5 shadow-2xl shadow-primary/10"
+                      "bg-card rounded-2xl border transition-all duration-200 shadow-sm cursor-pointer overflow-hidden",
+                      "hover:shadow-md active:scale-[0.99]",
+                      isLive
+                        ? "border-primary/30 hover:border-primary/50"
+                        : "border-border hover:border-primary/20"
                     )}>
-                      {/* TIME/STATUS */}
-                      <div className="w-10 md:w-16 flex flex-col items-center gap-1 shrink-0 border-r border-white/5 pr-2 md:pr-4">
-                        <span className={cn(
-                          "text-[10px] md:text-xs font-black font-outfit uppercase tracking-tighter",
-                          isLive ? "text-primary animate-pulse" : "text-white/60"
-                        )}>
-                          {isLive ? 'LIVE' : isFinished ? 'FIN' : time}
-                        </span>
-                        {isLive && (
-                          <MatchTimer 
-                            startedAt={match.stats?.find((s: any) => s.label === 'started_at')?.value} 
-                            status={match.status} 
-                            className="mt-1" 
-                          />
-                        )}
-                      </div>
 
-                      {/* TEAM DOMICILE */}
-                      <div className="flex-1 flex flex-row md:flex-row-reverse items-center justify-end gap-3 md:gap-5">
-                        <span className="block text-[10px] md:text-sm font-bold uppercase tracking-tight text-white/80 group-hover:text-white transition-colors truncate">
-                          {match.home?.name}
-                        </span>
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-secondary border border-white/10 flex items-center justify-center text-sm md:text-xl font-black shadow-lg group-hover:scale-110 transition-transform duration-500 shrink-0">
-                          {match.home?.name?.[0]}
+                      {/* Live accent bar */}
+                      {isLive && (
+                        <div className="h-0.5 w-full bg-primary" />
+                      )}
+
+                      <div className="flex items-center gap-0">
+
+                        {/* ── Status column ── */}
+                        <div className="w-[72px] md:w-28 flex flex-col items-center justify-center gap-1 shrink-0 py-4 md:py-5 px-2 md:px-4 border-r border-border self-stretch">
+                          {isLive ? (
+                            <>
+                              <span className="flex items-center gap-1 text-[10px] md:text-xs font-black text-primary uppercase tracking-tight">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                                Live
+                              </span>
+                              <MatchTimer startedAt={startedAt} status={match.status} />
+                            </>
+                          ) : isFinished ? (
+                            <span className="px-2 py-0.5 rounded-md bg-secondary text-[10px] md:text-xs font-black text-muted uppercase tracking-tight">
+                              FIN
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-sm md:text-base font-black text-accent tabular-nums">{time}</span>
+                              <span className="text-[9px] font-bold text-muted uppercase tracking-widest hidden md:block">
+                                Prévu
+                              </span>
+                            </>
+                          )}
                         </div>
-                      </div>
 
-                      {/* SCORE CENTRAL */}
-                      <div className="px-4 py-2 rounded-2xl bg-background/50 border border-white/5 flex items-center gap-2 md:gap-4 shrink-0 min-w-[70px] md:min-w-[120px] justify-center shadow-inner">
-                        <span className={cn(
-                          "text-xl md:text-4xl font-black font-outfit tabular-nums tracking-tighter",
-                          isLive ? "text-primary" : isFinished ? "text-white" : "text-white/20"
-                        )}>
-                          {match.status === 'scheduled' ? '-' : match.home_score}
-                        </span>
-                        <div className="w-px h-4 bg-white/10" />
-                        <span className={cn(
-                          "text-xl md:text-4xl font-black font-outfit tabular-nums tracking-tighter",
-                          isLive ? "text-primary" : isFinished ? "text-white" : "text-white/20"
-                        )}>
-                          {match.status === 'scheduled' ? '-' : match.away_score}
-                        </span>
-                      </div>
+                        {/* ── Corps du match ── */}
+                        <div className="flex-1 flex items-center gap-3 md:gap-5 px-3 md:px-6 py-4 md:py-5 min-w-0">
 
-                      {/* TEAM EXTERIEUR */}
-                      <div className="flex-1 flex items-center justify-start gap-3 md:gap-5 text-right">
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-secondary border border-white/10 flex items-center justify-center text-sm md:text-xl font-black shadow-lg group-hover:scale-110 transition-transform duration-500 shrink-0">
-                          {match.away?.name?.[0]}
+                          {/* Équipe domicile */}
+                          <div className="flex-1 flex items-center justify-end gap-2 md:gap-3 min-w-0">
+                            <span className={cn(
+                              "font-bold text-sm md:text-base text-foreground truncate text-right leading-tight",
+                              isLive && "text-primary"
+                            )}>
+                              {match.home?.name ?? "—"}
+                            </span>
+                            <div className={cn(
+                              "w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center font-black text-sm md:text-lg border-2 shrink-0 transition-transform group-hover:scale-105 duration-200",
+                              isLive
+                                ? "bg-primary/10 border-primary/30 text-primary"
+                                : "bg-secondary border-border text-foreground"
+                            )}>
+                              {match.home?.name?.[0] ?? "?"}
+                            </div>
+                          </div>
+
+                          {/* Score */}
+                          <div className={cn(
+                            "flex items-center gap-1 md:gap-2 px-3 md:px-5 py-2 md:py-3 rounded-xl border shrink-0",
+                            "min-w-[72px] md:min-w-[100px] justify-center",
+                            isLive
+                              ? "bg-primary/10 border-primary/25"
+                              : isFinished
+                              ? "bg-secondary border-border"
+                              : "bg-secondary border-border"
+                          )}>
+                            <span className={cn(
+                              "text-lg md:text-2xl font-black tabular-nums font-outfit",
+                              isLive ? "text-primary"
+                              : isFinished ? "text-foreground"
+                              : "text-muted/60"
+                            )}>
+                              {match.status === "scheduled" ? "—" : match.home_score ?? 0}
+                            </span>
+                            <span className="text-muted/40 font-black text-lg md:text-xl">:</span>
+                            <span className={cn(
+                              "text-lg md:text-2xl font-black tabular-nums font-outfit",
+                              isLive ? "text-primary"
+                              : isFinished ? "text-foreground"
+                              : "text-muted/60"
+                            )}>
+                              {match.status === "scheduled" ? "—" : match.away_score ?? 0}
+                            </span>
+                          </div>
+
+                          {/* Équipe extérieure */}
+                          <div className="flex-1 flex items-center justify-start gap-2 md:gap-3 min-w-0">
+                            <div className={cn(
+                              "w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center font-black text-sm md:text-lg border-2 shrink-0 transition-transform group-hover:scale-105 duration-200",
+                              isLive
+                                ? "bg-primary/10 border-primary/30 text-primary"
+                                : "bg-secondary border-border text-foreground"
+                            )}>
+                              {match.away?.name?.[0] ?? "?"}
+                            </div>
+                            <span className={cn(
+                              "font-bold text-sm md:text-base text-foreground truncate leading-tight",
+                              isLive && "text-primary"
+                            )}>
+                              {match.away?.name ?? "—"}
+                            </span>
+                          </div>
                         </div>
-                        <span className="block text-[10px] md:text-sm font-bold uppercase tracking-tight text-white/80 group-hover:text-white transition-colors truncate">
-                          {match.away?.name}
-                        </span>
-                      </div>
 
-                      <div className="hidden md:flex pl-4 border-l border-white/5 opacity-20 group-hover:opacity-100 transition-opacity">
-                        <ChevronRight className="w-5 h-5 text-primary" />
+                        {/* Chevron */}
+                        <div className="pr-4 md:pr-5 pl-1 shrink-0 self-stretch flex items-center">
+                          <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-border group-hover:text-primary transition-colors duration-200" />
+                        </div>
+
                       </div>
                     </div>
                   </Link>
@@ -144,17 +194,18 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: any[] 
           </div>
         ))}
 
+        {/* Empty state */}
         {filteredMatches.length === 0 && (
-          <div className="text-center py-24 glass-card space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mx-auto">
-              <Calendar className="w-8 h-8 text-muted/40" />
+          <div className="bg-card rounded-2xl p-16 text-center border border-border space-y-4">
+            <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto">
+              <Calendar className="w-7 h-7 text-muted/40" />
             </div>
-            <p className="font-black font-outfit uppercase tracking-tight text-lg">Aucun match</p>
+            <p className="font-bold text-foreground font-outfit text-lg">Aucun match</p>
             <p className="text-muted text-sm">
-              {filter === "live" ? "Aucun match en direct pour le moment." :
-               filter === "finished" ? "Aucun match terminé pour le moment." :
-               filter === "scheduled" ? "Aucun match à venir programmé." :
-               "Aucun match disponible."}
+              {filter === "live"       ? "Aucun match en direct pour le moment."
+               : filter === "finished" ? "Aucun match terminé pour le moment."
+               : filter === "scheduled"? "Aucun match à venir programmé."
+               : "Aucun match disponible."}
             </p>
           </div>
         )}

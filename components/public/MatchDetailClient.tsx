@@ -1,25 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Clock, Zap, Star, LayoutGrid, BarChart2, Users, Goal, Square, User, Award, ArrowLeftRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { BarChart2, Goal, Square, User, Award, Star, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MatchTimer } from "./MatchTimer";
 
 export function MatchDetailClient({ match: initialMatch, events: initialEvents, stats: initialStats }: any) {
-  const [activeTab, setActiveTab] = useState("details");
-  const [match, setMatch] = useState(initialMatch);
-  const [events, setEvents] = useState(initialEvents);
-  const [stats, setStats] = useState(initialStats || []);
-  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [activeTab, setActiveTab]   = useState("details");
+  const [match, setMatch]           = useState(initialMatch);
+  const [events, setEvents]         = useState(initialEvents);
+  const [stats, setStats]           = useState(initialStats || []);
+  const [startedAt, setStartedAt]   = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    const processStats = (rawStats: any[]) => {
-      const startedAtEntry = rawStats?.find((s: any) => s.label === 'started_at');
-      if (startedAtEntry) setStartedAt(startedAtEntry.value);
-      return rawStats?.filter((s: any) => s.label !== 'started_at') || [];
+    const processStats = (raw: any[]) => {
+      const found = raw?.find((s: any) => s.label === "started_at");
+      if (found) setStartedAt(found.value);
+      return raw?.filter((s: any) => s.label !== "started_at") || [];
     };
 
     setStats(processStats(initialStats));
@@ -27,57 +26,52 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
     const channel = supabase
       .channel(`match-${match.id}`)
       .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'matches',
-          filter: `id=eq.${match.id}`
-        },
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${match.id}` },
         (payload) => {
           setMatch((prev: any) => ({ ...prev, ...payload.new }));
           if (payload.new.events) setEvents(payload.new.events);
-          if (payload.new.stats) setStats(processStats(payload.new.stats));
+          if (payload.new.stats)  setStats(processStats(payload.new.stats));
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [match.id, supabase, initialStats]);
 
   const tabs = [
-    { id: "details", label: "Détails", icon: <Clock className="w-4 h-4" /> },
-    { id: "stats", label: "Statistiques", icon: <BarChart2 className="w-4 h-4" /> },
-    { id: "lineups", label: "Compositions", icon: <Users className="w-4 h-4" /> },
+    { id: "details",  label: "Résumé" },
+    { id: "stats",    label: "Statistiques" },
+    { id: "lineups",  label: "Compositions" },
   ];
 
-  // Helper to find player photo from rosters
-  const getPlayerInfo = (name: string, teamSide: 'home' | 'away') => {
-    const players = teamSide === 'home' ? match.home.players : match.away.players;
-    return players?.find((p: any) => p.full_name === name || name.includes(p.full_name) || p.full_name.includes(name));
+  const getPlayerInfo = (name: string, teamSide: "home" | "away") => {
+    const players = teamSide === "home" ? match.home?.players : match.away?.players;
+    return players?.find((p: any) =>
+      p.full_name === name || name.includes(p.full_name) || p.full_name.includes(name)
+    );
   };
 
   return (
     <div className="w-full">
-      {/* TABS NAVIGATION */}
-      <div className="sticky top-[72px] z-40 bg-background/95 backdrop-blur-md border-b border-white/5 pt-4">
+      {/* ── Onglets ── */}
+      <div className="sticky top-16 z-40 bg-card border-b border-border">
         <div className="container mx-auto px-4 max-w-5xl">
-          <div className="flex items-center gap-6 overflow-x-auto custom-scrollbar pb-4">
+          <div className="flex">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 pb-2 text-xs font-black uppercase tracking-widest whitespace-nowrap transition-colors relative",
-                  activeTab === tab.id ? "text-primary" : "text-muted hover:text-white"
+                  "relative px-5 py-4 text-sm font-bold whitespace-nowrap shrink-0 min-h-[48px]",
+                  "touch-manipulation select-none cursor-pointer transition-colors",
+                  activeTab === tab.id ? "text-primary" : "text-muted hover:text-foreground"
                 )}
               >
-                {tab.icon}
                 {tab.label}
                 {activeTab === tab.id && (
-                  <div className="absolute bottom-[-16px] left-0 w-full h-1 bg-primary rounded-t-full" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
                 )}
               </button>
             ))}
@@ -85,193 +79,278 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
         </div>
       </div>
 
-      {/* TAB CONTENT */}
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* TAB: DETAILS (TIMELINE) */}
+      {/* ── Contenu des onglets ── */}
+      <div className="bg-secondary/30 border-t border-border">
+      <div className="container mx-auto px-4 py-8 pb-24 lg:pb-16 max-w-5xl">
+
+        {/* TIMELINE */}
         {activeTab === "details" && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="glass-card p-6 md:p-10">
-              <h3 className="text-xs font-black uppercase tracking-widest text-muted mb-8">Événements du match</h3>
-              <div className="relative pl-6 space-y-8">
-                <div className="absolute left-[11px] top-0 bottom-0 w-px bg-white/10" />
-                
-                {events.map((event: any) => {
-                  const playerInfo = getPlayerInfo(event.player, event.team);
-                  const playerInInfo = event.playerIn ? getPlayerInfo(event.playerIn, event.team) : null;
-                  const isSubstitution = event.type === 'substitution';
-                  return (
-                    <div key={event.id} className="relative flex items-center gap-4 md:gap-6">
-                      <div className={cn(
-                        "absolute left-[-29px] w-6 h-6 rounded-full border-4 border-background bg-card flex items-center justify-center z-10",
-                        event.type === 'goal' ? "border-primary bg-primary/20 text-primary" : isSubstitution ? "border-green-500/40 bg-green-500/10 text-green-400" : "border-white/10"
-                      )}>
-                        {event.type === 'goal' ? (
-                          <Goal className="w-3 h-3" />
-                        ) : isSubstitution ? (
-                          <ArrowLeftRight className="w-3 h-3" />
-                        ) : (
-                          <Square className={cn("w-3 h-3 fill-current", event.type === 'yellow' ? "text-yellow-500" : "text-red-500")} />
-                        )}
-                      </div>
+          <div className="animate-fade-in flex flex-col lg:flex-row gap-6">
 
-                      <div className="w-10 md:w-12 text-right">
-                        <span className="text-[10px] md:text-sm font-black font-outfit text-white/60">{event.minute}'</span>
-                      </div>
+            {/* ── Colonne principale — timeline ── */}
+            <div className="flex-1 min-w-0">
+              <div className="glass-card p-6 md:p-8">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted mb-6 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary rounded-full inline-block" />
+                  Événements du match
+                </h3>
 
-                      <div className={cn(
-                        "flex-1 p-3 md:p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4",
-                        event.type === 'goal' ? "bg-primary/5 border-primary/20" : isSubstitution ? "bg-green-500/5 border-green-500/10" : "bg-white/5"
-                      )}>
-                        {isSubstitution ? (
-                          <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
-                            <div className="flex flex-col gap-2 min-w-0 flex-1">
-                              {/* Joueur sortant */}
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-8 h-8 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
-                                  {playerInfo?.photo_url ? (
-                                    <img src={playerInfo.photo_url} alt={event.player} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">{event.player?.[0] || "?"}</div>
-                                  )}
+                {events.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <p className="text-muted text-sm">Aucun événement enregistré.</p>
+                  </div>
+                ) : (
+                  <div className="relative pl-6 space-y-6">
+                    <div className="absolute left-[11px] top-0 bottom-0 w-px bg-border" />
+
+                    {events.map((event: any) => {
+                      const playerInfo   = getPlayerInfo(event.player, event.team);
+                      const playerInInfo = event.playerIn ? getPlayerInfo(event.playerIn, event.team) : null;
+                      const isSub        = event.type === "substitution";
+                      const teamName     = event.team === "home" ? (match.home?.name ?? "Domicile") : (match.away?.name ?? "Extérieur");
+                      const teamInitial  = event.team === "home" ? (match.home?.name?.[0] ?? "?") : (match.away?.name?.[0] ?? "?");
+
+                      return (
+                        <div key={event.id} className="relative flex items-start gap-4">
+                          {/* Dot */}
+                          <div className={cn(
+                            "absolute left-[-29px] w-6 h-6 rounded-full border-2 bg-card flex items-center justify-center z-10 shrink-0",
+                            event.type === "goal"    ? "border-primary text-primary"
+                            : isSub                   ? "border-green-500 text-green-500"
+                            : event.type === "yellow" ? "border-yellow-500 text-yellow-500"
+                            : "border-red-500 text-red-500"
+                          )}>
+                            {event.type === "goal" ? <Goal className="w-3 h-3" />
+                              : isSub ? <ArrowLeftRight className="w-3 h-3" />
+                              : <Square className={cn("w-3 h-3 fill-current", event.type === "yellow" ? "text-yellow-500" : "text-red-500")} />
+                            }
+                          </div>
+
+                          {/* Minute */}
+                          <span className="w-10 text-right shrink-0 text-xs font-black font-outfit text-muted pt-2">
+                            {event.minute}&apos;
+                          </span>
+
+                          {/* Card */}
+                          <div className={cn(
+                            "flex-1 p-3 md:p-4 rounded-2xl border flex items-center justify-between gap-3",
+                            event.type === "goal" ? "bg-primary/5 border-primary/20"
+                            : isSub               ? "bg-green-50 border-green-200"
+                            : "bg-secondary border-border"
+                          )}>
+                            {isSub ? (
+                              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-500 text-xs font-black shrink-0">↓</span>
+                                  <PlayerAvatar photo={playerInfo?.photo_url} name={event.player} />
+                                  <span className="font-bold text-sm text-foreground truncate">{event.player}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="text-red-400 text-xs font-black shrink-0">↓</span>
-                                  <span className="font-bold text-sm text-white truncate">{event.player}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-500 text-xs font-black shrink-0">↑</span>
+                                  <PlayerAvatar photo={playerInInfo?.photo_url} name={event.playerIn} />
+                                  <span className="font-bold text-sm text-foreground truncate">{event.playerIn}</span>
+                                </div>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-muted">
+                                  Changement · {teamName}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3 min-w-0">
+                                <PlayerAvatar photo={playerInfo?.photo_url} name={event.player} size="md" />
+                                <div className="min-w-0">
+                                  <span className="font-bold text-sm text-foreground truncate block">{event.player}</span>
+                                  <span className="text-[9px] font-black uppercase tracking-widest text-muted">
+                                    {event.type === "goal" ? "But" : "Carton"} · {teamName}
+                                  </span>
                                 </div>
                               </div>
-                              {/* Joueur entrant */}
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-8 h-8 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
-                                  {playerInInfo?.photo_url ? (
-                                    <img src={playerInInfo.photo_url} alt={event.playerIn} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">{event.playerIn?.[0] || "?"}</div>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="text-green-400 text-xs font-black shrink-0">↑</span>
-                                  <span className="font-bold text-sm text-white truncate">{event.playerIn}</span>
-                                </div>
-                              </div>
-                              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted">
-                                Changement • {event.team === 'home' ? match.home.name : match.away.name}
-                              </span>
+                            )}
+                            <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-black text-[10px] text-foreground shrink-0">
+                              {teamInitial}
                             </div>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-background border border-white/10 overflow-hidden shrink-0">
-                              {playerInfo?.photo_url ? (
-                                <img src={playerInfo.photo_url} alt={event.player} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center font-black text-[10px] text-muted">
-                                  {event.player?.[0] || "?"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-bold text-sm md:text-base text-white truncate leading-tight">{event.player}</span>
-                              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted mt-0.5">
-                                {event.type === 'goal' ? 'But' : 'Carton'} • {event.team === 'home' ? match.home.name : match.away.name}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-background/50 flex items-center justify-center font-black text-[9px] md:text-xs shrink-0 border border-white/5">
-                          {event.team === 'home' ? match.home.name[0] : match.away.name[0]}
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-            
-                <MatchTimer startedAt={startedAt || undefined} status={match.status} className="mb-4" />
-                
-                {match.motm_player && (
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-linear-to-r from-accent/50 to-primary/50 rounded-4xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-                <div className="relative glass-card p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 md:gap-10 bg-linear-to-br from-accent/10 via-background to-background border-accent/20">
-                  {/* Premium Player Photo Wrapper */}
-                  <div className="relative">
-                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-secondary border-2 border-accent/30 overflow-hidden shadow-2xl relative z-10">
-                      {/* Try to find MOTM photo */}
-                      {(() => {
-                        const motmInfo = getPlayerInfo(match.motm_player, match.home.players?.some((p:any) => p.full_name === match.motm_player) ? 'home' : 'away');
-                        return motmInfo?.photo_url ? (
-                          <img src={motmInfo.photo_url} alt={match.motm_player} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-4xl font-black text-accent/30">
-                            {match.motm_player[0]}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    {/* Floating Badge */}
-                    <div className="absolute -top-3 -right-3 md:-top-4 md:-right-4 w-10 h-10 md:w-14 md:h-14 rounded-full bg-accent text-background flex items-center justify-center shadow-2xl z-20 animate-bounce-slow">
-                      <Star className="w-5 h-5 md:w-8 md:h-8 fill-current" />
-                    </div>
-                  </div>
 
-                  <div className="flex-1 text-center sm:text-left space-y-2 md:space-y-4">
-                    <div>
-                      <h4 className="text-2xl md:text-5xl font-black font-outfit uppercase tracking-tighter leading-none italic">{match.motm_player}</h4>
-                      <p className="text-accent font-black uppercase tracking-[0.3em] text-[10px] md:text-xs mt-2 flex items-center justify-center sm:justify-start gap-2">
-                        <Award className="w-4 h-4" /> Homme du Match
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                      <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-muted">
-                        Performance Exceptionnelle
-                      </span>
+            {/* ── Sidebar desktop ── */}
+            <div className="lg:w-72 shrink-0 space-y-4">
+
+              {match.status === "live" && (
+                <MatchTimer startedAt={startedAt || undefined} status={match.status} />
+              )}
+
+              {match.motm_player && (() => {
+                const motmSide = match.home?.players?.some((p: any) => p.full_name === match.motm_player) ? "home" : "away";
+                const info     = getPlayerInfo(match.motm_player, motmSide);
+                return (
+                  <div className="glass-card p-5 border-accent/20 bg-accent/5">
+                    <p className="text-accent text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-4">
+                      <Award className="w-3 h-3" /> Homme du Match
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <div className="relative shrink-0">
+                        <div className="w-14 h-14 rounded-xl bg-secondary border-2 border-accent/30 overflow-hidden flex items-center justify-center">
+                          {info?.photo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={info.photo_url} alt={match.motm_player} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-2xl font-black text-accent/40">{match.motm_player[0]}</span>
+                          )}
+                        </div>
+                        <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-accent text-white flex items-center justify-center shadow">
+                          <Star className="w-3 h-3 fill-current" />
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-black text-base font-outfit uppercase tracking-tight text-foreground truncate">
+                          {match.motm_player}
+                        </p>
+                        <p className="text-[9px] font-bold text-muted uppercase tracking-widest mt-0.5">
+                          Performance exceptionnelle
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                );
+              })()}
+
+              <div className="glass-card p-5 space-y-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-muted mb-1">Infos match</p>
+                <InfoRow label="Compétition" value="Coupe Cantonale Fieng Okano" />
+                <InfoRow label="Stade" value="Stade Okano" />
+                <InfoRow
+                  label="Date"
+                  value={new Date(match.match_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                />
+                <InfoRow
+                  label="Statut"
+                  value={match.status === "live" ? "En direct" : match.status === "finished" ? "Terminé" : "Programmé"}
+                />
               </div>
-            )}
+            </div>
+
           </div>
         )}
 
-        {/* TAB: STATS */}
+        {/* STATS */}
         {activeTab === "stats" && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="glass-card p-6 md:p-10 space-y-8">
-              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest border-b border-white/5 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">{match.home.name[0]}</div>
-                  <span className="hidden sm:block">{match.home.name}</span>
+          <div className="animate-fade-in">
+            <div className="glass-card p-6 md:p-8 space-y-6">
+              {/* Team headers */}
+              <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest border-b border-border pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-[10px]">
+                    {match.home?.name?.[0] ?? "?"}
+                  </div>
+                  <span className="hidden sm:block text-foreground">{match.home?.name ?? "—"}</span>
                 </div>
-                <span className="text-muted">Statistiques d'équipe</span>
-                <div className="flex items-center gap-3">
-                  <span className="hidden sm:block">{match.away.name}</span>
-                  <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">{match.away.name[0]}</div>
+                <span className="text-muted">Statistiques</span>
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:block text-foreground">{match.away?.name ?? "—"}</span>
+                  <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-foreground font-black text-[10px]">
+                    {match.away?.name?.[0] ?? "?"}
+                  </div>
                 </div>
               </div>
-              
+
               {stats.map((stat: any, i: number) => {
-                const homeVal = typeof stat.home === 'string' ? parseFloat(stat.home) : stat.home;
-                const awayVal = typeof stat.away === 'string' ? parseFloat(stat.away) : stat.away;
-                const total = homeVal + awayVal || 1;
+                const homeVal  = typeof stat.home === "string" ? parseFloat(stat.home) : stat.home;
+                const awayVal  = typeof stat.away === "string" ? parseFloat(stat.away) : stat.away;
+                const total    = homeVal + awayVal || 1;
                 const homePerc = (homeVal / total) * 100;
-                
+
                 return (
-                  <div key={i} className="space-y-3">
-                    <div className="flex items-center justify-between text-xs md:text-sm font-black uppercase tracking-tight">
-                      <span className={homeVal >= awayVal ? "text-primary" : "text-white/60"}>{stat.home}</span>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted/40">{stat.label}</span>
-                      <span className={awayVal >= homeVal ? "text-white" : "text-white/60"}>{stat.away}</span>
+                  <div key={i} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm font-black">
+                      <span className={homeVal >= awayVal ? "text-primary" : "text-muted"}>
+                        {stat.home}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                        {stat.label}
+                      </span>
+                      <span className={awayVal > homeVal ? "text-foreground font-black" : "text-muted"}>
+                        {stat.away}
+                      </span>
                     </div>
-                    <div className="h-2 flex gap-1 rounded-full overflow-hidden bg-white/5 p-0.5">
-                      <div 
-                        className="h-full bg-linear-to-r from-primary to-primary/60 rounded-full transition-all duration-1000 ease-out" 
-                        style={{ width: `${homePerc}%` }} 
-                      />
-                      <div 
-                        className="h-full bg-linear-to-l from-white to-white/60 rounded-full transition-all duration-1000 ease-out" 
-                        style={{ width: `${100 - homePerc}%` }} 
-                      />
+                    {/* eslint-disable-next-line react/forbid-component-props -- dynamic data-driven width */}
+                    <StatBar homePerc={homePerc} />
+                  </div>
+                );
+              })}
+
+              {stats.length === 0 && (
+                <p className="text-center text-muted text-sm py-8">Aucune statistique disponible.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* COMPOSITIONS */}
+        {activeTab === "lineups" && (
+          <div className="space-y-4 animate-fade-in">
+            <FootballPitch
+              homePlayers={match.home?.players ?? []}
+              awayPlayers={match.away?.players ?? []}
+              homeName={match.home?.name ?? "—"}
+              awayName={match.away?.name ?? "—"}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(["home", "away"] as const).map((side) => {
+                const team        = match[side];
+                const teamName    = team?.name   ?? "Équipe inconnue";
+                const teamPlayers = team?.players ?? [];
+                return (
+                  <div key={side} className="glass-card overflow-hidden">
+                    <div className="bg-secondary border-b border-border p-4 flex items-center gap-3">
+                      <div className={cn(
+                        "w-9 h-9 rounded-full border flex items-center justify-center font-black text-sm",
+                        side === "home"
+                          ? "bg-primary/10 border-primary/30 text-primary"
+                          : "bg-card border-border text-foreground"
+                      )}>
+                        {teamName[0]}
+                      </div>
+                      <div>
+                        <div className="font-black text-sm text-foreground uppercase tracking-tight">{teamName}</div>
+                        <div className="text-[10px] font-bold text-muted uppercase tracking-widest">
+                          {side === "home" ? "Domicile" : "Extérieur"}
+                        </div>
+                      </div>
+                      <span className="ml-auto text-[10px] font-bold text-muted">{teamPlayers.length} joueurs</span>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {teamPlayers.length > 0 ? teamPlayers.map((p: any) => (
+                        <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors">
+                          <span className={cn(
+                            "w-6 text-right font-black font-outfit text-xs shrink-0",
+                            side === "home" ? "text-primary" : "text-foreground"
+                          )}>
+                            {p.jersey_number ?? "—"}
+                          </span>
+                          <div className="w-8 h-8 rounded-full bg-secondary border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                            {p.photo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.photo_url} alt={p.full_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-4 h-4 text-muted/50" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-sm text-foreground truncate">{p.full_name}</div>
+                            <div className="text-[9px] font-black text-muted uppercase tracking-widest">{p.position ?? "—"}</div>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="p-8 text-center text-muted text-sm italic">
+                          Composition non disponible.
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -279,78 +358,177 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
             </div>
           </div>
         )}
-
-        {/* TAB: LINEUPS */}
-        {activeTab === "lineups" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-            {/* HOME LINEUP */}
-            <div className="glass-card overflow-hidden">
-              <div className="bg-white/5 p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-background border border-white/10 flex items-center justify-center font-black text-lg">
-                  {match.home.name[0]}
-                </div>
-                <div>
-                  <div className="font-black uppercase text-sm tracking-tight">{match.home.name}</div>
-                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">Effectif Officiel</div>
-                </div>
-              </div>
-              <div className="divide-y divide-white/5">
-                {match.home.players?.length > 0 ? match.home.players.map((p: any) => (
-                  <div key={p.id} className="flex items-center gap-4 p-3 hover:bg-white/5 transition-colors">
-                    <div className="w-6 text-right font-black font-outfit text-primary text-xs">{p.jersey_number}</div>
-                    <div className="w-8 h-8 rounded-full bg-background border border-white/5 flex items-center justify-center overflow-hidden shrink-0">
-                      {p.photo_url ? (
-                        <img src={p.photo_url} alt={p.full_name} className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-4 h-4 text-muted/50" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm truncate uppercase tracking-tight">{p.full_name}</div>
-                      <div className="text-[9px] font-black text-muted uppercase tracking-widest">{p.position}</div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="p-8 text-center text-muted text-xs italic">Composition non disponible</div>
-                )}
-              </div>
-            </div>
-
-            {/* AWAY LINEUP */}
-            <div className="glass-card overflow-hidden">
-              <div className="bg-white/5 p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-background border border-white/10 flex items-center justify-center font-black text-lg">
-                  {match.away.name[0]}
-                </div>
-                <div>
-                  <div className="font-black uppercase text-sm tracking-tight">{match.away.name}</div>
-                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">Effectif Officiel</div>
-                </div>
-              </div>
-              <div className="divide-y divide-white/5">
-                {match.away.players?.length > 0 ? match.away.players.map((p: any) => (
-                  <div key={p.id} className="flex items-center gap-4 p-3 hover:bg-white/5 transition-colors">
-                    <div className="w-6 text-right font-black font-outfit text-primary text-xs">{p.jersey_number}</div>
-                    <div className="w-8 h-8 rounded-full bg-background border border-white/5 flex items-center justify-center overflow-hidden shrink-0">
-                      {p.photo_url ? (
-                        <img src={p.photo_url} alt={p.full_name} className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-4 h-4 text-muted/50" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm truncate uppercase tracking-tight">{p.full_name}</div>
-                      <div className="text-[9px] font-black text-muted uppercase tracking-widest">{p.position}</div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="p-8 text-center text-muted text-xs italic">Composition non disponible</div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Ligne d'info match ── */
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-sm">
+      <span className="text-muted text-xs font-bold shrink-0">{label}</span>
+      <span className="font-bold text-foreground text-xs text-right">{value}</span>
+    </div>
+  );
+}
+
+/* ── Barre de stat dynamique — largeur via ref pour éviter inline styles ── */
+function StatBar({ homePerc }: { homePerc: number }) {
+  const homeRef = useRef<HTMLDivElement>(null);
+  const awayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (homeRef.current) homeRef.current.style.width = `${homePerc}%`;
+    if (awayRef.current) awayRef.current.style.width = `${100 - homePerc}%`;
+  }, [homePerc]);
+
+  return (
+    <div className="h-2 flex rounded-full overflow-hidden bg-secondary">
+      <div ref={homeRef} className="h-full bg-primary rounded-full transition-all duration-700 ease-out" />
+      <div ref={awayRef} className="h-full bg-foreground/20 rounded-full transition-all duration-700 ease-out" />
+    </div>
+  );
+}
+
+/* ── Terrain de foot ── */
+const POSITION_ORDER = ["GK", "DEF", "MID", "ATT", "FWD"];
+
+function groupByPosition(players: any[]) {
+  const groups: Record<string, any[]> = {};
+  for (const p of players) {
+    const pos = p.position?.toUpperCase() ?? "—";
+    const key = POSITION_ORDER.find((o) => pos.startsWith(o)) ?? pos;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  }
+  return POSITION_ORDER.filter((k) => groups[k]?.length).map((k) => groups[k]);
+}
+
+function PitchPlayer({ player, color }: { player: any; color: "red" | "dark" }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 shrink-0">
+      <div className={cn(
+        "w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-[10px] text-white shadow",
+        color === "red"
+          ? "bg-primary border-primary/80"
+          : "bg-foreground border-foreground/80"
+      )}>
+        {player.jersey_number ?? player.full_name?.[0] ?? "?"}
+      </div>
+      <span className="text-[8px] font-bold text-white/80 max-w-[44px] truncate text-center leading-tight">
+        {player.full_name?.split(" ").pop() ?? ""}
+      </span>
+    </div>
+  );
+}
+
+function FootballPitch({
+  homePlayers, awayPlayers, homeName, awayName,
+}: {
+  homePlayers: any[];
+  awayPlayers: any[];
+  homeName: string;
+  awayName: string;
+}) {
+  const homeGroups = groupByPosition(homePlayers);
+  const awayGroups = groupByPosition(awayPlayers);
+  const hasLineup  = homePlayers.length > 0 || awayPlayers.length > 0;
+
+  if (!hasLineup) return null;
+
+  return (
+    <div className="pitch-bg rounded-3xl overflow-hidden relative">
+      {/* Pitch markings */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        {/* Outer border */}
+        <rect x="5" y="3" width="90" height="94" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.5" />
+        {/* Centre line */}
+        <line x1="5" y1="50" x2="95" y2="50" stroke="rgba(255,255,255,0.25)" strokeWidth="0.5" />
+        {/* Centre circle */}
+        <circle cx="50" cy="50" r="11" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.5" />
+        <circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.3)" />
+        {/* Home penalty area (bottom) */}
+        <rect x="25" y="76" width="50" height="21" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="0.5" />
+        <rect x="35" y="86" width="30" height="11" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="0.5" />
+        {/* Away penalty area (top) */}
+        <rect x="25" y="3" width="50" height="21" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="0.5" />
+        <rect x="35" y="3" width="30" height="11" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="0.5" />
+        {/* Penalty spots */}
+        <circle cx="50" cy="83" r="0.8" fill="rgba(255,255,255,0.3)" />
+        <circle cx="50" cy="17" r="0.8" fill="rgba(255,255,255,0.3)" />
+        {/* Grass stripes (subtle) */}
+        {[13, 21, 29, 37, 45, 53, 61, 69, 77, 85].map((y) => (
+          <rect key={y} x="5" y={y} width="90" height="4" fill="rgba(255,255,255,0.02)" />
+        ))}
+      </svg>
+
+      {/* Away team name (top) */}
+      <div className="relative z-10 pt-3 pb-1 text-center">
+        <span className="text-[9px] font-black uppercase tracking-widest text-white/50">{awayName}</span>
+      </div>
+
+      {/* Away lineup (top half, reversed: ATT → DEF → GK top-to-bottom) */}
+      <div className="relative z-10 flex flex-col gap-3 px-4 pb-2">
+        {[...awayGroups].reverse().map((group, i) => (
+          <div key={i} className="flex justify-center gap-3 flex-wrap">
+            {group.map((p: any) => (
+              <PitchPlayer key={p.id} player={p} color="dark" />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Centre divider */}
+      <div className="relative z-10 flex items-center justify-center py-1">
+        <div className="flex-1 h-px bg-white/20 mx-6" />
+        <div className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center bg-white/5 shrink-0" />
+        <div className="flex-1 h-px bg-white/20 mx-6" />
+      </div>
+
+      {/* Home lineup (bottom half: ATT → DEF → GK bottom-to-top = reversed render) */}
+      <div className="relative z-10 flex flex-col gap-3 px-4 pt-2">
+        {homeGroups.map((group, i) => (
+          <div key={i} className="flex justify-center gap-3 flex-wrap">
+            {group.map((p: any) => (
+              <PitchPlayer key={p.id} player={p} color="red" />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Home team name (bottom) */}
+      <div className="relative z-10 pt-1 pb-3 text-center">
+        <span className="text-[9px] font-black uppercase tracking-widest text-white/50">{homeName}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Helper interne ── */
+function PlayerAvatar({
+  photo, name, size = "sm",
+}: {
+  photo?: string | null;
+  name?: string;
+  size?: "sm" | "md";
+}) {
+  const dim = size === "md" ? "w-10 h-10" : "w-7 h-7";
+  return (
+    <div className={cn(dim, "rounded-full bg-secondary border border-border overflow-hidden shrink-0 flex items-center justify-center")}>
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt={name ?? ""} className="w-full h-full object-cover" />
+      ) : (
+        <span className="font-black text-[10px] text-muted">{name?.[0] ?? "?"}</span>
+      )}
     </div>
   );
 }

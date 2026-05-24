@@ -1,24 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShieldCheck, TrendingUp } from "lucide-react";
+import { MapPin, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { MatchTimer } from "./MatchTimer";
-
-function TeamEmblem({ name, label }: { name: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 group/team">
-      <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-background border border-white/10 flex items-center justify-center text-xl md:text-3xl font-black shadow-2xl group-hover/team:scale-110 group-hover/team:border-primary/50 transition-all duration-500">
-        {label}
-      </div>
-      <span className="text-[10px] md:text-xs font-black font-outfit uppercase tracking-tighter text-center max-w-[80px] md:max-w-[120px] leading-tight">
-        {name}
-      </span>
-    </div>
-  );
-}
 
 export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
   const [match, setMatch] = useState(initialMatch);
@@ -26,82 +13,117 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
 
   useEffect(() => {
     if (!match?.id) return;
-
     const channel = supabase
       .channel(`hero-match-${match.id}`)
       .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'matches',
-          filter: `id=eq.${match.id}`
-        },
-        (payload) => {
-          setMatch((prev: any) => ({ ...prev, ...payload.new }));
-        }
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${match.id}` },
+        (payload) => setMatch((prev: any) => ({ ...prev, ...payload.new }))
       )
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [match?.id, supabase]);
 
   if (!match) return null;
 
-  const startedAt = match.stats?.find((s: any) => s.label === 'started_at')?.value;
+  const startedAt = match.stats?.find((s: any) => s.label === "started_at")?.value;
+  const matchDate = new Date(match.match_date);
+  const isLive = match.status === "live";
+  const isFinished = match.status === "finished";
+  const isScheduled = match.status === "scheduled";
 
   return (
-    <div className="glass-card p-10 space-y-8 group hover:border-primary/20 transition-all duration-700">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={cn("w-2 h-2 rounded-full", match.status === 'live' ? "bg-red-500 animate-pulse" : "bg-white/20")} />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-            {match.status === 'live' ? 'En Direct' : 'Match à l\'affiche'}
+    <Link href={`/matches/${match.id}`} className="block group touch-manipulation">
+      <div className="hero-card p-6 md:p-8 active:scale-[0.99] transition-transform duration-150">
+        {/* Decorative orbs */}
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/5 pointer-events-none" />
+        <div className="absolute -bottom-8 -left-8 w-40 h-40 rounded-full bg-white/3 pointer-events-none" />
+
+        {/* Header row */}
+        <div className="relative flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "w-2 h-2 rounded-full shrink-0",
+              isLive ? "bg-red-400 animate-pulse" : "bg-white/30"
+            )} />
+            <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest">
+              {isLive ? "En Direct" : isFinished ? "Terminé" : "Match à l'Affiche"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-white/40">
+            <MapPin className="w-3 h-3" />
+            <span className="text-[10px] font-medium">Stade Okano</span>
+          </div>
+        </div>
+
+        {/* Competition label */}
+        <div className="relative text-center mb-6">
+          <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">
+            Coupe Cantonale Fieng Okano
           </span>
         </div>
-        <ShieldCheck className="w-5 h-5 text-accent opacity-50" />
-      </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <TeamEmblem name={match.home?.name || 'TBA'} label={match.home?.name?.[0] || '?'} />
-        <div className="flex flex-col items-center gap-2">
-          <div className={cn(
-            "text-3xl font-black font-outfit tracking-widest uppercase italic",
-            match.status === 'live' ? "text-primary animate-pulse" : "text-white/20"
-          )}>
-            {match.status === 'scheduled' ? 'VS' : `${match.home_score} - ${match.away_score}`}
+        {/* Teams + Score */}
+        <div className="relative flex items-center justify-between gap-2 md:gap-6">
+
+          {/* Home team */}
+          <div className="flex flex-col items-center gap-2.5 flex-1">
+            <div className="w-14 h-14 md:w-18 md:h-18 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-2xl md:text-3xl font-black text-white">
+              {match.home?.name?.[0] ?? "?"}
+            </div>
+            <span className="text-xs md:text-sm font-bold text-white/90 text-center leading-tight max-w-[80px]">
+              {match.home?.name}
+            </span>
+            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Domicile</span>
           </div>
-          <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-center">
-            {match.status === 'live' ? 'En Direct' : `${new Date(match.match_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} • ${new Date(match.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
+
+          {/* Score / VS */}
+          <div className="flex flex-col items-center gap-2 shrink-0 min-w-[90px] md:min-w-[120px]">
+            {isScheduled ? (
+              <>
+                <div className="text-3xl md:text-5xl font-black text-white tracking-tight">VS</div>
+                <div className="text-[10px] text-white/50 font-bold text-center">
+                  {matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                  {" • "}
+                  {matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl md:text-6xl font-black text-white tracking-tighter">
+                  {match.home_score} : {match.away_score}
+                </div>
+                {isLive ? (
+                  <MatchTimer startedAt={startedAt} status={match.status} />
+                ) : (
+                  <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Temps réglementaire</span>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Away team */}
+          <div className="flex flex-col items-center gap-2.5 flex-1">
+            <div className="w-14 h-14 md:w-18 md:h-18 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-2xl md:text-3xl font-black text-white">
+              {match.away?.name?.[0] ?? "?"}
+            </div>
+            <span className="text-xs md:text-sm font-bold text-white/90 text-center leading-tight max-w-[80px]">
+              {match.away?.name}
+            </span>
+            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Extérieur</span>
           </div>
         </div>
-        <TeamEmblem name={match.away?.name || 'TBA'} label={match.away?.name?.[0] || '?'} />
-      </div>
 
-      <div className="pt-8 border-t border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="text-center">
-            <div className={cn("text-xl font-black font-outfit", match.status === 'live' && "text-primary")}>
-              {match.status === 'live' ? (
-                <MatchTimer startedAt={startedAt || undefined} status={match.status} />
-              ) : match.status === 'finished' ? 'Terminé' : 'Prévu'}
-            </div>
-            <div className="text-[8px] font-black uppercase tracking-widest text-muted">
-              {match.status === 'live' ? 'Temps Écoulé' : 'Statut'}
-            </div>
-          </div>
-          <div className="w-px h-8 bg-white/5" />
-          <div className="text-center">
-            <div className="text-xl font-black font-outfit">Stade</div>
-            <div className="text-[8px] font-black uppercase tracking-widest text-muted">Okano Central</div>
-          </div>
+        {/* Footer row */}
+        <div className="relative mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+          <span className="text-[10px] text-white/40 font-medium capitalize">
+            {matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+          </span>
+          <span className="flex items-center gap-1 text-[11px] text-white/60 font-bold group-hover:text-white transition-colors">
+            Voir les détails <ChevronRight className="w-3.5 h-3.5" />
+          </span>
         </div>
-        <Link href={`/matches/${match.id}`} className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
-          <TrendingUp className="w-5 h-5" />
-        </Link>
       </div>
-    </div>
+    </Link>
   );
 }

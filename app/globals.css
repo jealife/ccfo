@@ -1,111 +1,284 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050505;
-  --color-foreground: #ffffff;
-  --color-primary: #ef4444; /* Vivid Red */
-  --color-secondary: #121212; /* Deep Charcoal */
-  --color-accent: #fbbf24; /* Champion Gold */
-  --color-card: #0a0a0a;
+  /* === ROUGE · NOIR · OR — CCFO26 === */
+  --color-background: #fffdfd;
+  --color-foreground: #0A0A0A;
+  --color-primary: #CC1F2B;      /* Rouge — couleur signature CCFO */
+  --color-secondary: #F0EFED;    /* Surface légère chaude */
+  --color-accent: #E8A52A;       /* Or — heures de match, highlights */
+  --color-card: #FFFFFF;
   --color-muted: #888888;
-  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border: rgba(0, 0, 0, 0.09);
+  --color-hero: #1A0203;         /* Noir-rouge foncé — hero gradient */
+  --color-surface-inverse: #0A0A0A; /* Surface inversée — toujours sombre (footer) */
 
   --font-inter: "Inter", sans-serif;
   --font-outfit: "Outfit", sans-serif;
 }
-
+.t{
+  color: #fffdfd;
+}
 @layer base {
   body {
-    @apply bg-background text-foreground font-inter antialiased selection:bg-primary/30 selection:text-white;
+    @apply bg-background text-foreground font-inter antialiased selection:bg-primary/20 selection:text-primary;
   }
 
   h1, h2, h3, h4, .font-outfit {
     @apply font-outfit;
   }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
 }
 
 @layer components {
-  /* Glassmorphism Card */
+  /* ── Carte blanche standard ── */
+  .match-card {
+    @apply bg-card rounded-2xl border border-border transition-all duration-200;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+  }
+  .match-card:hover {
+    border-color: rgba(204, 31, 43, 0.2);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
+    transform: translateY(-1px);
+  }
+
+  /* ── Carte hero rouge vif (match à l'affiche) ── */
+  .hero-card {
+    background: linear-gradient(145deg, #A3101A 0%, #CC1F2B 45%, #E02535 75%, #B8111E 100%);
+    @apply rounded-3xl text-white relative overflow-hidden;
+    box-shadow: 0 16px 56px rgba(204, 31, 43, 0.45);
+  }
+
+  /* ── Glass card → surface blanche avec ombre douce ── */
   .glass-card {
-    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2rem] shadow-2xl;
+    @apply bg-card rounded-2xl border border-border;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
     position: relative;
     overflow: hidden;
   }
 
-  .glass-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at top left, rgba(255,255,255,0.05) 0%, transparent 50%);
-    pointer-events: none;
-  }
-
-  /* Premium Sports Card */
+  /* ── Sports card ── */
   .sports-card {
-    @apply relative overflow-hidden transition-all duration-500 hover:scale-[1.01] active:scale-[0.99];
-    background: linear-gradient(145deg, rgba(20,20,20,0.8) 0%, rgba(10,10,10,0.9) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 20px 40px -20px rgba(0,0,0,0.5);
+    @apply bg-card rounded-2xl border border-border transition-all duration-200;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   }
-
   .sports-card:hover {
-    border-color: rgba(239, 68, 68, 0.3);
-    box-shadow: 0 0 30px -10px rgba(239, 68, 68, 0.15);
+    border-color: rgba(204, 31, 43, 0.2);
+    box-shadow: 0 6px 28px rgba(204, 31, 43, 0.08);
+    transform: translateY(-1px);
   }
 
-  /* Animated Border Light */
-  .border-glow {
-    position: relative;
+  /* ── Pill filters ── */
+  .pill-filter {
+    @apply flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold border transition-all duration-200 whitespace-nowrap cursor-pointer;
+    min-height: 44px;
+    touch-action: manipulation;
   }
-
-  .border-glow::after {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.3), transparent);
-    z-index: -1;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    animation: border-rotate 4s linear infinite;
+  .pill-active {
+    @apply bg-primary text-white border-primary;
+    box-shadow: 0 4px 16px rgba(204, 31, 43, 0.30);
   }
-
-  /* Gradient Text */
-  .gradient-text {
-    @apply bg-clip-text text-transparent bg-linear-to-r from-white via-white/80 to-muted;
+  .pill-active:active { opacity: 0.85; }
+  .pill-inactive {
+    @apply bg-card text-muted border-border hover:border-primary/30 hover:text-primary;
   }
+  .pill-inactive:active { @apply bg-secondary; }
 
-  .gradient-text-primary {
-    @apply bg-clip-text text-transparent bg-linear-to-r from-primary via-red-400 to-accent;
-  }
-
-  /* Buttons */
+  /* ── Boutons ── */
   .btn-primary {
-    @apply px-8 py-4 rounded-full bg-primary text-white font-black uppercase tracking-widest text-sm 
-           transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)] 
-           active:scale-95 flex items-center justify-center gap-3;
+    @apply px-6 py-3 rounded-full bg-primary text-white font-bold text-sm
+           transition-all duration-300 hover:shadow-lg active:scale-95 flex items-center justify-center gap-2;
+    box-shadow: 0 4px 16px rgba(204, 31, 43, 0.28);
+    touch-action: manipulation;
+    min-height: 44px;
+  }
+  .btn-primary:hover {
+    box-shadow: 0 8px 28px rgba(204, 31, 43, 0.42);
   }
 
   .btn-glass {
-    @apply px-8 py-4 rounded-full bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-sm 
-           transition-all duration-300 hover:bg-white/10 backdrop-blur-md flex items-center justify-center gap-3;
+    @apply px-6 py-3 rounded-full bg-card border border-border text-foreground font-bold text-sm
+           transition-all duration-300 hover:border-primary/30 hover:text-primary flex items-center justify-center gap-2;
+    touch-action: manipulation;
+    min-height: 44px;
+  }
+
+  /* ── Gradient text ── */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-linear-to-r from-foreground to-muted;
+  }
+  .gradient-text-primary {
+    @apply bg-clip-text text-transparent bg-linear-to-r from-primary to-red-400;
   }
 }
 
-@keyframes border-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
+/* ── Animations ── */
 @keyframes slow-zoom {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
+.animate-slow-zoom { animation: slow-zoom 20s ease-in-out infinite; }
 
-.animate-slow-zoom {
-  animation: slow-zoom 20s ease-in-out infinite;
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+.animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
 
 .animation-delay-200 { animation-delay: 200ms; }
 .animation-delay-400 { animation-delay: 400ms; }
 .animation-delay-600 { animation-delay: 600ms; }
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+  will-change: transform;
+}
+
+/* ── Match detail hero background — noir avec accent rouge ── */
+.match-hero-bg {
+  background: linear-gradient(160deg, #060000 0%, #120101 35%, #1C0202 55%, #120101 80%, #060000 100%);
+}
+
+/* ── Football pitch background ── */
+.pitch-bg {
+  background: linear-gradient(180deg, #1a6b2f 0%, #1e7a35 30%, #217a36 50%, #1e7a35 70%, #1a6b2f 100%);
+  min-height: 420px;
+}
+
+/* ── No scrollbar ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Safe area bottom (iOS home indicator) ── */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.pb-env-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pb-bottom-nav {
+  padding-bottom: max(5rem, calc(4rem + env(safe-area-inset-bottom)));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK MODE
+   Trois cas gérés :
+   1. Système dark + aucun choix explicite → @media
+   2. Forçage dark  → html[data-color-scheme="dark"]
+   3. Forçage light → html[data-color-scheme="light"] (annule le @media)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 1 & 2 — Variables sombres ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0F0F0F;
+    --color-foreground: #EEEEEE;
+    --color-primary: #D4303D;
+    --color-secondary: #1A1A1A;
+    --color-accent: #EEB030;
+    --color-card: #171717;
+    --color-muted: #686868;
+    --color-border: rgba(255, 255, 255, 0.09);
+    --color-hero: #050000;
+  }
+}
+
+html[data-color-scheme="dark"] {
+  --color-background: #0F0F0F;
+  --color-foreground: #EEEEEE;
+  --color-primary: #D4303D;
+  --color-secondary: #1A1A1A;
+  --color-accent: #EEB030;
+  --color-card: #171717;
+  --color-muted: #686868;
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-hero: #050000;
+}
+
+/* ── 3 — Forçage light (annule le @media sur systèmes sombres) ── */
+html[data-color-scheme="light"] {
+  --color-background: #F6F5F3;
+  --color-foreground: #0A0A0A;
+  --color-primary: #CC1F2B;
+  --color-secondary: #F0EFED;
+  --color-accent: #E8A52A;
+  --color-card: #FFFFFF;
+  --color-muted: #888888;
+  --color-border: rgba(0, 0, 0, 0.09);
+  --color-hero: #1A0203;
+}
+
+/* ── Ombres sombres (media + forçage dark) ── */
+@media (prefers-color-scheme: dark) {
+  .glass-card              { box-shadow: 0 2px 16px rgba(0, 0, 0, 0.40); }
+  .match-card:hover        { box-shadow: 0 4px 24px rgba(212, 48, 61, 0.15); }
+  .sports-card:hover       { box-shadow: 0 6px 28px rgba(212, 48, 61, 0.12); }
+  .hero-card               { box-shadow: 0 16px 56px rgba(204, 31, 43, 0.50); }
+  .pill-active             { box-shadow: 0 4px 16px rgba(212, 48, 61, 0.35); }
+  .btn-primary             { box-shadow: 0 4px 16px rgba(212, 48, 61, 0.32); }
+  .btn-primary:hover       { box-shadow: 0 8px 28px rgba(212, 48, 61, 0.50); }
+  .pitch-bg {
+    background: linear-gradient(180deg, #163a26 0%, #1a4a2e 30%, #1d4f31 50%, #1a4a2e 70%, #163a26 100%);
+  }
+}
+
+html[data-color-scheme="dark"] .glass-card        { box-shadow: 0 2px 16px rgba(0, 0, 0, 0.40); }
+html[data-color-scheme="dark"] .match-card:hover   { box-shadow: 0 4px 24px rgba(212, 48, 61, 0.15); }
+html[data-color-scheme="dark"] .sports-card:hover  { box-shadow: 0 6px 28px rgba(212, 48, 61, 0.12); }
+html[data-color-scheme="dark"] .hero-card          { box-shadow: 0 16px 56px rgba(204, 31, 43, 0.50); }
+html[data-color-scheme="dark"] .pill-active        { box-shadow: 0 4px 16px rgba(212, 48, 61, 0.35); }
+html[data-color-scheme="dark"] .btn-primary        { box-shadow: 0 4px 16px rgba(212, 48, 61, 0.32); }
+html[data-color-scheme="dark"] .btn-primary:hover  { box-shadow: 0 8px 28px rgba(212, 48, 61, 0.50); }
+html[data-color-scheme="dark"] .pitch-bg {
+  background: linear-gradient(180deg, #163a26 0%, #1a4a2e 30%, #1d4f31 50%, #1a4a2e 70%, #163a26 100%);
+}
+
+/* ── Ombres claires restaurées (forçage light sur système sombre) ── */
+html[data-color-scheme="light"] .glass-card        { box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05); }
+html[data-color-scheme="light"] .match-card:hover  { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.09); }
+html[data-color-scheme="light"] .sports-card:hover { box-shadow: 0 6px 28px rgba(204, 31, 43, 0.08); }
+html[data-color-scheme="light"] .hero-card         { box-shadow: 0 16px 56px rgba(204, 31, 43, 0.45); }
+html[data-color-scheme="light"] .pill-active       { box-shadow: 0 4px 16px rgba(204, 31, 43, 0.30); }
+html[data-color-scheme="light"] .btn-primary       { box-shadow: 0 4px 16px rgba(204, 31, 43, 0.28); }
+html[data-color-scheme="light"] .btn-primary:hover { box-shadow: 0 8px 28px rgba(204, 31, 43, 0.42); }
+html[data-color-scheme="light"] .pitch-bg {
+  background: linear-gradient(180deg, #1a6b2f 0%, #1e7a35 30%, #217a36 50%, #1e7a35 70%, #1a6b2f 100%);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-slow-zoom,
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-pulse { animation: none !important; }
+  * { transition-duration: 0.01ms !important; }
+}
+
+/* ── Admin dark override — maintient le thème sombre pour l'espace admin ── */
+[data-theme="admin"] {
+  --color-background: #050505;
+  --color-foreground: #ffffff;
+  --color-primary: #ef4444;
+  --color-secondary: #121212;
+  --color-accent: #fbbf24;
+  --color-card: #0a0a0a;
+  --color-muted: #888888;
+  --color-border: rgba(255, 255, 255, 0.08);
+}

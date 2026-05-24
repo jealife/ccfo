@@ -7,10 +7,9 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#CC1F2B",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export const metadata: Metadata = {
@@ -69,12 +68,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="dark">
+    <html lang="fr">
+      {/* Anti-FOUC : applique le thème choisi avant le premier paint */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('ccfo-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-color-scheme',t)}catch(e){}`,
+          }}
+        />
+      </head>
       <body
         className={cn(
           inter.variable,
           outfit.variable,
-          "font-inter bg-background text-foreground min-h-screen"
+          "font-inter bg-background text-foreground min-h-dvh"
         )}
       >
         {children}
