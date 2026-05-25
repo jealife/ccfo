@@ -3,7 +3,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function submitTeamRegistration(formData: any) {
+type StaffMember = { last_name: string; first_name: string; nationality?: string; role: string; origin_village?: string };
+type PlayerEntry = { full_name: string; jersey_number: string | number; position?: string; birth_date?: string; origin_village?: string };
+type RegistrationFormData = {
+  teamInfo: { name: string; village?: string; jersey_color?: string; president_name?: string; president_phone?: string; whatsapp?: string; email?: string; status?: string };
+  documents?: { identity_docs?: string; village_attestation?: string; payment_receipt?: string };
+  staff: StaffMember[];
+  players: PlayerEntry[];
+};
+
+export async function submitTeamRegistration(formData: RegistrationFormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -34,8 +43,8 @@ export async function submitTeamRegistration(formData: any) {
 
   // 2. Insert/Update Staff (Filter out empty members)
   const staffData = formData.staff
-    .filter((s: any) => s.last_name || s.first_name)
-    .map((s: any) => ({
+    .filter((s) => s.last_name || s.first_name)
+    .map((s) => ({
       team_id: team.id,
       last_name: s.last_name,
       first_name: s.first_name,
@@ -54,11 +63,11 @@ export async function submitTeamRegistration(formData: any) {
 
   // 3. Insert/Update Players (Filter out empty players)
   const playersData = formData.players
-    .filter((p: any) => p.full_name)
-    .map((p: any) => ({
+    .filter((p) => p.full_name)
+    .map((p) => ({
       team_id: team.id,
       full_name: p.full_name,
-      jersey_number: parseInt(p.jersey_number) || 0,
+      jersey_number: parseInt(String(p.jersey_number)) || 0,
       position: p.position,
       birth_date: p.birth_date || null,
       origin_village: p.origin_village

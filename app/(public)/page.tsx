@@ -1,8 +1,11 @@
 import { Trophy, BarChart3, Zap, Award, Activity, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { LiveHeroMatch } from "@/components/public/LiveHeroMatch";
+import type { Match, Standing, MatchEvent } from "@/lib/types";
+import { getTeamPalette } from "@/lib/helpers";
 
 export const revalidate = 30;
 
@@ -11,20 +14,20 @@ export default async function HomePage() {
 
   const { data: matches } = await supabase
     .from("matches")
-    .select("*, home:teams!home_team_id(name), away:teams!away_team_id(name)")
+    .select("id, status, match_date, home_score, away_score, group_name, events, stats, home:teams!home_team_id(name), away:teams!away_team_id(name)")
     .in("status", ["finished", "live"])
     .order("match_date", { ascending: false })
     .limit(6);
 
   const { data: nextMatch } = await supabase
     .from("matches")
-    .select("*, home:teams!home_team_id(name), away:teams!away_team_id(name)")
+    .select("id, status, match_date, home_score, away_score, group_name, stats, home_team_id, away_team_id, home:teams!home_team_id(id,name), away:teams!away_team_id(id,name)")
     .in("status", ["live", "scheduled"])
     .order("match_date", { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  const heroMatch = nextMatch || matches?.[0];
+  const heroMatch = (nextMatch || matches?.[0]) as unknown as Match | null;
 
   const { data: standings } = await supabase
     .from("standings")
@@ -39,17 +42,19 @@ export default async function HomePage() {
 
   const tournamentName = config?.name || "Coupe Cantonale Fieng Okano";
 
+  type PlayerRow = { full_name: string; photo_url: string | null; team: { name: string } | null };
+
   // Top scorers
-  const allEvents = (matches || []).flatMap((m) => m.events || []);
+  const allEvents = (matches || []).flatMap((m) => (m.events as MatchEvent[] | null) ?? []);
   const goalCounts = allEvents
-    .filter((e: any) => e.type === "goal")
-    .reduce((acc: Record<string, number>, g: any) => {
-      acc[g.player] = (acc[g.player] || 0) + 1;
+    .filter((e) => e.type === "goal")
+    .reduce<Record<string, number>>((acc, g) => {
+      acc[g.player] = (acc[g.player] ?? 0) + 1;
       return acc;
     }, {});
 
   const topScorerNames = Object.entries(goalCounts)
-    .sort(([, a], [, b]) => (b as number) - (a as number))
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 3);
 
   const { data: playerData } = await supabase
@@ -58,12 +63,12 @@ export default async function HomePage() {
     .in("full_name", topScorerNames.map(([name]) => name));
 
   const topScorers = topScorerNames.map(([name, goals], index) => {
-    const info = (playerData as any[])?.find((p) => p.full_name === name);
+    const info = (playerData as PlayerRow[] | null)?.find((p) => p.full_name === name);
     return {
       name,
-      goals: goals as number,
+      goals,
       rank: index + 1,
-      team: info?.team?.name || "CCFO",
+      team: info?.team?.name ?? "CCFO",
       photo: info?.photo_url ?? null,
     };
   });
@@ -116,7 +121,7 @@ export default async function HomePage() {
                 href="/matches"
               />
               <div className="space-y-3">
-                {(matches || []).length > 0 ? (matches || []).map((match: any) => (
+                {(matches || []).length > 0 ? (matches as unknown as Match[]).map((match) => (
                   <MatchRowCard key={match.id} match={match} />
                 )) : (
                   <div className="glass-card p-8 text-center">
@@ -142,16 +147,16 @@ export default async function HomePage() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-secondary border-b border-border">
-                      <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-muted w-10">Pos</th>
+                      <th title="Position" className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-muted w-10 cursor-help">#</th>
                       <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-muted">Club</th>
-                      <th className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted">MJ</th>
-                      <th className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted">Diff</th>
-                      <th className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted">Pts</th>
+                      <th title="Matchs Joués" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">MJ</th>
+                      <th title="Différence de buts (marqués − encaissés)" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">+/-</th>
+                      <th title="Points" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">Pts</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {(standings || []).length > 0 ? (standings || []).map((row: any, i: number) => (
-                      <tr key={row.team_id ?? i} className="hover:bg-secondary/60 transition-colors">
+                    {(standings || []).length > 0 ? (standings as Standing[]).map((row, i) => (
+                      <tr key={row.team_id} className="hover:bg-secondary/60 transition-colors">
                         <td className="px-4 py-3">
                           <div className={cn(
                             "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black mx-auto",
@@ -163,9 +168,9 @@ export default async function HomePage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] font-black text-foreground shrink-0">
-                              {(row.teams as any)?.name?.[0]}
+                              {row.teams?.name?.[0]}
                             </div>
-                            <span className="font-bold text-sm text-foreground truncate">{(row.teams as any)?.name}</span>
+                            <span className="font-bold text-sm text-foreground truncate">{row.teams?.name}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center text-sm text-muted font-medium">{row.played ?? 0}</td>
@@ -214,10 +219,9 @@ export default async function HomePage() {
                       </span>
 
                       {/* Avatar */}
-                      <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center overflow-hidden shrink-0">
+                      <div className="relative w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center overflow-hidden shrink-0">
                         {player.photo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={player.photo} alt={player.name} className="w-full h-full object-cover" />
+                          <Image src={player.photo} alt={player.name} fill sizes="40px" className="object-cover" />
                         ) : (
                           <span className="font-black text-sm text-foreground">{player.name[0]}</span>
                         )}
@@ -275,10 +279,12 @@ function SectionHeader({
   );
 }
 
-function MatchRowCard({ match }: { match: any }) {
+function MatchRowCard({ match }: { match: Match }) {
   const isLive = match.status === "live";
   const isFinished = match.status === "finished";
   const matchDate = new Date(match.match_date);
+  const homeColor = getTeamPalette(match.home?.name);
+  const awayColor = getTeamPalette(match.away?.name);
 
   return (
     <Link href={`/matches/${match.id}`} className="block touch-manipulation">
@@ -300,7 +306,7 @@ function MatchRowCard({ match }: { match: any }) {
             "w-9 h-9 rounded-full flex items-center justify-center font-black text-xs border shrink-0",
             isLive
               ? "bg-primary/10 border-primary/30 text-primary"
-              : "bg-secondary border-border text-foreground"
+              : cn(homeColor.bg, homeColor.border, homeColor.text)
           )}>
             {match.home?.name?.[0]}
           </div>
@@ -341,7 +347,7 @@ function MatchRowCard({ match }: { match: any }) {
             "w-9 h-9 rounded-full flex items-center justify-center font-black text-xs border shrink-0",
             isLive
               ? "bg-primary/10 border-primary/30 text-primary"
-              : "bg-secondary border-border text-foreground"
+              : cn(awayColor.bg, awayColor.border, awayColor.text)
           )}>
             {match.away?.name?.[0]}
           </div>

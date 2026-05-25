@@ -4,6 +4,13 @@ import { useState, useEffect } from "react";
 import { ShieldAlert, User, Loader2, AlertTriangle, CheckCircle2, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { MatchEvent } from "@/lib/types";
+
+type MatchRow = {
+  events: MatchEvent[] | null;
+  home: { name: string } | null;
+  away: { name: string } | null;
+};
 
 type PlayerSuspension = {
   name: string;
@@ -32,15 +39,16 @@ export default function AdminSuspensionsPage() {
       .eq('status', 'finished');
 
     if (!matches) { setLoading(false); return; }
+    const typedMatches = matches as unknown as MatchRow[];
 
     // Accumulate yellow/red card counts per player name + team
     const cardMap: Record<string, { name: string; teamName: string; yellows: number; reds: number }> = {};
 
-    for (const match of matches) {
-      const events: any[] = match.events || [];
+    for (const match of typedMatches) {
+      const events = match.events ?? [];
       for (const evt of events) {
         if (evt.type !== 'yellow' && evt.type !== 'red') continue;
-        const teamName = evt.team === 'home' ? (match.home as any)?.name : (match.away as any)?.name;
+        const teamName = evt.team === 'home' ? match.home?.name : match.away?.name;
         const key = `${evt.player}__${teamName}`;
         if (!cardMap[key]) cardMap[key] = { name: evt.player, teamName: teamName || '—', yellows: 0, reds: 0 };
         if (evt.type === 'yellow') cardMap[key].yellows++;

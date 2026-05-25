@@ -25,7 +25,7 @@ export default async function PublicTeamsPage() {
                 Les Équipes <span className="text-primary">2026</span>
               </h1>
               <p className="text-muted text-sm mt-1">
-                Découvrez les clubs qui participent à l'édition CCFO26 de cette année.
+                Découvrez les clubs qui participent à l&apos;édition CCFO26 de cette année.
               </p>
             </div>
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-bold shrink-0">

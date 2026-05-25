@@ -72,6 +72,9 @@ export async function deleteMatch(id: string) {
   return { success: true };
 }
 
+// Phases de groupes dont les résultats comptent pour le classement
+const GROUP_PHASES = ['Groupe A', 'Groupe B'] as const;
+
 type TeamStats = {
   team_id: string;
   played: number;
@@ -83,12 +86,12 @@ type TeamStats = {
   goal_diff: number;
   points: number;
   position: number;
+  group_name: string;
 };
 
 async function recalculateStandings() {
   const supabase = createAdminClient();
 
-  // Fetch config, matches and team names in parallel
   const [configResult, matchesResult, teamsResult] = await Promise.all([
     supabase
       .from('tournament_config')
@@ -96,37 +99,41 @@ async function recalculateStandings() {
       .single(),
     supabase
       .from('matches')
-      .select('home_team_id, away_team_id, home_score, away_score')
+      .select('home_team_id, away_team_id, home_score, away_score, group_name')
       .eq('status', 'finished'),
     supabase
       .from('teams')
       .select('id, name'),
   ]);
 
-  // Scoring rules with safe fallbacks to FIFA standard (3-1-0)
   const pointsWin  = configResult.data?.points_win  ?? 3;
   const pointsDraw = configResult.data?.points_draw ?? 1;
   const pointsLoss = configResult.data?.points_loss ?? 0;
 
-  const finishedMatches = matchesResult.data || [];
   const teamNames: Record<string, string> = {};
   for (const t of teamsResult.data || []) teamNames[t.id] = t.name;
 
-  // Build stats from scratch for all finished matches
-  const stats: Record<string, Omit<TeamStats, 'goal_diff' | 'position'>> = {};
+  // Seuls les matchs de phase de groupe comptent pour le classement
+  const groupMatches = (matchesResult.data || []).filter(
+    (m) => (GROUP_PHASES as readonly string[]).includes(m.group_name)
+  );
 
-  for (const match of finishedMatches) {
+  type RawStats = Omit<TeamStats, 'goal_diff' | 'position'>;
+  const stats: Record<string, RawStats> = {};
+
+  for (const match of groupMatches) {
     const h = match.home_team_id;
     const a = match.away_team_id;
+    const group = match.group_name;
 
-    if (!stats[h]) stats[h] = { team_id: h, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0 };
-    if (!stats[a]) stats[a] = { team_id: a, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0 };
+    if (!stats[h]) stats[h] = { team_id: h, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0, group_name: group };
+    if (!stats[a]) stats[a] = { team_id: a, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0, group_name: group };
 
     stats[h].played++;
     stats[a].played++;
-    stats[h].goals_for  += match.home_score ?? 0;
+    stats[h].goals_for     += match.home_score ?? 0;
     stats[h].goals_against += match.away_score ?? 0;
-    stats[a].goals_for  += match.away_score ?? 0;
+    stats[a].goals_for     += match.away_score ?? 0;
     stats[a].goals_against += match.home_score ?? 0;
 
     const hs = match.home_score ?? 0;
@@ -144,26 +151,30 @@ async function recalculateStandings() {
     }
   }
 
-  // Compute goal_diff then sort: points → goal_diff → goals_for → alphabetical
-  const sorted: TeamStats[] = Object.values(stats)
-    .map(s => ({ ...s, goal_diff: s.goals_for - s.goals_against, position: 0 }))
-    .sort((a, b) =>
-      b.points - a.points ||
-      b.goal_diff - a.goal_diff ||
-      b.goals_for - a.goals_for ||
-      (teamNames[a.team_id] || '').localeCompare(teamNames[b.team_id] || '')
-    )
-    .map((s, i) => ({ ...s, position: i + 1 }));
-
-  // Upsert fresh standings — avoids race condition from delete+insert
-  if (sorted.length > 0) {
-    await supabase.from('standings').upsert(sorted, { onConflict: 'team_id' });
+  // Trier par groupe puis assigner la position au sein du groupe (1–4)
+  const allSorted: TeamStats[] = [];
+  for (const group of GROUP_PHASES) {
+    const groupTeams = Object.values(stats)
+      .filter((s) => s.group_name === group)
+      .map((s) => ({ ...s, goal_diff: s.goals_for - s.goals_against, position: 0 }))
+      .sort((a, b) =>
+        b.points - a.points ||
+        b.goal_diff - a.goal_diff ||
+        b.goals_for - a.goals_for ||
+        (teamNames[a.team_id] || '').localeCompare(teamNames[b.team_id] || '')
+      )
+      .map((s, i) => ({ ...s, position: i + 1 }));
+    allSorted.push(...groupTeams);
   }
 
-  // Remove standings for teams that no longer have finished matches
-  const activeTeamIds = sorted.map(s => s.team_id);
+  if (allSorted.length > 0) {
+    await supabase.from('standings').upsert(allSorted, { onConflict: 'team_id' });
+  }
+
+  // Supprimer les équipes sans match de groupe terminé
+  const activeTeamIds = allSorted.map((s) => s.team_id);
   const { data: existing } = await supabase.from('standings').select('team_id');
-  const toDelete = (existing || []).map(r => r.team_id).filter(id => !activeTeamIds.includes(id));
+  const toDelete = (existing || []).map((r) => r.team_id).filter((id) => !activeTeamIds.includes(id));
   if (toDelete.length > 0) {
     await supabase.from('standings').delete().in('team_id', toDelete);
   }

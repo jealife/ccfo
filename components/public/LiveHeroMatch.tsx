@@ -5,10 +5,12 @@ import { MapPin, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { getStartedAt } from "@/lib/helpers";
+import type { Match, MatchEvent, MatchStat } from "@/lib/types";
 import { MatchTimer } from "./MatchTimer";
 
-export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
-  const [match, setMatch] = useState(initialMatch);
+export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
+  const [match, setMatch] = useState<Match>(initialMatch);
   const supabase = createClient();
 
   useEffect(() => {
@@ -18,7 +20,7 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${match.id}` },
-        (payload) => setMatch((prev: any) => ({ ...prev, ...payload.new }))
+        (payload) => setMatch((prev) => ({ ...prev, ...payload.new }))
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -26,9 +28,9 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
 
   if (!match) return null;
 
-  const startedAt = match.stats?.find((s: any) => s.label === "started_at")?.value;
-  const matchDate = new Date(match.match_date);
-  const isLive = match.status === "live";
+  const startedAt  = getStartedAt(match.stats as MatchStat[]);
+  const matchDate  = new Date(match.match_date);
+  const isLive     = match.status === "live";
   const isFinished = match.status === "finished";
   const isScheduled = match.status === "scheduled";
 
@@ -66,7 +68,6 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
         {/* Teams + Score */}
         <div className="relative flex items-center justify-between gap-2 md:gap-6">
 
-          {/* Home team */}
           <div className="flex flex-col items-center gap-2.5 flex-1">
             <div className="w-14 h-14 md:w-18 md:h-18 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-2xl md:text-3xl font-black text-white">
               {match.home?.name?.[0] ?? "?"}
@@ -77,7 +78,6 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
             <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Domicile</span>
           </div>
 
-          {/* Score / VS */}
           <div className="flex flex-col items-center gap-2 shrink-0 min-w-[90px] md:min-w-[120px]">
             {isScheduled ? (
               <>
@@ -94,7 +94,7 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
                   {match.home_score} : {match.away_score}
                 </div>
                 {isLive ? (
-                  <MatchTimer startedAt={startedAt} status={match.status} />
+                  <MatchTimer startedAt={startedAt ?? undefined} status={match.status} />
                 ) : (
                   <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Temps réglementaire</span>
                 )}
@@ -102,7 +102,6 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: any }) {
             )}
           </div>
 
-          {/* Away team */}
           <div className="flex flex-col items-center gap-2.5 flex-1">
             <div className="w-14 h-14 md:w-18 md:h-18 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-2xl md:text-3xl font-black text-white">
               {match.away?.name?.[0] ?? "?"}

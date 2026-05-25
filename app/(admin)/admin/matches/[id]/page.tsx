@@ -7,6 +7,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { updateMatchLive } from "@/app/api/matches/actions";
 import { AlertDialog } from "@/components/ui/Modal";
+import type { MatchStat } from "@/lib/types";
 
 export default function MatchLiveController({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -57,10 +58,10 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
       setHomeScore(data.home_score || 0);
       setAwayScore(data.away_score || 0);
       setEvents(data.events || []);
-      const stats = data.stats || [];
-      const startedAtEntry = stats.find((s: any) => s.label === 'started_at');
-      setStartedAt(startedAtEntry ? startedAtEntry.value : null);
-      setMatchStats(stats.filter((s: any) => s.label !== 'started_at'));
+      const stats = (data.stats || []) as (MatchStat & { value?: string })[];
+      const startedAtEntry = stats.find((s) => s.label === 'started_at');
+      setStartedAt(startedAtEntry ? (startedAtEntry.value ?? null) : null);
+      setMatchStats(stats.filter((s) => s.label !== 'started_at'));
 
       // Fetch players for both teams
       const [hRes, aRes] = await Promise.all([

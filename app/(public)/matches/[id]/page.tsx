@@ -51,7 +51,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               <ChevronLeft className="w-5 h-5 text-white" />
             </Link>
             <span className="flex-1 text-center text-[10px] font-black text-white/55 uppercase tracking-[0.18em] truncate">
-              Coupe Cantonale Fieng Okano
+              {match.group_name || "Coupe Cantonale Fieng Okano"}
             </span>
             <div className="w-10 h-10 shrink-0" />
           </div>
