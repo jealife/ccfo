@@ -2,7 +2,7 @@ import { Trophy, BarChart3, Zap, Award, Activity, ChevronRight } from "lucide-re
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { LiveHeroMatch } from "@/components/public/LiveHeroMatch";
 import type { Match, Standing, MatchEvent } from "@/lib/types";
 import { getTeamPalette } from "@/lib/helpers";
@@ -10,7 +10,7 @@ import { getTeamPalette } from "@/lib/helpers";
 export const revalidate = 30;
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: matches } = await supabase
     .from("matches")

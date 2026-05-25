@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { Trophy, Swords } from "lucide-react";
 import type { Standing, Match } from "@/lib/types";
 
 export const revalidate = 60;
 
 export default async function StandingsPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const [standingsResult, matchesResult, knockoutResult, configResult] = await Promise.all([
     supabase

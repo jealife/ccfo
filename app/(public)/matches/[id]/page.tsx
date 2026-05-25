@@ -1,13 +1,13 @@
 import { ChevronLeft, MapPin } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { MatchDetailClient } from "@/components/public/MatchDetailClient";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 10;
 
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { id } = await params;
 
   const { data: match } = await supabase
