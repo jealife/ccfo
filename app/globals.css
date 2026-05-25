@@ -281,4 +281,6 @@ html[data-color-scheme="light"] .pitch-bg {
   --color-card: #0a0a0a;
   --color-muted: #888888;
   --color-border: rgba(255, 255, 255, 0.08);
+  color: var(--color-foreground);
+  background-color: var(--color-background);
 }

@@ -64,7 +64,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
   ];
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background" data-theme="admin">
       {/* Manager Sidebar - HIDDEN ON MOBILE */}
       <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col">
         <div className="p-6">
