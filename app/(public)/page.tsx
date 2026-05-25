@@ -1,4 +1,15 @@
+import type { Metadata } from "next";
 import { Trophy, BarChart3, Zap, Award, Activity, ChevronRight } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "CCFO26 | Coupe Cantonale Fieng Okano 2026",
+  description: "Plateforme officielle de la Coupe Cantonale Fieng Okano 2026. Suivez les résultats en direct, consultez le classement et découvrez les équipes du canton.",
+  openGraph: {
+    title: "CCFO26 — Coupe Cantonale Fieng Okano 2026",
+    description: "Vivez l'excellence du football au cœur du canton Fieng Okano. Résultats en direct, classement et calendrier de la compétition.",
+    images: [{ url: "/image-1.jpg", width: 1200, height: 630, alt: "CCFO26 — Coupe Cantonale Fieng Okano" }],
+  },
+};
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";

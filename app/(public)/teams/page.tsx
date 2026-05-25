@@ -1,8 +1,19 @@
+import type { Metadata } from "next";
 import { Shield } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/server";
 import { TeamsFilterClient } from "@/components/public/TeamsFilterClient";
 
 export const revalidate = 300;
+
+export const metadata: Metadata = {
+  title: "Les Équipes 2026",
+  description: "Découvrez les équipes participantes à la Coupe Cantonale Fieng Okano 2026 — effectifs, villages et informations des clubs.",
+  openGraph: {
+    title: "Les Équipes 2026 — CCFO26",
+    description: "Tous les clubs engagés dans la Coupe Cantonale Fieng Okano 2026, avec leurs effectifs et informations.",
+    images: [{ url: "/image-1.jpg", width: 1200, height: 630, alt: "CCFO26 Équipes" }],
+  },
+};
 
 export default async function PublicTeamsPage() {
   const supabase = createAdminClient();

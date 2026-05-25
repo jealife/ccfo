@@ -1,8 +1,19 @@
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/server";
 import { MatchesFilterClient } from "@/components/public/MatchesFilterClient";
 import { Calendar } from "lucide-react";
 
 export const revalidate = 30;
+
+export const metadata: Metadata = {
+  title: "Calendrier & Résultats",
+  description: "Tous les matchs de la Coupe Cantonale Fieng Okano 2026 — résultats, scores en direct et calendrier complet.",
+  openGraph: {
+    title: "Calendrier & Résultats — CCFO26",
+    description: "Consultez les résultats, scores en direct et le calendrier complet de la Coupe Cantonale Fieng Okano 2026.",
+    images: [{ url: "/image-1.jpg", width: 1200, height: 630, alt: "CCFO26 Calendrier & Résultats" }],
+  },
+};
 
 export default async function PublicMatchesPage() {
   const supabase = createAdminClient();

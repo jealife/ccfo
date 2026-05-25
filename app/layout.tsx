@@ -13,6 +13,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ccfo.vercel.app"),
   title: {
     template: "%s | CCFO26",
     default: "CCFO26 | Coupe Cantonale Fieng Okano 2026",

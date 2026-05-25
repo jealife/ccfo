@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ChevronLeft, MapPin } from "lucide-react";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -5,6 +6,56 @@ import { MatchDetailClient } from "@/components/public/MatchDetailClient";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 10;
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = createAdminClient();
+  const { data: match } = await supabase
+    .from("matches")
+    .select("status, match_date, home_score, away_score, group_name, home:teams!home_team_id(name), away:teams!away_team_id(name)")
+    .eq("id", id)
+    .single();
+
+  if (!match) return { title: "Match introuvable" };
+
+  const home = (match.home as unknown as { name: string } | null)?.name ?? "Équipe A";
+  const away = (match.away as unknown as { name: string } | null)?.name ?? "Équipe B";
+  const dateStr = new Date(match.match_date).toLocaleDateString("fr-FR", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+  const phase = match.group_name ? `${match.group_name} · ` : "";
+
+  let title: string;
+  let description: string;
+
+  if (match.status === "finished") {
+    title = `${home} ${match.home_score ?? 0}–${match.away_score ?? 0} ${away}`;
+    description = `Résultat : ${home} ${match.home_score ?? 0}–${match.away_score ?? 0} ${away}. ${phase}CCFO26, ${dateStr}.`;
+  } else if (match.status === "live") {
+    title = `EN DIRECT : ${home} ${match.home_score ?? 0}–${match.away_score ?? 0} ${away}`;
+    description = `Match en direct — ${home} contre ${away}. ${phase}Suivez le score en temps réel sur CCFO26.`;
+  } else {
+    title = `${home} vs ${away}`;
+    description = `${home} affronte ${away}. ${phase}CCFO26, ${dateStr}. Stade Okano.`;
+  }
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} | CCFO26`,
+      description,
+      images: [{ url: "/image-1.jpg", width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | CCFO26`,
+      description,
+    },
+  };
+}
 
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createAdminClient();
@@ -35,8 +86,37 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   const isLive    = match.status === "live";
   const isFinished = match.status === "finished";
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    "name": `${match.home?.name ?? "Équipe A"} vs ${match.away?.name ?? "Équipe B"}`,
+    "startDate": match.match_date,
+    "location": {
+      "@type": "Place",
+      "name": "Stade Okano",
+      "address": { "@type": "PostalAddress", "addressLocality": "Fieng Okano", "addressCountry": "GA" },
+    },
+    "organizer": {
+      "@type": "Organization",
+      "name": "Coupe Cantonale Fieng Okano",
+      "url": "https://ccfo.vercel.app",
+    },
+    "competitor": [
+      { "@type": "SportsTeam", "name": match.home?.name ?? "Équipe A" },
+      { "@type": "SportsTeam", "name": match.away?.name ?? "Équipe B" },
+    ],
+    ...(isFinished && {
+      "eventStatus": "https://schema.org/EventScheduled",
+      "description": `${match.home?.name ?? "Équipe A"} ${match.home_score ?? 0}–${match.away_score ?? 0} ${match.away?.name ?? "Équipe B"}`,
+    }),
+  };
+
   return (
     <main className="bg-background pb-24 lg:pb-0">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
       {/* ── Hero — score + teams dans le gradient violet ── */}
       <div className="match-hero-bg pt-16 pb-12">

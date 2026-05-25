@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -7,6 +8,35 @@ import { cn } from "@/lib/utils";
 import type { Player } from "@/lib/types";
 
 export const revalidate = 300;
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = createAdminClient();
+  const { data: team } = await supabase
+    .from("teams")
+    .select("name, village")
+    .eq("id", id)
+    .eq("status", "validated")
+    .single();
+
+  if (!team) return { title: "Équipe introuvable" };
+
+  const location = team.village ? ` de ${team.village}` : "";
+  const title = team.name;
+  const description = `Découvrez l'effectif de ${team.name}${location} — joueurs, numéros de maillot et positions. Coupe Cantonale Fieng Okano 2026.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${team.name} | CCFO26`,
+      description,
+      images: [{ url: "/image-1.jpg", width: 1200, height: 630, alt: team.name }],
+    },
+  };
+}
 
 const POSITION_LABELS: Record<string, string> = {
   GK:  "Gardien",

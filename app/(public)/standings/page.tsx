@@ -1,7 +1,18 @@
+import type { Metadata } from "next";
 import { cn } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Trophy, Swords } from "lucide-react";
 import type { Standing, Match } from "@/lib/types";
+
+export const metadata: Metadata = {
+  title: "Classement Officiel",
+  description: "Classement officiel de la Coupe Cantonale Fieng Okano 2026 — points, différence de buts, forme des équipes et phase finale.",
+  openGraph: {
+    title: "Classement Officiel — CCFO26",
+    description: "Suivez le classement en temps réel de la Coupe Cantonale Fieng Okano 2026, phase de groupes et phase finale.",
+    images: [{ url: "/image-1.jpg", width: 1200, height: 630, alt: "CCFO26 Classement" }],
+  },
+};
 
 export const revalidate = 60;
 
