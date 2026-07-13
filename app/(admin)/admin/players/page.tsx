@@ -1,40 +1,42 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Users, 
-  Search, 
+import Image from "next/image";
+import {
+  Users,
+  Search,
   Filter,
   Download,
   Printer,
-  ChevronRight,
   Shield,
-  MapPin,
   User,
   Activity
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { PlayerLicense } from "@/components/dashboard/PlayerLicense";
 
+type TeamOption = { id: string; name: string; village: string | null };
+type AdminPlayer = {
+  id: string;
+  full_name: string;
+  jersey_number: number | string | null;
+  position: string | null;
+  photo_url: string | null;
+  nationality?: string | null;
+  origin_village?: string | null;
+  teams: { name: string; village: string | null } | null;
+};
+
 export default function AdminPlayersPage() {
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<TeamOption[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("all");
-  const [players, setPlayers] = useState<any[]>([]);
+  const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [printingPlayer, setPrintingPlayer] = useState<any>(null);
+  const [printingPlayer, setPrintingPlayer] = useState<AdminPlayer | null>(null);
   const [printingAll, setPrintingAll] = useState(false);
   const [printAllConfirm, setPrintAllConfirm] = useState(false);
   const supabase = createClient();
-
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-
-  useEffect(() => {
-    fetchPlayers();
-  }, [selectedTeamId]);
 
   async function fetchTeams() {
     const { data } = await supabase
@@ -60,7 +62,21 @@ export default function AdminPlayersPage() {
     setLoading(false);
   }
 
-  const handlePrint = (player: any) => {
+  useEffect(() => {
+    const kickoff = setTimeout(fetchTeams, 0);
+    return () => clearTimeout(kickoff);
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const kickoff = setTimeout(fetchPlayers, 0);
+    return () => clearTimeout(kickoff);
+    // fetchPlayers dépend uniquement de selectedTeamId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTeamId]);
+
+  const handlePrint = (player: AdminPlayer) => {
     setPrintingPlayer(player);
   };
 
@@ -161,9 +177,9 @@ export default function AdminPlayersPage() {
                 <Shield className="w-12 h-12 rotate-12" />
               </div>
               
-              <div className="w-14 h-14 rounded-2xl bg-secondary border border-white/5 flex items-center justify-center text-xl font-black shadow-xl shrink-0 overflow-hidden">
+              <div className="relative w-14 h-14 rounded-2xl bg-secondary border border-white/5 flex items-center justify-center text-xl font-black shadow-xl shrink-0 overflow-hidden">
                 {player.photo_url ? (
-                  <img src={player.photo_url} alt={player.full_name} className="w-full h-full object-cover" />
+                  <Image src={player.photo_url} alt={player.full_name} fill sizes="56px" className="object-cover" />
                 ) : (
                   <User className="w-6 h-6 text-muted" />
                 )}
@@ -248,13 +264,13 @@ export default function AdminPlayersPage() {
               }}
               className="px-6 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all"
             >
-              Fermer l'Aperçu
+              Fermer l’Aperçu
             </button>
             <button 
               onClick={handleConfirmPrint}
               className="px-8 py-2 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 hover:scale-105 transition-all flex items-center gap-2"
             >
-              <Printer className="w-4 h-4" /> Confirmer l'Impression
+              <Printer className="w-4 h-4" /> Confirmer l’Impression
             </button>
           </div>
 
@@ -271,12 +287,12 @@ export default function AdminPlayersPage() {
                       position: p.position || "Joueur",
                       village: p.teams?.village || "",
                       nationality: p.nationality || "Gabonaise",
-                      photoUrl: p.photo_url,
+                      photoUrl: p.photo_url ?? undefined,
                     }}
                   />
                 </div>
               ))
-            ) : (
+            ) : printingPlayer && (
               <PlayerLicense 
                 player={{
                   firstName: printingPlayer.full_name.split(' ').slice(1).join(' ') || printingPlayer.full_name,
@@ -286,7 +302,7 @@ export default function AdminPlayersPage() {
                   position: printingPlayer.position || "Joueur",
                   village: printingPlayer.teams?.village || "",
                   nationality: printingPlayer.nationality || "Gabonaise",
-                  photoUrl: printingPlayer.photo_url,
+                  photoUrl: printingPlayer.photo_url ?? undefined,
                 }}
               />
             )}

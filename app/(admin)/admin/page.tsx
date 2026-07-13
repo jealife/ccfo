@@ -177,7 +177,7 @@ export default async function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {(teams || []).map((team: any, i: number) => (
+              {(teams || []).map((team: { name: string; village: string | null; status: string }, i: number) => (
                 <tr key={i} className="hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export default async function AdminDashboardPage() {
           <h3 className="font-black uppercase tracking-widest text-xs">Équipes récentes</h3>
           <Link href="/admin/teams" className="text-[10px] font-black uppercase text-primary">Voir tout</Link>
         </div>
-        {(teams || []).map((team: any, i: number) => (
+        {(teams || []).map((team: { name: string; village: string | null; status: string }, i: number) => (
           <div key={i} className="sports-card p-3 flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center font-bold text-xs shrink-0">{team.name[0]}</div>

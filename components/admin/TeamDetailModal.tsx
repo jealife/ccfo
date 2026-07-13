@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  X, 
-  Users, 
-  UserPlus, 
-  MapPin, 
-  CheckCircle2, 
+import Image from "next/image";
+import {
+  X,
+  MapPin,
+  CheckCircle2,
   XCircle,
-  Activity,
   Shield,
   Loader2,
   Printer
@@ -17,41 +15,67 @@ import { PlayerLicense } from "@/components/dashboard/PlayerLicense";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
+type ModalTeam = {
+  id: string;
+  name: string;
+  village: string | null;
+  status: string;
+};
+
+type ModalPlayer = {
+  id: string;
+  full_name: string;
+  jersey_number: number | string | null;
+  position: string | null;
+  photo_url: string | null;
+  nationality?: string | null;
+};
+
+type ModalStaff = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: string | null;
+  origin?: string | null;
+};
+
 interface TeamDetailModalProps {
-  team: any;
+  team: ModalTeam;
   isOpen: boolean;
   onClose: () => void;
   onStatusUpdate: (teamId: string, status: string) => void;
 }
 
 export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamDetailModalProps) {
-  const [players, setPlayers] = useState<any[]>([]);
-  const [staff, setStaff] = useState<any[]>([]);
+  const [players, setPlayers] = useState<ModalPlayer[]>([]);
+  const [staff, setStaff] = useState<ModalStaff[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"players" | "staff">("players");
-  const [printingPlayer, setPrintingPlayer] = useState<any>(null);
+  const [printingPlayer, setPrintingPlayer] = useState<ModalPlayer | null>(null);
   const [printingAll, setPrintingAll] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
-    if (isOpen && team?.id) {
-      fetchDetails();
+    if (!isOpen || !team?.id) return;
+
+    async function fetchDetails() {
+      setLoading(true);
+      const [playersRes, staffRes] = await Promise.all([
+        supabase.from('players').select('*').eq('team_id', team.id).order('jersey_number', { ascending: true }),
+        supabase.from('staff').select('*').eq('team_id', team.id).order('first_name', { ascending: true })
+      ]);
+
+      setPlayers(playersRes.data || []);
+      setStaff(staffRes.data || []);
+      setLoading(false);
     }
+
+    fetchDetails();
+    // supabase est un client stable créé une fois par composant
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, team?.id]);
 
-  async function fetchDetails() {
-    setLoading(true);
-    const [playersRes, staffRes] = await Promise.all([
-      supabase.from('players').select('*').eq('team_id', team.id).order('jersey_number', { ascending: true }),
-      supabase.from('staff').select('*').eq('team_id', team.id).order('first_name', { ascending: true })
-    ]);
-    
-    setPlayers(playersRes.data || []);
-    setStaff(staffRes.data || []);
-    setLoading(false);
-  }
-
-  const handlePrint = (player: any) => {
+  const handlePrint = (player: ModalPlayer) => {
     setPrintingPlayer(player);
   };
 
@@ -136,9 +160,9 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
                   ) : (
                     players.map((player) => (
                       <div key={player.id} className="sports-card p-3 flex items-center gap-4 bg-white/3 border-white/5 hover:border-primary/20 transition-all">
-                        <div className="w-12 h-12 rounded-xl bg-secondary border border-white/5 flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
+                        <div className="relative w-12 h-12 rounded-xl bg-secondary border border-white/5 flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
                           {player.photo_url ? (
-                            <img src={player.photo_url} alt={player.full_name} className="w-full h-full object-cover" />
+                            <Image src={player.photo_url} alt={player.full_name} fill sizes="48px" className="object-cover" />
                           ) : (
                             player.full_name[0]
                           )}
@@ -215,7 +239,7 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
                       : "bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/20"
                   )}
                 >
-                  <CheckCircle2 className="w-4 h-4" /> Valider l'Équipe
+                  <CheckCircle2 className="w-4 h-4" /> Valider l’Équipe
                 </button>
                 <button 
                   onClick={() => onStatusUpdate(team.id, 'rejected')}
@@ -253,13 +277,13 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
               }}
               className="px-6 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all"
             >
-              Fermer l'Aperçu
+              Fermer l’Aperçu
             </button>
             <button 
               onClick={handleConfirmPrint}
               className="px-8 py-2 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 hover:scale-105 transition-all flex items-center gap-2"
             >
-              <Printer className="w-4 h-4" /> Confirmer l'Impression
+              <Printer className="w-4 h-4" /> Confirmer l’Impression
             </button>
           </div>
 
@@ -267,31 +291,31 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
             {printingAll ? (
               players.map((p) => (
                 <div key={p.id} className="break-after-page">
-                  <PlayerLicense 
+                  <PlayerLicense
                     player={{
                       firstName: p.full_name.split(' ').slice(1).join(' ') || p.full_name,
                       lastName: p.full_name.split(' ')[0],
                       team: team.name,
                       number: p.jersey_number?.toString() || "00",
                       position: p.position || "Joueur",
-                      village: team.village,
+                      village: team.village || "—",
                       nationality: p.nationality || "Gabonaise",
-                      photoUrl: p.photo_url,
+                      photoUrl: p.photo_url ?? undefined,
                     }}
                   />
                 </div>
               ))
-            ) : (
-              <PlayerLicense 
+            ) : printingPlayer && (
+              <PlayerLicense
                 player={{
                   firstName: printingPlayer.full_name.split(' ').slice(1).join(' ') || printingPlayer.full_name,
                   lastName: printingPlayer.full_name.split(' ')[0],
                   team: team.name,
                   number: printingPlayer.jersey_number?.toString() || "00",
                   position: printingPlayer.position || "Joueur",
-                  village: team.village,
+                  village: team.village || "—",
                   nationality: printingPlayer.nationality || "Gabonaise",
-                  photoUrl: printingPlayer.photo_url,
+                  photoUrl: printingPlayer.photo_url ?? undefined,
                 }}
               />
             )}

@@ -9,24 +9,25 @@ import {
   Shield,
   UserSquare2
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
+type TeamOption = { id: string; name: string; village: string | null };
+type StaffMember = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: string | null;
+  origin: string | null;
+  teams: { name: string } | null;
+};
+
 export default function AdminStaffPage() {
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<TeamOption[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("all");
-  const [staff, setStaff] = useState<any[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
-
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-
-  useEffect(() => {
-    fetchStaff();
-  }, [selectedTeamId]);
 
   async function fetchTeams() {
     const { data } = await supabase
@@ -51,6 +52,20 @@ export default function AdminStaffPage() {
     setStaff(data || []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    const kickoff = setTimeout(fetchTeams, 0);
+    return () => clearTimeout(kickoff);
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const kickoff = setTimeout(fetchStaff, 0);
+    return () => clearTimeout(kickoff);
+    // fetchStaff dépend uniquement de selectedTeamId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTeamId]);
 
   const filteredStaff = staff.filter(s => {
     const fullName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase();

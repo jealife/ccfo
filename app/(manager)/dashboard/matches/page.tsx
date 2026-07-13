@@ -13,8 +13,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+type ManagerMatch = {
+  id: string;
+  match_date: string;
+  status: string;
+  home_score: number | null;
+  away_score: number | null;
+  group_name?: string | null;
+  venue?: string | null;
+  home: { name: string; village: string | null } | null;
+  away: { name: string; village: string | null } | null;
+};
+
 export default function DashboardMatchesPage() {
-  const [matches, setMatches] = useState<any[]>([]);
+  const [matches, setMatches] = useState<ManagerMatch[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -29,6 +41,8 @@ export default function DashboardMatchesPage() {
       setLoading(false);
     };
     fetchMatches();
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredMatches = useMemo(() => {
@@ -139,7 +153,7 @@ export default function DashboardMatchesPage() {
   );
 }
 
-function MatchCard({ match }: { match: any }) {
+function MatchCard({ match }: { match: ManagerMatch }) {
   const matchDate = new Date(match.match_date);
   return (
     <Link href={`/matches/${match.id}`} className="sports-card p-6 space-y-6 group hover:border-primary/30 transition-all cursor-pointer block">

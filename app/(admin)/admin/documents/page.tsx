@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   FileText,
-  Eye,
   CheckCircle2,
   XCircle,
   Clock,
@@ -16,8 +15,18 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { updateTeamStatus } from "@/app/api/teams/actions";
 
+type DocTeam = {
+  id: string;
+  name: string;
+  village: string | null;
+  identity_docs_url: string | null;
+  village_attestation_url: string | null;
+  payment_receipt_url: string | null;
+  status: string;
+};
+
 export default function AdminDocumentsPage() {
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<DocTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -31,18 +40,19 @@ export default function AdminDocumentsPage() {
   };
 
   useEffect(() => {
+    async function fetchTeamsWithDocs() {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name, village, identity_docs_url, village_attestation_url, payment_receipt_url, status')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) setTeams(data);
+      setLoading(false);
+    }
     fetchTeamsWithDocs();
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function fetchTeamsWithDocs() {
-    const { data, error } = await supabase
-      .from('teams')
-      .select('id, name, village, identity_docs_url, village_attestation_url, payment_receipt_url, status')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) setTeams(data);
-    setLoading(false);
-  }
 
   async function handleAction(teamId: string, action: "validated" | "rejected") {
     setProcessingId(teamId);
@@ -63,7 +73,7 @@ export default function AdminDocumentsPage() {
 
   const filteredTeams = teams.filter(t =>
     t.name.toLowerCase().includes(search.toLowerCase()) ||
-    t.village.toLowerCase().includes(search.toLowerCase())
+    (t.village ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
   const getStatusIcon = (status: string) => {
@@ -74,8 +84,8 @@ export default function AdminDocumentsPage() {
     }
   };
 
-  const docsComplete = (team: any) =>
-    !!team.identity_docs_url && !!team.village_attestation_url && !!team.payment_receipt_url;
+  const docsComplete = (team: DocTeam | undefined) =>
+    !!team && !!team.identity_docs_url && !!team.village_attestation_url && !!team.payment_receipt_url;
 
   return (
     <div className="space-y-8 animate-fade-in pb-20">
@@ -128,7 +138,7 @@ export default function AdminDocumentsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black font-outfit uppercase tracking-tighter">Vérification Documents</h1>
-          <p className="text-muted text-sm">Contrôlez les pièces d'identité et justificatifs des équipes.</p>
+          <p className="text-muted text-sm">Contrôlez les pièces d’identité et justificatifs des équipes.</p>
         </div>
 
         <div className="relative group">
@@ -188,9 +198,9 @@ export default function AdminDocumentsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3">
-              <DocRow label="Pièces d'Identité (PDF)" url={team.identity_docs_url} />
-              <DocRow label="Attestation de Village" url={team.village_attestation_url} />
-              <DocRow label="Preuve de Paiement" url={team.payment_receipt_url} />
+              <DocRow label="Pièces d'Identité (PDF)" url={team.identity_docs_url ?? undefined} />
+              <DocRow label="Attestation de Village" url={team.village_attestation_url ?? undefined} />
+              <DocRow label="Preuve de Paiement" url={team.payment_receipt_url ?? undefined} />
             </div>
 
             {!docsComplete(team) && (

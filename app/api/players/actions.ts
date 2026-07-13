@@ -1,27 +1,45 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { verifyTeamOwnership } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-export async function updatePlayerPhoto(playerId: string, photoUrl: string) {
+async function verifyPlayerOwnership(playerId: string) {
   const supabase = await createClient();
-  
-  // Verify ownership before update
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Non authentifié");
+  if (!user) return { ok: false, error: "Non authentifié" };
 
-  // Atomic update using server-side client (respecting server-side RLS or bypassing if needed)
-  // Note: server-side createClient usually respects RLS unless service role is used.
-  const { data, error } = await supabase
+  const { data: player } = await supabase
+    .from('players')
+    .select('team_id')
+    .eq('id', playerId)
+    .single();
+
+  if (!player) return { ok: false, error: "Action non autorisée" };
+  return verifyTeamOwnership(player.team_id);
+}
+
+export async function updatePlayerPhoto(playerId: string, photoUrl: string) {
+  const { ok, error } = await verifyPlayerOwnership(playerId);
+  if (!ok) return { success: false, error };
+
+  // L'URL doit pointer vers notre bucket Supabase Storage
+  const allowedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`;
+  if (!photoUrl.startsWith(allowedPrefix)) {
+    return { success: false, error: "URL de photo invalide" };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { data, error: updateError } = await adminSupabase
     .from('players')
     .update({ photo_url: photoUrl })
     .eq('id', playerId)
     .select()
     .single();
 
-  if (error) {
-    console.error('[server_action] Update error:', error);
-    return { success: false, error: error.message };
+  if (updateError) {
+    console.error('[server_action] Update error:', updateError);
+    return { success: false, error: updateError.message };
   }
 
   revalidatePath('/dashboard/my-team');

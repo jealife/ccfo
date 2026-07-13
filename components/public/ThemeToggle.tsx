@@ -23,17 +23,16 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
-  const [mounted, setMounted] = useState(false);
+  // null = pas encore hydraté (évite un mismatch SSR/client)
+  const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark") {
-      setTheme(stored);
-    } else {
-      setTheme("system");
-    }
-    setMounted(true);
+    // Lecture différée du localStorage (pas de setState synchrone dans l'effet)
+    const kickoff = setTimeout(() => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      setTheme(stored === "light" || stored === "dark" ? stored : "system");
+    }, 0);
+    return () => clearTimeout(kickoff);
   }, []);
 
   function select(t: Theme) {
@@ -42,7 +41,7 @@ export function ThemeToggle() {
     applyTheme(t);
   }
 
-  if (!mounted) return null;
+  if (theme === null) return null;
 
   return (
     <div

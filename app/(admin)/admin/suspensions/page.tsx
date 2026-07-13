@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShieldAlert, User, Loader2, AlertTriangle, CheckCircle2, Search } from "lucide-react";
+import { ShieldAlert, Loader2, AlertTriangle, CheckCircle2, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { MatchEvent } from "@/lib/types";
@@ -26,10 +26,6 @@ export default function AdminSuspensionsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const supabase = createClient();
-
-  useEffect(() => {
-    computeSuspensions();
-  }, []);
 
   async function computeSuspensions() {
     // Fetch all finished match events + team names
@@ -79,6 +75,13 @@ export default function AdminSuspensionsPage() {
     setSuspensions(result);
     setLoading(false);
   }
+
+  useEffect(() => {
+    const kickoff = setTimeout(computeSuspensions, 0);
+    return () => clearTimeout(kickoff);
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = suspensions.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||

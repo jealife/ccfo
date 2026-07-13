@@ -4,40 +4,45 @@ import { useState, useEffect } from "react";
 import { Download, X, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const handler = (e: any) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const handler = (e: Event) => {
       // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
       // Stash the event so it can be triggered later.
-      setDeferredPrompt(e);
-      
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+
       // Show the prompt after 5 seconds of being logged in/on dashboard
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         setIsVisible(true);
       }, 5000);
-
-      return () => clearTimeout(timer);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
-    
-    // Show the install prompt
+
+    // Show the install prompt, then wait for the user's choice
     deferredPrompt.prompt();
-    
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    
+    await deferredPrompt.userChoice;
+
     // We've used the prompt, and can't use it again, throw it away
     setDeferredPrompt(null);
     setIsVisible(false);
@@ -69,7 +74,7 @@ export function InstallPrompt() {
               </div>
               <div className="space-y-1">
                 <h3 className="font-black font-outfit uppercase tracking-tight text-lg">Installer CCFO</h3>
-                <p className="text-xs text-muted leading-relaxed">Ajoutez l'application sur votre écran d'accueil pour un accès rapide.</p>
+                <p className="text-xs text-muted leading-relaxed">Ajoutez l’application sur votre écran d’accueil pour un accès rapide.</p>
               </div>
             </div>
 

@@ -1,37 +1,27 @@
 "use server";
 
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { z } from "zod";
+import { createAdminClient } from "@/lib/supabase/server";
+import { verifyTeamOwnership } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-async function verifyTeamOwnership(teamId: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Non authentifié" };
+const playerSchema = z.object({
+  team_id: z.string().uuid(),
+  full_name: z.string().trim().min(2, "Nom du joueur invalide").refine(n => n !== "Nouveau Joueur", "Nom du joueur invalide"),
+  jersey_number: z.coerce.number().int().min(1, "Numéro invalide").max(99, "Numéro invalide"),
+  position: z.string().trim().min(1),
+  origin_village: z.string().trim().optional().default(""),
+  date_of_birth: z.string().nullable().optional(),
+});
 
-  const { data: team } = await supabase
-    .from('teams')
-    .select('id')
-    .eq('id', teamId)
-    .eq('manager_id', user.id)
-    .single();
-
-  if (!team) return { ok: false, error: "Action non autorisée" };
-  return { ok: true, error: null };
-}
-
-export async function addPlayer(playerData: {
-  team_id: string;
-  full_name: string;
-  jersey_number: string;
-  position: string;
-  origin_village: string;
-}) {
-  const { ok, error } = await verifyTeamOwnership(playerData.team_id);
-  if (!ok) return { success: false, error };
-
-  if (!playerData.full_name.trim() || playerData.full_name === "Nouveau Joueur") {
-    return { success: false, error: "Nom du joueur invalide" };
+export async function addPlayer(playerData: z.input<typeof playerSchema>) {
+  const parsed = playerSchema.safeParse(playerData);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides" };
   }
+
+  const { ok, error } = await verifyTeamOwnership(parsed.data.team_id);
+  if (!ok) return { success: false, error };
 
   const adminSupabase = createAdminClient();
 
@@ -39,15 +29,15 @@ export async function addPlayer(playerData: {
   const { data: existing } = await adminSupabase
     .from('players')
     .select('id')
-    .eq('team_id', playerData.team_id)
-    .eq('jersey_number', playerData.jersey_number)
+    .eq('team_id', parsed.data.team_id)
+    .eq('jersey_number', parsed.data.jersey_number)
     .maybeSingle();
 
-  if (existing) return { success: false, error: `Le numéro ${playerData.jersey_number} est déjà pris` };
+  if (existing) return { success: false, error: `Le numéro ${parsed.data.jersey_number} est déjà pris` };
 
   const { data, error: insertError } = await adminSupabase
     .from('players')
-    .insert([playerData])
+    .insert([parsed.data])
     .select()
     .single();
 
@@ -60,37 +50,46 @@ export async function addPlayer(playerData: {
   return { success: true, data };
 }
 
-export async function updatePlayer(playerId: string, teamId: string, updates: Partial<{
-  full_name: string;
-  jersey_number: string;
-  position: string;
-  origin_village: string;
-}>) {
+const playerUpdateSchema = playerSchema.omit({ team_id: true }).partial();
+
+export async function updatePlayer(playerId: string, teamId: string, updates: z.input<typeof playerUpdateSchema>) {
   const { ok, error } = await verifyTeamOwnership(teamId);
   if (!ok) return { success: false, error };
 
-  if (updates.full_name !== undefined && (!updates.full_name.trim() || updates.full_name === "Nouveau Joueur")) {
-    return { success: false, error: "Nom du joueur invalide" };
+  const parsed = playerUpdateSchema.safeParse(updates);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides" };
   }
 
   const adminSupabase = createAdminClient();
 
-  if (updates.jersey_number !== undefined) {
+  if (parsed.data.jersey_number !== undefined) {
     const { data: existing } = await adminSupabase
       .from('players')
       .select('id')
       .eq('team_id', teamId)
-      .eq('jersey_number', updates.jersey_number)
+      .eq('jersey_number', parsed.data.jersey_number)
       .neq('id', playerId)
       .maybeSingle();
 
-    if (existing) return { success: false, error: `Le numéro ${updates.jersey_number} est déjà pris` };
+    if (existing) return { success: false, error: `Le numéro ${parsed.data.jersey_number} est déjà pris` };
+  }
+
+  const { data: existingPlayer } = await adminSupabase
+    .from('players')
+    .select('team_id')
+    .eq('id', playerId)
+    .single();
+
+  if (!existingPlayer || existingPlayer.team_id !== teamId) {
+    return { success: false, error: 'Action non autorisée' };
   }
 
   const { data, error: updateError } = await adminSupabase
     .from('players')
-    .update(updates)
+    .update(parsed.data)
     .eq('id', playerId)
+    .eq('team_id', teamId)
     .select()
     .single();
 
@@ -117,19 +116,29 @@ export async function deletePlayer(playerId: string, teamId: string) {
   return { success: true };
 }
 
-export async function addStaff(staffData: {
-  team_id: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-}) {
-  const { ok, error } = await verifyTeamOwnership(staffData.team_id);
+const staffSchema = z.object({
+  team_id: z.string().uuid(),
+  first_name: z.string().trim().min(1, "Prénom requis"),
+  last_name: z.string().trim().min(1, "Nom requis"),
+  role: z.string().trim().min(1, "Rôle requis"),
+});
+
+export async function addStaff(staffData: z.input<typeof staffSchema>) {
+  const parsed = staffSchema.safeParse(staffData);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides" };
+  }
+
+  const { ok, error } = await verifyTeamOwnership(parsed.data.team_id);
   if (!ok) return { success: false, error };
 
   const adminSupabase = createAdminClient();
   const { data, error: insertError } = await adminSupabase
     .from('staff')
-    .insert([staffData])
+    .insert([{
+      ...parsed.data,
+      full_name: `${parsed.data.first_name} ${parsed.data.last_name}`,
+    }])
     .select()
     .single();
 

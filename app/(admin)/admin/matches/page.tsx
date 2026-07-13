@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   Calendar,
   Plus,
-  MapPin,
   Trash2,
   Activity,
   XCircle,
@@ -17,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { AlertDialog } from "@/components/ui/Modal";
-import { deleteMatch } from "@/app/api/matches/actions";
+import { createMatch, deleteMatch } from "@/app/api/matches/actions";
 import type { Match } from "@/lib/types";
 
 // ── Structure du tournoi ──────────────────────────────────────
@@ -37,7 +36,7 @@ const SECTION_META: Record<string, { label: string; icon: React.ElementType; col
   knockout: { label: "Phase Finale",     icon: Swords, color: "text-accent"   },
 };
 
-function phaseSection(v: string) {
+function phaseSection(v: string | null | undefined) {
   return PHASES.find((p) => p.value === v)?.section ?? "group";
 }
 
@@ -55,20 +54,30 @@ const STATUS_LABELS: Record<string, string> = {
 
 // ─────────────────────────────────────────────────────────────
 
+type AdminMatchRow = Match & { group_name: string | null };
+type TeamOption = { id: string; name: string };
+
 export default function AdminMatchesPage() {
-  const [matches, setMatches] = useState<any[]>([]);
-  const [teams,   setTeams]   = useState<any[]>([]);
+  const [matches, setMatches] = useState<AdminMatchRow[]>([]);
+  const [teams,   setTeams]   = useState<TeamOption[]>([]);
   const [showForm,  setShowForm]  = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const supabase = createClient();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    home_team_id: string;
+    away_team_id: string;
+    match_date: string;
+    venue: string;
+    status: "scheduled" | "live" | "finished";
+    group_name: PhaseValue;
+  }>({
     home_team_id: "",
     away_team_id: "",
     match_date:   "",
     venue:        "Stade Municipal",
     status:       "scheduled",
-    group_name:   "Groupe A" as PhaseValue,
+    group_name:   "Groupe A",
   });
 
   const [alert, setAlert] = useState<{
@@ -76,8 +85,6 @@ export default function AdminMatchesPage() {
     type: "success" | "error" | "warning";
     onConfirm?: () => void; isConfirm?: boolean;
   }>({ isOpen: false, title: "", message: "", type: "success" });
-
-  useEffect(() => { fetchData(); }, []);
 
   async function fetchData() {
     const [{ data: mData }, { data: tData }] = await Promise.all([
@@ -94,6 +101,13 @@ export default function AdminMatchesPage() {
     setTeams(tData || []);
   }
 
+  useEffect(() => {
+    const kickoff = setTimeout(fetchData, 0);
+    return () => clearTimeout(kickoff);
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.home_team_id === formData.away_team_id) {
@@ -101,9 +115,9 @@ export default function AdminMatchesPage() {
       return;
     }
     setIsLoading(true);
-    const { error } = await supabase.from("matches").insert([formData]);
-    if (error) {
-      setAlert({ isOpen: true, title: "Erreur", message: "Erreur lors de la création : " + error.message, type: "error" });
+    const result = await createMatch(formData);
+    if (!result.success) {
+      setAlert({ isOpen: true, title: "Erreur", message: "Erreur lors de la création : " + result.error, type: "error" });
     } else {
       setShowForm(false);
       setFormData({ home_team_id: "", away_team_id: "", match_date: "", venue: "Stade Municipal", status: "scheduled", group_name: "Groupe A" });
@@ -242,7 +256,7 @@ export default function AdminMatchesPage() {
         const Icon = meta.icon;
 
         // Sous-grouper par phase
-        const byPhase: Record<string, any[]> = {};
+        const byPhase: Record<string, AdminMatchRow[]> = {};
         for (const m of matchList) {
           const phase = m.group_name || "—";
           if (!byPhase[phase]) byPhase[phase] = [];
@@ -291,7 +305,7 @@ export default function AdminMatchesPage() {
         onClose={() => setAlert({ ...alert, isOpen: false })}
         title={alert.title}
         message={alert.message}
-        type={alert.type as any}
+        type={alert.type}
         isConfirm={alert.isConfirm}
         onConfirm={alert.onConfirm}
       />

@@ -43,7 +43,7 @@ export default async function PublicMatchesPage() {
                 Calendrier & Résultats
               </h1>
               <p className="text-muted text-sm mt-1">
-                L'élite du canton Fieng Okano — tous les matchs.
+                L’élite du canton Fieng Okano — tous les matchs.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0 flex-wrap">

@@ -14,7 +14,7 @@ export async function generateMetadata(
   const supabase = createAdminClient();
   const { data: match } = await supabase
     .from("matches")
-    .select("status, match_date, home_score, away_score, group_name, home:teams!home_team_id(name), away:teams!away_team_id(name)")
+    .select("status, match_date, home_score, away_score, group_name, venue, home:teams!home_team_id(name), away:teams!away_team_id(name)")
     .eq("id", id)
     .single();
 
@@ -38,7 +38,7 @@ export async function generateMetadata(
     description = `Match en direct — ${home} contre ${away}. ${phase}Suivez le score en temps réel sur CCFO26.`;
   } else {
     title = `${home} vs ${away}`;
-    description = `${home} affronte ${away}. ${phase}CCFO26, ${dateStr}. Stade Okano.`;
+    description = `${home} affronte ${away}. ${phase}CCFO26, ${dateStr}. ${match.venue || "Stade Okano"}.`;
   }
 
   return {
@@ -93,7 +93,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     "startDate": match.match_date,
     "location": {
       "@type": "Place",
-      "name": "Stade Okano",
+      "name": match.venue || "Stade Okano",
       "address": { "@type": "PostalAddress", "addressLocality": "Fieng Okano", "addressCountry": "GA" },
     },
     "organizer": {
@@ -205,7 +205,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           {/* Stade + Date */}
           <div className="flex items-center justify-center gap-2 mt-8 text-white/35 text-[10px] font-bold uppercase tracking-widest flex-wrap">
             <MapPin className="w-3 h-3 shrink-0 text-white/50" />
-            <span className="text-white/50">Stade Okano</span>
+            <span className="text-white/50">{match.venue || "Stade Okano"}</span>
             <span className="text-white/20">·</span>
             <span className="capitalize text-white/35">
               {matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}

@@ -1,77 +1,83 @@
-# CCFO - Tournament Management System (MVP)
+# CCFO26 — Plateforme de gestion de tournoi
 
-This is a complete MVP for managing amateur football tournaments, featuring a public website for fans and a private dashboard for admins and team managers.
+Plateforme de la **Coupe Cantonale Fieng Okano** : site public pour les supporters (résultats en direct, classement, équipes) et espaces privés pour l'administration et les managers d'équipe.
 
-## 🚀 Features
+## 🚀 Fonctionnalités
 
-- **Public Site**: Home, Standings, Matches, Teams.
-- **Multi-step Registration**: Fully digitized process (Team -> Staff -> Players -> Documents -> Payment).
-- **Admin Dashboard**: Validate registrations, manage matches, input scores, track standings.
-- **Team Manager Dashboard**: Track registration status, manage team roster.
-- **Player License**: Automatically generated digital licenses for players.
-- **Real-time UI**: Built with Next.js App Router and Tailwind CSS for a premium sports aesthetic.
+- **Site public** : accueil, classement par groupe, calendrier/résultats, fiches équipes, live temps réel (Supabase Realtime), SEO (metadata, sitemap, JSON-LD).
+- **Inscription multi-étapes** : Équipe → Staff → Joueurs → Documents → Paiement.
+- **Dashboard admin** : validation des inscriptions, régie live des matchs (score, événements, homme du match), paiements, documents, suspensions, configuration du tournoi.
+- **Dashboard manager** : suivi du dossier, gestion de l'effectif (joueurs, staff, photos).
+- **PWA** : installable sur mobile (manifest + prompt d'installation).
 
-## 🛠 Tech Stack
+## 🛠 Stack
 
-- **Framework**: Next.js 15 (App Router)
-- **Styling**: Tailwind CSS 4
-- **Icons**: Lucide React
-- **Animations**: Framer Motion
-- **Database**: Supabase (Auth, DB, Storage)
+- **Framework** : Next.js 16 (App Router, React 19, React Compiler, convention `proxy.ts`)
+- **Styling** : Tailwind CSS 4 · **Icônes** : Lucide React · **Animations** : Framer Motion
+- **Validation** : Zod (schémas partagés client/serveur dans `lib/validation/`)
+- **Backend** : Supabase (Auth, Postgres + RLS, Storage, Realtime)
 
-## 📦 Getting Started
+## 📦 Démarrage
 
-1.  **Clone and Install**:
+1. **Installer** :
     ```bash
     npm install
     ```
 
-2.  **Supabase Setup**:
-    - Create a new project on [Supabase](https://supabase.com).
-    - Run the SQL schema provided below in the Supabase SQL Editor.
-    - Copy your API credentials to `.env.local`.
+2. **Configurer Supabase** :
+    - Créer un projet sur [Supabase](https://supabase.com).
+    - Exécuter le schéma SQL ci-dessous dans le SQL Editor, puis les scripts du dossier [`sql/`](sql/).
 
-3.  **Run Locally**:
+3. **Variables d'environnement** :
+    ```bash
+    cp .env.example .env
+    ```
+    Renseigner les clés depuis Dashboard → Settings → API.
+    ⚠️ `SUPABASE_SERVICE_ROLE_KEY` doit être la clé **service_role** (secrète), pas la clé anon — sans elle, toutes les actions d'écriture (admin et manager) échouent.
+
+4. **Lancer** :
     ```bash
     npm run dev
     ```
 
-## 🗄 Database Schema (SQL)
-
-Run this in your Supabase SQL Editor to initialize the database:
+## 🗄 Schéma de la base (état réel)
 
 ```sql
--- Roles Enum
-CREATE TYPE user_role AS ENUM ('admin', 'manager');
+-- Enums
+CREATE TYPE user_role   AS ENUM ('admin', 'manager');
 CREATE TYPE team_status AS ENUM ('incomplete', 'pending', 'validated', 'rejected', 'locked');
 CREATE TYPE match_status AS ENUM ('scheduled', 'live', 'finished');
-CREATE TYPE event_type AS ENUM ('goal', 'yellow_card', 'red_card', 'mom');
 CREATE TYPE payment_status AS ENUM ('pending', 'paid');
 
--- Profiles
+-- Profils (créés par trigger à l'inscription — voir sql/harden_profiles_trigger.sql)
 CREATE TABLE profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   role user_role DEFAULT 'manager',
   full_name TEXT,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Teams
+-- Équipes
 CREATE TABLE teams (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  manager_id UUID REFERENCES profiles(id),
+  manager_id UUID REFERENCES profiles(id) UNIQUE,
   name TEXT NOT NULL,
   village TEXT,
   jersey_color TEXT,
   president_name TEXT,
-  phone TEXT,
+  president_phone TEXT,
+  phone TEXT,                    -- déprécié, remplacé par president_phone
   whatsapp TEXT,
   email TEXT,
   status team_status DEFAULT 'incomplete',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  identity_docs_url TEXT,        -- sql/add_team_documents.sql
+  village_attestation_url TEXT,
+  payment_receipt_url TEXT,
+  tournament_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Players
+-- Joueurs
 CREATE TABLE players (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
@@ -79,59 +85,56 @@ CREATE TABLE players (
   jersey_number INTEGER,
   date_of_birth DATE,
   position TEXT,
-  village TEXT,
+  origin_village TEXT,
   photo_url TEXT,
   id_card_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Staff
+-- Staff technique
 CREATE TABLE staff (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
-  full_name TEXT NOT NULL,
+  first_name TEXT,
+  last_name TEXT,
+  full_name TEXT,
+  nationality TEXT,
   role TEXT,
-  origin TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  origin_village TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Matches
+-- Matchs (événements et stats stockés en JSONB ; started_at vit dans stats)
 CREATE TABLE matches (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   home_team_id UUID REFERENCES teams(id),
   away_team_id UUID REFERENCES teams(id),
   home_score INTEGER DEFAULT 0,
   away_score INTEGER DEFAULT 0,
-  match_date TIMESTAMP WITH TIME ZONE,
+  match_date TIMESTAMPTZ,
   status match_status DEFAULT 'scheduled',
-  group_name TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  group_name TEXT,               -- 'Groupe A' / 'Groupe B' comptent au classement
+  venue TEXT,
+  is_published BOOLEAN,
+  events JSONB,
+  stats JSONB,
+  lineups JSONB,
+  motm_player TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Match Events
-CREATE TABLE match_events (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  match_id UUID REFERENCES matches(id) ON DELETE CASCADE,
-  player_id UUID REFERENCES players(id),
-  team_id UUID REFERENCES teams(id),
-  type event_type,
-  minute INTEGER,
-  details JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Payments
+-- Paiements
 CREATE TABLE payments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE UNIQUE,
   amount DECIMAL(10,2),
   status payment_status DEFAULT 'pending',
   receipt_url TEXT,
   validated_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Standings
+-- Classement (recalculé après chaque match terminé)
 CREATE TABLE standings (
   team_id UUID REFERENCES teams(id) PRIMARY KEY,
   played INTEGER DEFAULT 0,
@@ -140,13 +143,42 @@ CREATE TABLE standings (
   lost INTEGER DEFAULT 0,
   goals_for INTEGER DEFAULT 0,
   goals_against INTEGER DEFAULT 0,
-  points INTEGER DEFAULT 0
+  goal_diff INTEGER DEFAULT 0,
+  points INTEGER DEFAULT 0,
+  position INTEGER DEFAULT 0,
+  group_name TEXT
+);
+
+-- Configuration du tournoi (ligne unique id=1)
+CREATE TABLE tournament_config (
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  registration_deadline TIMESTAMPTZ,
+  max_teams INTEGER,
+  players_per_team INTEGER DEFAULT 24,
+  staff_per_team INTEGER DEFAULT 6,
+  is_active BOOLEAN DEFAULT TRUE,
+  points_win INTEGER DEFAULT 3,
+  points_draw INTEGER DEFAULT 1,
+  points_loss INTEGER DEFAULT 0,
+  qualification_spots INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
-## 📱 Design Guidelines
+> Storage : buckets `team-docs` (documents d'équipe — à passer en privé, voir
+> `sql/cleanup_and_storage_notes.sql`), `player-photos` et `avatars`.
 
-- **Typography**: Outfit for headings, Inter for body.
-- **Colors**: Dark theme by default. Slate-950 background, Emerald-500 primary accent.
-- **Components**: Use the `.sports-card` class for a premium frosted-glass look.
-# ccfo
+## 🔐 Sécurité
+
+- RLS activé sur toutes les tables ; les écritures passent par des Server Actions qui vérifient le rôle (`lib/auth.ts`) puis utilisent le client service-role.
+- Le rôle des nouveaux comptes est forcé à `manager` côté base (`sql/harden_profiles_trigger.sql`) ; promotion admin uniquement en SQL.
+- Les payloads des Server Actions sont validés avec Zod (`lib/validation/`).
+
+## 📱 Design
+
+- **Typo** : Outfit (titres), Inter (texte).
+- **Couleurs** : thème sombre/clair, primaire rouge `#CC1F2B` (variables dans `globals.css`).
+- **Composants** : classes utilitaires `.sports-card`, `.glass-card`, `.hero-card`.

@@ -43,10 +43,6 @@ export default function AdminTournamentsPage() {
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
   const [savedConfig, setSavedConfig] = useState<Config>(DEFAULT_CONFIG);
 
-  useEffect(() => {
-    fetchConfig();
-  }, []);
-
   async function fetchConfig() {
     setIsLoading(true);
     const data = await getTournamentConfig();
@@ -63,6 +59,11 @@ export default function AdminTournamentsPage() {
     }
     setIsLoading(false);
   }
+
+  useEffect(() => {
+    const kickoff = setTimeout(fetchConfig, 0);
+    return () => clearTimeout(kickoff);
+  }, []);
 
   function handleCancel() {
     setConfig(savedConfig);
@@ -116,7 +117,7 @@ export default function AdminTournamentsPage() {
     setIsSaving(false);
   }
 
-  const set = (field: keyof Config, value: any) => setConfig(prev => ({ ...prev, [field]: value }));
+  const set = (field: keyof Config, value: string | number | boolean) => setConfig(prev => ({ ...prev, [field]: value }));
   const setNum = (field: keyof Config, raw: string) => set(field, raw === "" ? "" : parseInt(raw) || 0);
 
   if (isLoading) {
@@ -362,7 +363,7 @@ export default function AdminTournamentsPage() {
           <code className="text-primary font-bold">points_loss</code> et <code className="text-primary font-bold">qualification_spots</code> doivent
           exister dans la table <code className="text-primary font-bold">tournament_config</code>. Les colonnes{" "}
           <code className="text-primary font-bold">goal_diff</code> et <code className="text-primary font-bold">position</code> doivent exister dans
-          la table <code className="text-primary font-bold">standings</code>. Exécutez la migration SQL fournie si ce n'est pas encore fait.
+          la table <code className="text-primary font-bold">standings</code>. Exécutez la migration SQL fournie si ce n’est pas encore fait.
         </p>
       </div>
     </div>
@@ -371,7 +372,7 @@ export default function AdminTournamentsPage() {
 
 function InputField({ label, value, type = "text", disabled, onChange }: {
   label: string;
-  value: any;
+  value: string | number;
   type?: string;
   disabled: boolean;
   onChange: (v: string) => void;

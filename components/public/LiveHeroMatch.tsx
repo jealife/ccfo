@@ -6,7 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { getStartedAt } from "@/lib/helpers";
-import type { Match, MatchEvent, MatchStat } from "@/lib/types";
+import type { Match, MatchStat } from "@/lib/types";
 import { MatchTimer } from "./MatchTimer";
 
 export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
@@ -54,7 +54,7 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
           </div>
           <div className="flex items-center gap-1.5 text-white/40">
             <MapPin className="w-3 h-3" />
-            <span className="text-[10px] font-medium">Stade Okano</span>
+            <span className="text-[10px] font-medium">{match.venue || "Stade Okano"}</span>
           </div>
         </div>
 

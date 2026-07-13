@@ -12,6 +12,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/app/api/auth/actions";
 import { AdminBottomNav } from "@/components/dashboard/AdminBottomNav";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
 import { SidebarItem } from "@/components/dashboard/SidebarItem";
@@ -22,8 +23,6 @@ import type { Viewport } from "next";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: "#ef4444",
 };
@@ -104,10 +103,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <p className="text-[9px] text-primary font-black uppercase tracking-widest">Admin</p>
             </div>
           </div>
-          <Link href="/logout" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted hover:text-red-500 hover:bg-red-500/5 transition-all font-medium text-sm">
-            <LogOut className="w-4 h-4" />
-            Déconnexion
-          </Link>
+          <form action={signOut}>
+            <button type="submit" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted hover:text-red-500 hover:bg-red-500/5 transition-all font-medium text-sm">
+              <LogOut className="w-4 h-4" />
+              Déconnexion
+            </button>
+          </form>
         </div>
       </aside>
 

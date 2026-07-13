@@ -18,15 +18,46 @@ import {
   Trash2,
   AlertTriangle
 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { updatePlayerPhoto } from "@/app/api/players/actions";
 import { addPlayer, addStaff, deletePlayer, deleteStaff, updatePlayer } from "@/app/api/team/actions";
 
+type TeamRow = {
+  id: string;
+  name: string;
+  village: string | null;
+  status: string;
+  president_name: string | null;
+};
+
+type StaffRow = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: string | null;
+};
+
+type PlayerRow = {
+  id: string;
+  team_id: string;
+  full_name: string;
+  jersey_number: string | number;
+  position: string | null;
+  origin_village: string | null;
+  photo_url: string | null;
+};
+
+/** Nom de fichier de photo (hors composant pour rester pur au rendu) */
+function makePhotoPath(playerId: string, ext: string | undefined) {
+  return `player-photos/${playerId}-${Date.now()}.${ext}`;
+}
+
 export default function MyTeamPage() {
-  const [team, setTeam] = useState<any>(null);
-  const [staff, setStaff] = useState<any[]>([]);
-  const [players, setPlayers] = useState<any[]>([]);
+  const [team, setTeam] = useState<TeamRow | null>(null);
+  const [staff, setStaff] = useState<StaffRow[]>([]);
+  const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [playersLimit, setPlayersLimit] = useState(24);
   const [staffLimit, setStaffLimit] = useState(6);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -39,10 +70,6 @@ export default function MyTeamPage() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
-
-  useEffect(() => {
-    fetchTeamData();
-  }, []);
 
   async function fetchTeamData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -70,9 +97,44 @@ export default function MyTeamPage() {
     setLoading(false);
   }
 
-  const handleUpdatePlayer = async (id: string, updates: any) => {
+  useEffect(() => {
+    const kickoff = setTimeout(fetchTeamData, 0);
+    return () => clearTimeout(kickoff);
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Id local d'un joueur en cours de création (non encore persisté)
+  const DRAFT_ID = "__draft__";
+
+  const handleUpdatePlayer = async (id: string, updates: PlayerRow) => {
     if (!team) return;
-    const result = await updatePlayer(id, team.id, updates);
+
+    // Brouillon : première sauvegarde → création côté serveur
+    if (id === DRAFT_ID) {
+      const result = await addPlayer({
+        team_id: team.id,
+        full_name: updates.full_name,
+        jersey_number: updates.jersey_number,
+        position: updates.position || "MIL",
+        origin_village: updates.origin_village || "",
+      });
+      if (result.success) {
+        setPlayers(prev => prev.map(p => p.id === DRAFT_ID ? result.data : p));
+        setEditingPlayerId(null);
+        showToast("Joueur ajouté", "success");
+      } else {
+        showToast(result.error || "Erreur lors de l'ajout", "error");
+      }
+      return;
+    }
+
+    const result = await updatePlayer(id, team.id, {
+      full_name: updates.full_name,
+      jersey_number: updates.jersey_number,
+      position: updates.position ?? undefined,
+      origin_village: updates.origin_village ?? undefined,
+    });
     if (result.success) {
       setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
       setEditingPlayerId(null);
@@ -82,38 +144,47 @@ export default function MyTeamPage() {
     }
   };
 
-  const handleAddPlayer = async () => {
+  const handleAddPlayer = () => {
     if (players.length >= playersLimit) {
       showToast(`Limite de ${playersLimit} joueurs atteinte`, "error");
       return;
     }
+    // Un seul brouillon à la fois
+    if (players.some(p => p.id === DRAFT_ID)) {
+      setEditingPlayerId(DRAFT_ID);
+      return;
+    }
 
     // Pick next available jersey number
-    const usedNumbers = new Set(players.map(p => parseInt(p.jersey_number)));
+    const usedNumbers = new Set(players.map(p => parseInt(String(p.jersey_number))));
     let nextNumber = 1;
     while (usedNumbers.has(nextNumber)) nextNumber++;
 
-    const newPlayer = {
+    if (!team) return;
+    const draft: PlayerRow = {
+      id: DRAFT_ID,
       team_id: team.id,
-      full_name: "Nouveau Joueur",
+      full_name: "",
       jersey_number: nextNumber.toString(),
       position: "MIL",
-      origin_village: team.village
+      origin_village: team.village || "",
+      photo_url: null,
     };
 
-    const result = await addPlayer(newPlayer);
+    setPlayers(prev => [...prev, draft]);
+    setEditingPlayerId(DRAFT_ID);
+  };
 
-    if (!result.success) {
-      showToast(result.error || "Erreur lors de l'ajout", "error");
-    } else {
-      setPlayers(prev => [...prev, result.data]);
-      setEditingPlayerId(result.data.id);
-      showToast("Joueur ajouté — complétez les informations", "success");
+  const handleCancelEdit = (playerId: string) => {
+    if (playerId === DRAFT_ID) {
+      setPlayers(prev => prev.filter(p => p.id !== DRAFT_ID));
     }
+    setEditingPlayerId(null);
   };
 
   const handleDeletePlayer = async (playerId: string) => {
     setConfirm(null);
+    if (!team) return;
     const result = await deletePlayer(playerId, team.id);
     if (result.success) {
       setPlayers(prev => prev.filter(p => p.id !== playerId));
@@ -129,6 +200,7 @@ export default function MyTeamPage() {
       showToast(`Limite de ${staffLimit} membres atteinte`, "error");
       return;
     }
+    if (!team) return;
 
     const newMember = {
       team_id: team.id,
@@ -149,6 +221,7 @@ export default function MyTeamPage() {
 
   const handleDeleteStaff = async (staffId: string) => {
     setConfirm(null);
+    if (!team) return;
     const result = await deleteStaff(staffId, team.id);
     if (result.success) {
       setStaff(prev => prev.filter(s => s.id !== staffId));
@@ -159,6 +232,10 @@ export default function MyTeamPage() {
   };
 
   const handlePhotoUpload = async (id: string, file: File): Promise<boolean> => {
+    if (id === DRAFT_ID) {
+      showToast("Enregistrez d'abord le joueur avant d'ajouter une photo", "error");
+      return false;
+    }
     if (!file.type.startsWith("image/")) {
       showToast("Format non supporté. Utilisez JPG ou PNG.", "error");
       return false;
@@ -168,9 +245,7 @@ export default function MyTeamPage() {
       return false;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${id}-${Date.now()}.${fileExt}`;
-    const filePath = `player-photos/${fileName}`;
+    const filePath = makePhotoPath(id, file.name.split('.').pop());
 
     const { error: uploadError } = await supabase.storage
       .from('team-docs')
@@ -203,7 +278,7 @@ export default function MyTeamPage() {
   if (!team) return (
     <div className="p-20 text-center space-y-4">
       <AlertCircle className="w-16 h-16 mx-auto text-muted/30" />
-      <p className="text-muted">Aucune équipe trouvée. Veuillez d'abord compléter l'inscription.</p>
+      <p className="text-muted">Aucune équipe trouvée. Veuillez d’abord compléter l’inscription.</p>
     </div>
   );
 
@@ -372,9 +447,9 @@ export default function MyTeamPage() {
                 player={player}
                 isEditing={editingPlayerId === player.id}
                 onEdit={() => setEditingPlayerId(player.id)}
-                onCancel={() => setEditingPlayerId(null)}
-                onSave={(updates: any) => handleUpdatePlayer(player.id, updates)}
-                onPhotoUpload={(file: File) => handlePhotoUpload(player.id, file)}
+                onCancel={() => handleCancelEdit(player.id)}
+                onSave={(updates) => handleUpdatePlayer(player.id, updates)}
+                onPhotoUpload={(file) => handlePhotoUpload(player.id, file)}
                 onDelete={() => setConfirm({ type: "player", id: player.id, name: player.full_name })}
               />
             ))}
@@ -385,23 +460,34 @@ export default function MyTeamPage() {
   );
 }
 
-function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload, onDelete }: any) {
+function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload, onDelete }: {
+  player: PlayerRow;
+  isEditing: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: (updates: PlayerRow) => void;
+  onPhotoUpload: (file: File) => Promise<boolean>;
+  onDelete: () => void;
+}) {
   const [editedPlayer, setEditedPlayer] = useState(player);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // Resynchronise l'état local quand le joueur change (pattern "adjust state during render")
+  const [prevPlayer, setPrevPlayer] = useState(player);
+  if (prevPlayer !== player) {
+    setPrevPlayer(player);
     setEditedPlayer(player);
     setErrors({});
-  }, [player]);
+  }
 
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!editedPlayer.full_name.trim() || editedPlayer.full_name === "Nouveau Joueur") {
       errs.full_name = "Nom requis";
     }
-    const num = parseInt(editedPlayer.jersey_number);
+    const num = parseInt(String(editedPlayer.jersey_number));
     if (isNaN(num) || num < 1 || num > 99) {
       errs.jersey_number = "Numéro invalide (1–99)";
     }
@@ -469,7 +555,7 @@ function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload
             <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
               {isEditing ? (
                 <select
-                  value={editedPlayer.position}
+                  value={editedPlayer.position ?? ""}
                   className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-black uppercase outline-none"
                   onChange={(e) => setEditedPlayer({ ...editedPlayer, position: e.target.value })}
                 >
@@ -485,7 +571,7 @@ function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload
               {isEditing ? (
                 <input
                   type="text"
-                  value={editedPlayer.origin_village}
+                  value={editedPlayer.origin_village ?? ""}
                   className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-black uppercase outline-none"
                   onChange={(e) => setEditedPlayer({ ...editedPlayer, origin_village: e.target.value })}
                 />
@@ -523,7 +609,7 @@ function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload
       <div className="px-4 md:px-6 pb-4 md:pb-6 pt-2">
         <div className="relative aspect-4/3 w-full rounded-xl bg-secondary/50 overflow-hidden">
           {player.photo_url ? (
-            <img src={player.photo_url} alt={player.full_name} className="w-full h-full object-cover" />
+            <Image src={player.photo_url} alt={player.full_name} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover" />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-muted/30 gap-3">
               <User className="w-16 h-16 stroke-[1px]" />

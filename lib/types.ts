@@ -14,6 +14,7 @@ export interface Player {
   photo_url?: string | null;
   team_id?: string;
   date_of_birth?: string | null;
+  origin_village?: string | null;
 }
 
 export interface Team {
@@ -23,6 +24,13 @@ export interface Team {
   status?: TeamStatus;
   jersey_color?: string | null;
   manager_id?: string | null;
+  president_name?: string | null;
+  president_phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  identity_docs_url?: string | null;
+  village_attestation_url?: string | null;
+  payment_receipt_url?: string | null;
   players?: Player[];
 }
 

@@ -7,29 +7,64 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { updateMatchLive } from "@/app/api/matches/actions";
 import { AlertDialog } from "@/components/ui/Modal";
-import type { MatchStat } from "@/lib/types";
+import type { MatchStat, MatchStatus, EventType } from "@/lib/types";
+
+type LiveEvent = {
+  id: string | number;
+  minute: string | number;
+  type: EventType;
+  player: string;
+  playerIn?: string;
+  team: "home" | "away";
+};
+
+type RosterPlayer = {
+  id: string;
+  full_name: string;
+  jersey_number: number | string | null;
+  team_id: string;
+};
+
+type AdminMatch = {
+  id: string;
+  status: MatchStatus;
+  home_team_id: string;
+  away_team_id: string;
+  home_score: number | null;
+  away_score: number | null;
+  motm_player: string | null;
+  events: LiveEvent[] | null;
+  stats: unknown;
+  home: { name: string };
+  away: { name: string };
+};
+
+/** Id local d'événement (hors composant pour rester pur au rendu) */
+function makeEventId() {
+  return Date.now();
+}
 
 export default function MatchLiveController({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const supabase = createClient();
-  
-  const [match, setMatch] = useState<any>(null);
+
+  const [match, setMatch] = useState<AdminMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Editable State
-  const [status, setStatus] = useState("scheduled");
+  const [status, setStatus] = useState<MatchStatus>("scheduled");
   const [motmPlayer, setMotmPlayer] = useState("");
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
-  const [events, setEvents] = useState<any[]>([]);
-  const [homePlayers, setHomePlayers] = useState<any[]>([]);
-  const [awayPlayers, setAwayPlayers] = useState<any[]>([]);
+  const [events, setEvents] = useState<LiveEvent[]>([]);
+  const [homePlayers, setHomePlayers] = useState<RosterPlayer[]>([]);
+  const [awayPlayers, setAwayPlayers] = useState<RosterPlayer[]>([]);
   const [startedAt, setStartedAt] = useState<string | null>(null);
-  const [matchStats, setMatchStats] = useState<any[]>([]);
-  
+  const [matchStats, setMatchStats] = useState<MatchStat[]>([]);
+
   // New Event Form
-  const [newEvent, setNewEvent] = useState({ minute: "", type: "goal", player: "", playerIn: "", team: "home" });
+  const [newEvent, setNewEvent] = useState<{ minute: string; type: EventType; player: string; playerIn: string; team: "home" | "away" }>({ minute: "", type: "goal", player: "", playerIn: "", team: "home" });
 
   // Modal State
   const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" }>({
@@ -38,10 +73,6 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     message: "",
     type: "success"
   });
-
-  useEffect(() => {
-    fetchMatch();
-  }, [id]);
 
   async function fetchMatch() {
     setLoading(true);
@@ -74,15 +105,22 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     setLoading(false);
   }
 
+  useEffect(() => {
+    const kickoff = setTimeout(fetchMatch, 0);
+    return () => clearTimeout(kickoff);
+    // fetchMatch dépend uniquement de `id`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   async function saveMatchDetails() {
     setSaving(true);
     
     // Sort events by minute
-    const sortedEvents = [...events].sort((a, b) => parseInt(a.minute) - parseInt(b.minute));
+    const sortedEvents = [...events].sort((a, b) => parseInt(String(a.minute)) - parseInt(String(b.minute)));
     setEvents(sortedEvents);
 
     const currentStartedAt = status === 'live' ? (startedAt || new Date().toISOString()) : startedAt;
-    const finalStats = [...matchStats];
+    const finalStats: (MatchStat | { label: "started_at"; value: string })[] = [...matchStats];
     if (currentStartedAt) {
       finalStats.push({ label: 'started_at', value: currentStartedAt });
     }
@@ -119,7 +157,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
   const addEvent = () => {
     if (!newEvent.minute || !newEvent.player) return;
     if (newEvent.type === 'substitution' && !newEvent.playerIn) return;
-    const event = { ...newEvent, id: Date.now() };
+    const event: LiveEvent = { ...newEvent, id: makeEventId() };
     setEvents([...events, event]);
 
     // Automate Score Update
@@ -131,7 +169,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     setNewEvent({ minute: "", type: "goal", player: "", playerIn: "", team: "home" });
   };
 
-  const removeEvent = (eventId: number) => {
+  const removeEvent = (eventId: string | number) => {
     const eventToRemove = events.find(e => e.id === eventId);
     if (eventToRemove?.type === 'goal') {
       if (eventToRemove.team === 'home') setHomeScore(prev => Math.max(0, prev - 1));
@@ -270,11 +308,11 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
             {/* ADD EVENT FORM */}
             <div className="p-4 bg-background/50 border border-white/5 rounded-xl space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <select value={newEvent.team} onChange={(e) => setNewEvent({...newEvent, team: e.target.value})} className="bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none">
+                <select value={newEvent.team} onChange={(e) => setNewEvent({...newEvent, team: e.target.value as "home" | "away"})} className="bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none">
                   <option value="home">{match.home.name} (Dom)</option>
                   <option value="away">{match.away.name} (Ext)</option>
                 </select>
-                <select value={newEvent.type} onChange={(e) => setNewEvent({...newEvent, type: e.target.value})} className="bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none">
+                <select value={newEvent.type} onChange={(e) => setNewEvent({...newEvent, type: e.target.value as EventType})} className="bg-card border border-white/10 rounded-lg px-3 py-2 text-sm outline-none">
                   <option value="goal">But</option>
                   <option value="yellow">Carton Jaune</option>
                   <option value="red">Carton Rouge</option>
@@ -327,7 +365,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
               
               {events.map((evt) => (
                 <div key={evt.id} className="flex items-center gap-4 p-3 bg-white/5 rounded-lg border border-white/5">
-                  <div className="w-12 text-center text-sm font-black font-outfit text-primary">{evt.minute}'</div>
+                  <div className="w-12 text-center text-sm font-black font-outfit text-primary">{evt.minute}’</div>
                   <div className="flex items-center justify-center w-8 h-8 bg-background rounded-lg border border-white/10">
                     {evt.type === 'goal' ? (
                       <Goal className="w-4 h-4 text-white" />

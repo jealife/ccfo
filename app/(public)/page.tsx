@@ -25,14 +25,14 @@ export default async function HomePage() {
 
   const { data: matches } = await supabase
     .from("matches")
-    .select("id, status, match_date, home_score, away_score, group_name, events, stats, home:teams!home_team_id(name), away:teams!away_team_id(name)")
+    .select("id, status, match_date, home_score, away_score, group_name, venue, events, stats, home:teams!home_team_id(name), away:teams!away_team_id(name)")
     .in("status", ["finished", "live"])
     .order("match_date", { ascending: false })
     .limit(6);
 
   const { data: nextMatch } = await supabase
     .from("matches")
-    .select("id, status, match_date, home_score, away_score, group_name, stats, home_team_id, away_team_id, home:teams!home_team_id(id,name), away:teams!away_team_id(id,name)")
+    .select("id, status, match_date, home_score, away_score, group_name, venue, stats, home_team_id, away_team_id, home:teams!home_team_id(id,name), away:teams!away_team_id(id,name)")
     .in("status", ["live", "scheduled"])
     .order("match_date", { ascending: true })
     .limit(1)
@@ -43,8 +43,16 @@ export default async function HomePage() {
   const { data: standings } = await supabase
     .from("standings")
     .select("*, teams(name)")
-    .order("points", { ascending: false })
-    .limit(6);
+    .order("group_name", { ascending: true })
+    .order("position", { ascending: true });
+
+  // Classement regroupé par poule
+  const standingsByGroup = new Map<string, Standing[]>();
+  for (const row of (standings as Standing[] | null) ?? []) {
+    const key = row.group_name || "Classement";
+    if (!standingsByGroup.has(key)) standingsByGroup.set(key, []);
+    standingsByGroup.get(key)!.push(row);
+  }
 
   const { data: config } = await supabase
     .from("tournament_config")
@@ -55,8 +63,13 @@ export default async function HomePage() {
 
   type PlayerRow = { full_name: string; photo_url: string | null; team: { name: string } | null };
 
-  // Top scorers
-  const allEvents = (matches || []).flatMap((m) => (m.events as MatchEvent[] | null) ?? []);
+  // Top scorers — agrégés sur TOUS les matchs terminés (pas seulement les derniers affichés)
+  const { data: finishedMatches } = await supabase
+    .from("matches")
+    .select("events")
+    .eq("status", "finished");
+
+  const allEvents = (finishedMatches || []).flatMap((m) => (m.events as MatchEvent[] | null) ?? []);
   const goalCounts = allEvents
     .filter((e) => e.type === "goal")
     .reduce<Record<string, number>>((acc, g) => {
@@ -153,62 +166,67 @@ export default async function HomePage() {
                 icon={<BarChart3 className="w-4 h-4 text-primary" />}
                 href="/standings"
               />
-              <div className="glass-card overflow-hidden">
-                <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-secondary border-b border-border">
-                      <th title="Position" className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-muted w-10 cursor-help">#</th>
-                      <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-muted">Club</th>
-                      <th title="Matchs Joués" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">MJ</th>
-                      <th title="Différence de buts (marqués − encaissés)" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">+/-</th>
-                      <th title="Points" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {(standings || []).length > 0 ? (standings as Standing[]).map((row, i) => (
-                      <tr key={row.team_id} className="hover:bg-secondary/60 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black mx-auto",
-                            i < 3 ? "bg-primary text-white" : "bg-secondary text-muted"
-                          )}>
-                            {i + 1}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] font-black text-foreground shrink-0">
-                              {row.teams?.name?.[0]}
-                            </div>
-                            <span className="font-bold text-sm text-foreground truncate">{row.teams?.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center text-sm text-muted font-medium">{row.played ?? 0}</td>
-                        <td className="px-4 py-3 text-center text-sm font-bold">
-                          <span className={cn(
-                            (row.goal_diff ?? 0) > 0 ? "text-green-500"
-                              : (row.goal_diff ?? 0) < 0 ? "text-red-500"
-                              : "text-muted"
-                          )}>
-                            {(row.goal_diff ?? 0) > 0 ? `+${row.goal_diff}` : (row.goal_diff ?? 0)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-sm font-black text-primary">{row.points}</span>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-muted text-sm">
-                          Aucune donnée disponible.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              {standingsByGroup.size > 0 ? (
+                Array.from(standingsByGroup.entries()).map(([groupName, rows]) => (
+                  <div key={groupName} className="glass-card overflow-hidden">
+                    <div className="px-4 py-2.5 bg-secondary/60 border-b border-border text-[10px] font-black uppercase tracking-widest text-primary">
+                      {groupName}
+                    </div>
+                    <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-secondary border-b border-border">
+                          <th title="Position" className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-muted w-10 cursor-help">#</th>
+                          <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-muted">Club</th>
+                          <th title="Matchs Joués" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">MJ</th>
+                          <th title="Différence de buts (marqués − encaissés)" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">+/-</th>
+                          <th title="Points" className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-widest text-muted cursor-help">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {rows.map((row) => (
+                          <tr key={row.team_id} className="hover:bg-secondary/60 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className={cn(
+                                "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black mx-auto",
+                                row.position <= 2 ? "bg-primary text-white" : "bg-secondary text-muted"
+                              )}>
+                                {row.position}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] font-black text-foreground shrink-0">
+                                  {row.teams?.name?.[0]}
+                                </div>
+                                <span className="font-bold text-sm text-foreground truncate">{row.teams?.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center text-sm text-muted font-medium">{row.played ?? 0}</td>
+                            <td className="px-4 py-3 text-center text-sm font-bold">
+                              <span className={cn(
+                                (row.goal_diff ?? 0) > 0 ? "text-green-500"
+                                  : (row.goal_diff ?? 0) < 0 ? "text-red-500"
+                                  : "text-muted"
+                              )}>
+                                {(row.goal_diff ?? 0) > 0 ? `+${row.goal_diff}` : (row.goal_diff ?? 0)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-sm font-black text-primary">{row.points}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="glass-card p-8 text-center">
+                  <p className="text-muted text-sm">Aucune donnée disponible.</p>
                 </div>
-              </div>
+              )}
             </section>
 
             {/* Top buteurs */}
@@ -292,7 +310,6 @@ function SectionHeader({
 
 function MatchRowCard({ match }: { match: Match }) {
   const isLive = match.status === "live";
-  const isFinished = match.status === "finished";
   const matchDate = new Date(match.match_date);
   const homeColor = getTeamPalette(match.home?.name);
   const awayColor = getTeamPalette(match.away?.name);

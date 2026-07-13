@@ -38,8 +38,8 @@ export default function RegisterPage() {
       if (data.user) {
         router.push("/login?message=Compte créé avec succès. Veuillez vous connecter.");
       }
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de l'inscription");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'inscription");
     } finally {
       setIsLoading(false);
     }
@@ -58,13 +58,13 @@ export default function RegisterPage() {
           className="inline-flex items-center gap-2 text-muted hover:text-foreground transition-colors mb-8 text-sm font-medium"
         >
           <ChevronLeft className="w-4 h-4" />
-          Retour à l'accueil
+          Retour à l’accueil
         </Link>
 
         <div className="sports-card p-8 bg-card/50 backdrop-blur-xl border-white/5 space-y-8">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-black font-outfit uppercase tracking-tight">Créer un Compte</h1>
-            <p className="text-muted text-sm">Devenez manager d'équipe pour le tournoi.</p>
+            <p className="text-muted text-sm">Devenez manager d’équipe pour le tournoi.</p>
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">
@@ -135,7 +135,7 @@ export default function RegisterPage() {
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                 <>
                   <UserPlus className="w-5 h-5" />
-                  S'inscrire
+                  S’inscrire
                 </>
               )}
             </button>

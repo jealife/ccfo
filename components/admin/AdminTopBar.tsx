@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/app/api/auth/actions";
 import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -124,11 +125,13 @@ export function AdminTopBar({ userName, pendingCount }: AdminTopBarProps) {
         type: "player" as const,
         id: p.id,
         label: p.full_name,
-        sub: (p.teams as any)?.name ?? "—",
+        sub: (p.teams as unknown as { name: string } | null)?.name ?? "—",
         href: "/admin/players",
       })),
     ]);
     setSearchLoading(false);
+    // supabase est un client stable créé une fois par module
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -283,14 +286,15 @@ export function AdminTopBar({ userName, pendingCount }: AdminTopBarProps) {
                   <p className="text-[10px] text-primary font-black uppercase tracking-widest">Administrateur</p>
                 </div>
                 <div className="py-2">
-                  <Link
-                    href="/logout"
-                    onClick={() => setAvatarOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-muted hover:text-red-400 hover:bg-red-500/5 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="font-bold">Déconnexion</span>
-                  </Link>
+                  <form action={signOut}>
+                    <button
+                      type="submit"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-muted hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span className="font-bold">Déconnexion</span>
+                    </button>
+                  </form>
                 </div>
               </div>
             )}

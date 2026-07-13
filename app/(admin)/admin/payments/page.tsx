@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  CreditCard, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  Search, 
-  FileText, 
+import {
+  CreditCard,
+  Clock,
+  Search,
+  FileText,
   ExternalLink,
   Loader2,
   TrendingUp,
@@ -19,12 +17,21 @@ import { cn } from "@/lib/utils";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
 import { updateTeamStatus } from "@/app/api/teams/actions";
+import { REGISTRATION_FEE } from "@/lib/constants";
+
+type PaymentTeam = {
+  id: string;
+  name: string;
+  village: string | null;
+  status: string;
+  payment_receipt_url?: string | null;
+};
 
 export default function AdminPaymentsPage() {
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<PaymentTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedTeam, setSelectedTeam] = useState<any>(null);
+  const [selectedTeam, setSelectedTeam] = useState<PaymentTeam | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning" }>({
     isOpen: false,
@@ -33,10 +40,6 @@ export default function AdminPaymentsPage() {
     type: "success"
   });
   const supabase = createClient();
-
-  useEffect(() => {
-    fetchPayments();
-  }, []);
 
   async function fetchPayments() {
     setLoading(true);
@@ -47,15 +50,22 @@ export default function AdminPaymentsPage() {
     setLoading(false);
   }
 
-  const filteredTeams = teams.filter(t => 
+  useEffect(() => {
+    const kickoff = setTimeout(fetchPayments, 0);
+    return () => clearTimeout(kickoff);
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filteredTeams = teams.filter(t =>
     t.name.toLowerCase().includes(search.toLowerCase()) ||
-    t.village.toLowerCase().includes(search.toLowerCase())
+    (t.village ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
   const stats = {
     pending: teams.filter(t => t.status === 'pending').length,
     validated: teams.filter(t => t.status === 'validated').length,
-    totalAmount: teams.filter(t => t.status === 'validated').length * 400000
+    totalAmount: teams.filter(t => t.status === 'validated').length * REGISTRATION_FEE
   };
 
   const handleStatusUpdate = async (teamId: string, newStatus: string) => {
@@ -73,7 +83,7 @@ export default function AdminPaymentsPage() {
       setAlert({
         isOpen: true,
         title: "Succès",
-        message: `L'équipe a été ${newStatus === 'validated' ? 'validée (Paiement 400k confirmé)' : 'rejetée'} avec succès.`,
+        message: `L'équipe a été ${newStatus === 'validated' ? 'validée (paiement confirmé)' : 'rejetée'} avec succès.`,
         type: "success"
       });
     }
@@ -84,7 +94,7 @@ export default function AdminPaymentsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black font-outfit uppercase tracking-tighter">Gestion des Paiements</h1>
-          <p className="text-muted text-sm">Suivi des frais d'affiliation (400.000 FCFA / équipe).</p>
+          <p className="text-muted text-sm">Suivi des frais d’affiliation (400.000 FCFA / équipe).</p>
         </div>
         
         <div className="relative group">
@@ -191,7 +201,7 @@ export default function AdminPaymentsPage() {
                       )}>
                         {team.status === 'validated' ? 'Payé' : team.status === 'rejected' ? 'Annulé' : 'Attente'}
                       </span>
-                      {team.status === 'validated' && <span className="text-[8px] font-black text-green-500/60 uppercase">400.000 FCFA</span>}
+                      {team.status === 'validated' && <span className="text-[8px] font-black text-green-500/60 uppercase">{REGISTRATION_FEE.toLocaleString('fr-FR')} FCFA</span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -251,7 +261,7 @@ export default function AdminPaymentsPage() {
                 )}>
                   {team.status === 'validated' ? 'Payé' : team.status === 'rejected' ? 'Annulé' : 'Attente'}
                 </div>
-                {team.status === 'validated' && <div className="text-[10px] font-black text-green-500/80 mt-1">400.000 FCFA</div>}
+                {team.status === 'validated' && <div className="text-[10px] font-black text-green-500/80 mt-1">{REGISTRATION_FEE.toLocaleString('fr-FR')} FCFA</div>}
               </div>
             </div>
 
@@ -289,13 +299,20 @@ export default function AdminPaymentsPage() {
         onClose={() => setAlert({ ...alert, isOpen: false })}
         title={alert.title}
         message={alert.message}
-        type={alert.type as any}
+        type={alert.type}
       />
     </div>
   );
 }
 
-function StatCard({ label, value, icon, color, trend, trendValue }: any) {
+function StatCard({ label, value, icon, color, trend, trendValue }: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color: "yellow" | "green" | "primary";
+  trend?: string;
+  trendValue?: string;
+}) {
   return (
     <div className="sports-card p-6 bg-card/30 backdrop-blur-xl border-white/5 space-y-4">
       <div className="flex items-center justify-between">

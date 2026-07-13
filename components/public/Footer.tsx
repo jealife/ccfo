@@ -26,7 +26,7 @@ export function PublicFooter() {
               </div>
             </Link>
             <p className="text-sm text-white/50 leading-relaxed max-w-xs">
-              L'excellence du football au cœur du canton Fieng Okano. Un tournoi qui célèbre le talent, l'unité et la passion du sport amateur gabonais.
+              L’excellence du football au cœur du canton Fieng Okano. Un tournoi qui célèbre le talent, l’unité et la passion du sport amateur gabonais.
             </p>
             <div className="flex items-center gap-3">
               <SocialIcon icon={<Globe className="w-4 h-4" />}  href="#" label="Site web" />

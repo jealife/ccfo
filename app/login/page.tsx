@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { LogIn, Shield, Users, Loader2, Eye, EyeOff } from "lucide-react";
+import { Shield, Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -41,8 +41,8 @@ function LoginContent() {
       const destination = profile?.role === 'admin' ? '/admin' : '/dashboard';
       router.push(destination);
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "Erreur de connexion");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur de connexion");
     } finally {
       setIsLoading(false);
     }
@@ -120,17 +120,6 @@ function LoginContent() {
             </button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"></div></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted">Ou continuer avec</span></div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <button className="flex items-center justify-center gap-2 py-3 rounded-xl bg-secondary border border-border hover:bg-secondary/80 transition-all">
-              <Users className="w-5 h-5" />
-              <span className="font-bold">Accès Team Manager</span>
-            </button>
-          </div>
         </div>
 
         <p className="text-center text-sm text-muted">

@@ -42,8 +42,8 @@ export default function AdminLoginPage() {
 
       router.push("/admin");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "Erreur d'authentification");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur d'authentification");
     } finally {
       setIsLoading(false);
     }

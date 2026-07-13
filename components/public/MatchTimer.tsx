@@ -13,16 +13,13 @@ export function MatchTimer({ startedAt, status, className }: MatchTimerProps) {
   const [elapsed, setElapsed] = useState<string>("");
 
   useEffect(() => {
-    if (status !== 'live' || !startedAt) {
-      setElapsed("");
-      return;
-    }
+    if (status !== 'live' || !startedAt) return;
 
     const calculateElapsed = () => {
       const start = new Date(startedAt).getTime();
       const now = new Date().getTime();
       const diffInSeconds = Math.floor((now - start) / 1000);
-      
+
       if (diffInSeconds < 0) {
         setElapsed("00:00");
         return;
@@ -30,14 +27,15 @@ export function MatchTimer({ startedAt, status, className }: MatchTimerProps) {
 
       const minutes = Math.floor(diffInSeconds / 60);
       const seconds = diffInSeconds % 60;
-      
+
       setElapsed(`${minutes}:${seconds.toString().padStart(2, '0')}`);
     };
 
-    calculateElapsed();
+    // Premier calcul différé (pas de setState synchrone dans l'effet)
+    const kickoff = setTimeout(calculateElapsed, 0);
     const interval = setInterval(calculateElapsed, 1000);
 
-    return () => clearInterval(interval);
+    return () => { clearTimeout(kickoff); clearInterval(interval); };
   }, [startedAt, status]);
 
   if (status !== 'live' || !elapsed) return null;
@@ -49,7 +47,7 @@ export function MatchTimer({ startedAt, status, className }: MatchTimerProps) {
         <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
       </span>
       <span className="font-black font-mono tabular-nums text-primary">
-        {elapsed}'
+        {elapsed}’
       </span>
     </div>
   );

@@ -1,28 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Users, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  MoreVertical, 
-  Filter, 
-  Download,
-  AlertTriangle,
-  Eye,
-  Printer
+import {
+  Users,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
 import { updateTeamStatus } from "@/app/api/teams/actions";
+import type { TournamentConfig } from "@/lib/types";
+
+type AdminTeam = {
+  id: string;
+  name: string;
+  village: string | null;
+  status: string;
+  players?: { count: number }[];
+  staff?: { count: number }[];
+};
 
 export default function AdminTeamsPage() {
-  const [teams, setTeams] = useState<any[]>([]);
-  const [config, setConfig] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState<AdminTeam[]>([]);
+  const [config, setConfig] = useState<TournamentConfig | null>(null);
+  const [, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning"; onConfirm?: () => void; isConfirm?: boolean }>({
     isOpen: false,
@@ -30,15 +35,11 @@ export default function AdminTeamsPage() {
     message: "",
     type: "success"
   });
-  const [selectedTeam, setSelectedTeam] = useState<any>(null);
+  const [selectedTeam, setSelectedTeam] = useState<AdminTeam | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const supabase = createClient();
 
   const filteredTeams = filter === "all" ? teams : teams.filter(t => t.status === filter);
-
-  useEffect(() => {
-    fetchTeams();
-  }, []);
 
   async function fetchTeams() {
     setLoading(true);
@@ -56,6 +57,13 @@ export default function AdminTeamsPage() {
     setTeams(data || []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    const kickoff = setTimeout(fetchTeams, 0);
+    return () => clearTimeout(kickoff);
+    // chargement initial uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const playersLimit = config?.players_per_team || 24;
   const staffLimit = config?.staff_per_team || 6;
@@ -84,7 +92,7 @@ export default function AdminTeamsPage() {
           setAlert({
             isOpen: true,
             title: "Succès",
-            message: `L'équipe a été ${newStatus === 'validated' ? 'validée (Paiement 400k confirmé)' : 'rejetée'} avec succès.`,
+            message: `L'équipe a été ${newStatus === 'validated' ? 'validée (paiement confirmé)' : 'rejetée'} avec succès.`,
             type: "success"
           });
         }
@@ -143,7 +151,7 @@ export default function AdminTeamsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {(filteredTeams || []).map((team: any) => (
+              {(filteredTeams || []).map((team) => (
                 <tr key={team.id} className="hover:bg-white/5 transition-colors group">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -161,19 +169,19 @@ export default function AdminTeamsPage() {
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                           <span className="text-muted">J</span>
-                          <span className={team.players?.[0]?.count >= playersLimit ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/{playersLimit}</span>
+                          <span className={(team.players?.[0]?.count ?? 0) >= playersLimit ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/{playersLimit}</span>
                         </div>
                         <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className={cn("h-full rounded-full transition-all", team.players?.[0]?.count >= playersLimit ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / playersLimit) * 100)}%` }} />
+                          <div className={cn("h-full rounded-full transition-all", (team.players?.[0]?.count ?? 0) >= playersLimit ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / playersLimit) * 100)}%` }} />
                         </div>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                           <span className="text-muted">S</span>
-                          <span className={team.staff?.[0]?.count >= staffLimit ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/{staffLimit}</span>
+                          <span className={(team.staff?.[0]?.count ?? 0) >= staffLimit ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/{staffLimit}</span>
                         </div>
                         <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className={cn("h-full rounded-full transition-all", team.staff?.[0]?.count >= staffLimit ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / staffLimit) * 100)}%` }} />
+                          <div className={cn("h-full rounded-full transition-all", (team.staff?.[0]?.count ?? 0) >= staffLimit ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / staffLimit) * 100)}%` }} />
                         </div>
                       </div>
                     </div>
@@ -222,7 +230,7 @@ export default function AdminTeamsPage() {
 
       {/* Teams Cards - Mobile */}
       <div className="md:hidden space-y-3">
-        {(filteredTeams || []).map((team: any) => (
+        {(filteredTeams || []).map((team) => (
           <div key={team.id} className="sports-card p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -238,19 +246,19 @@ export default function AdminTeamsPage() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                   <span className="text-muted">Joueurs</span>
-                  <span className={team.players?.[0]?.count >= playersLimit ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/{playersLimit}</span>
+                  <span className={(team.players?.[0]?.count ?? 0) >= playersLimit ? "text-green-500" : "text-primary"}>{team.players?.[0]?.count || 0}/{playersLimit}</span>
                 </div>
                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full", team.players?.[0]?.count >= playersLimit ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / playersLimit) * 100)}%` }} />
+                  <div className={cn("h-full rounded-full", (team.players?.[0]?.count ?? 0) >= playersLimit ? "bg-green-500" : "bg-primary")} style={{ width: `${Math.min(100, ((team.players?.[0]?.count || 0) / playersLimit) * 100)}%` }} />
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
                   <span className="text-muted">Staff</span>
-                  <span className={team.staff?.[0]?.count >= staffLimit ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/{staffLimit}</span>
+                  <span className={(team.staff?.[0]?.count ?? 0) >= staffLimit ? "text-green-500" : "text-accent"}>{team.staff?.[0]?.count || 0}/{staffLimit}</span>
                 </div>
                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full", team.staff?.[0]?.count >= staffLimit ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / staffLimit) * 100)}%` }} />
+                  <div className={cn("h-full rounded-full", (team.staff?.[0]?.count ?? 0) >= staffLimit ? "bg-green-500" : "bg-accent")} style={{ width: `${Math.min(100, ((team.staff?.[0]?.count || 0) / staffLimit) * 100)}%` }} />
                 </div>
               </div>
             </div>
@@ -293,7 +301,7 @@ export default function AdminTeamsPage() {
         onClose={() => setAlert({ ...alert, isOpen: false })}
         title={alert.title}
         message={alert.message}
-        type={alert.type as any}
+        type={alert.type}
         isConfirm={alert.isConfirm}
         onConfirm={alert.onConfirm}
         confirmLabel={alert.isConfirm ? (alert.title === "Confirmation" ? "Confirmer" : "OK") : "OK"}
@@ -302,8 +310,13 @@ export default function AdminTeamsPage() {
   );
 }
 
-function StatusStatCard({ label, value, icon, color }: any) {
-  const colors: any = {
+function StatusStatCard({ label, value, icon, color }: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color: "blue" | "green" | "yellow" | "red";
+}) {
+  const colors: Record<string, string> = {
     blue: "text-blue-500 bg-blue-500/10",
     green: "text-green-500 bg-green-500/10",
     yellow: "text-yellow-500 bg-yellow-500/10",
@@ -326,7 +339,7 @@ function StatusStatCard({ label, value, icon, color }: any) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const configs: any = {
+  const configs: Record<string, { label: string; color: string }> = {
     validated: { label: "Validé", color: "bg-green-500/10 text-green-500" },
     pending: { label: "En Attente", color: "bg-yellow-500/10 text-yellow-500" },
     incomplete: { label: "Incomplet", color: "bg-blue-500/10 text-blue-500" },

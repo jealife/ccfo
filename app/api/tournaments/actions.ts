@@ -1,6 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function getTournamentConfig() {
@@ -19,38 +21,36 @@ export async function getTournamentConfig() {
   return data;
 }
 
-export async function updateTournamentConfig(configData: {
-  name?: string;
-  start_date?: string;
-  end_date?: string;
-  registration_deadline?: string;
-  max_teams?: number;
-  players_per_team?: number;
-  staff_per_team?: number;
-  is_active?: boolean;
-  points_win?: number;
-  points_draw?: number;
-  points_loss?: number;
-  qualification_spots?: number;
-}) {
-  const supabase = await createClient();
+const configSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
+  registration_deadline: z.string().optional(),
+  max_teams: z.number().int().min(2).optional(),
+  players_per_team: z.number().int().min(1).max(40).optional(),
+  staff_per_team: z.number().int().min(0).max(20).optional(),
+  is_active: z.boolean().optional(),
+  points_win: z.number().int().min(0).optional(),
+  points_draw: z.number().int().min(0).optional(),
+  points_loss: z.number().int().min(0).optional(),
+  qualification_spots: z.number().int().min(0).optional(),
+});
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Non authentifié" };
+export async function updateTournamentConfig(configData: z.infer<typeof configSchema>) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  const parsed = configSchema.safeParse(configData);
+  if (!parsed.success) {
+    return { success: false, error: "Configuration invalide : " + parsed.error.issues.map(i => i.message).join(', ') };
+  }
 
-  if (profile?.role !== 'admin') return { success: false, error: "Accès refusé" };
-
-  const { error } = await supabase
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase
     .from('tournament_config')
     .upsert({
       id: 1,
-      ...configData,
+      ...parsed.data,
       updated_at: new Date().toISOString()
     });
 

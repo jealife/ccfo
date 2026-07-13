@@ -1,74 +1,78 @@
-# 📋 Audit Complet — CCFO Platform (Mis à jour)
-*Dernière mise à jour : 06/05/2026*
+# 📋 Audit Complet — CCFO Platform
+*Dernière mise à jour : 11/07/2026 — corrections appliquées (voir « Reste à faire »)*
 
 ---
 
-## ✅ Ce qui est Fonctionnel & Synchronisé
-
-### Navigation & UX Premium
-- **Indicateurs de liens actifs** — Les menus (Sidebar et Navbar) surlignent désormais correctement la page actuelle ✅
-- **Sidebar desktop** — Affichage correct avec liens admin et manager, rôle conditionnel ✅
-- **BottomNav mobile** — Présente avec indicateurs d'état actif et menu "hamburger" ✅
-- **Déconnexion** — Page de logout fonctionnelle avec redirection Supabase ✅
-- **Routage protégé** — Middleware d'authentification Supabase stable ✅
-
-### Dashboard Admin & Manager
-- **Données Dynamiques** — Toutes les statistiques et jauges sont branchées sur la table `tournament_config` de Supabase ✅
-- **Jauges de progression** — Calculées en temps réel selon les quotas configurés par l'admin ✅
-- **Dashboard Admin** — Résumé des équipes, paiements et matchs en temps réel ✅
-
-### Gestion Administrative (Supabase Ready)
-- **Configuration Tournoi (`/admin/tournaments`)** — CRUD complet et fonctionnel (sauvegarde en base) ✅
-- **Gestion des Équipes (`/admin/teams`)** — Validation/Rejet fonctionnel, barres de progression dynamiques ✅
-- **Gestion des Joueurs (`/admin/players`)** — Recherche fonctionnelle, impression de licence (PDF/Print) ✅
-- **Paiements (`/admin/payments`)** — Branché sur les reçus d'inscription des équipes ✅
-- **Staff (`/admin/staff`)** — Supervision globale de tous les encadreurs ✅
-- **Documents (`/admin/documents`)** — Revue et validation des pièces justificatives ✅
-
-### Inscription & My Team
-- **Registration Form** — Les 5 étapes sont branchées, les données (Step 2/3) sont liées au state et persistées ✅
-- **Upload Documents** — Branché sur Supabase Storage ✅
-- **Mon Équipe** — Édition des joueurs, upload de photos et gestion du staff ✅
+## 🔍 Contexte
+Audit complet mené le 10/07/2026 (code + base de données réelle via les clés du `.env`), suivi d'une passe de correction intégrale le 11/07/2026 : `next build` ✓, `tsc --noEmit` ✓, `eslint` 0 erreur / 0 warning.
 
 ---
 
-## ❌ Ce qui reste à Finaliser (Backlog)
+## ✅ Corrigé dans le code (11/07/2026)
 
-| Page / Feature | Problème / Reste à faire |
-|---|---|
-| **Intégration Paiement** | Le bouton "Payer maintenant" est une UI, pas de gateway réelle (Airtel Money/Moov) |
-| **Export PDF Global** | Le bouton "Exporter" (Equipes/Joueurs) est présent mais n'exécute aucune action |
-| **Filtres Avancés** | La logique de filtrage par "Village" ou "Status" dans certains tableaux reste à affiner |
-| **Recherche Matchs** | L'input de recherche dans la page admin matchs n'est pas encore lié |
+### Bloquants
+1. **Build cassé** — `createAdminClient` non importé dans `app/api/tournaments/actions.ts` → corrigé (guards factorisés dans `lib/auth.ts`).
+2. **« Ajouter un joueur » cassé** — le placeholder « Nouveau Joueur » était rejeté par le serveur → remplacé par un **brouillon local** : le joueur n'est créé côté serveur qu'à la sauvegarde d'un vrai nom.
+3. **Inscription : perte de données silencieuse** — désalignement complet client/serveur (staff et joueurs filtrés à 100 %, couleur/président/téléphone ignorés, documents jamais transmis, rechargement sur les mauvaises colonnes) → **schéma Zod partagé** (`lib/validation/registration.ts`), mapping explicite, mise à jour des joueurs **par nom sans perdre les photos**, erreurs serveur affichées à l'utilisateur.
+
+### Sécurité
+4. **Statut d'équipe forcé côté serveur** — un manager ne peut plus soumettre `status: 'validated'` ; une équipe validée/verrouillée ne peut plus être modifiée par son manager.
+5. **Validation Zod sur toutes les Server Actions** — joueurs, staff, matchs (events/stats/scores), config tournoi, statut d'équipe (enum), inscription.
+6. **Création de match via Server Action** (`createMatch`) au lieu d'un insert client anon (qui était bloqué par RLS).
+7. **`updatePlayerPhoto`** : l'URL doit pointer vers notre Storage Supabase.
+8. **Déconnexion en POST** (server action `signOut`) au lieu d'une page GET.
+9. **Uploads validés** (type MIME + taille max 10 Mo, attributs `accept`).
+10. **`createAdminClient`** durci (`persistSession: false, autoRefreshToken: false`).
+11. Bouton mort « Accès Team Manager » supprimé du login.
+
+### Bugs fonctionnels
+12. **Meilleurs buteurs** calculés sur **tous** les matchs terminés (plus seulement les 6 derniers).
+13. **Classement de la home par groupe** (position réelle de la table `standings`, plus de mélange A/B).
+14. **`venue`** utilisé partout (hero, détail match, metadata, JSON-LD) au lieu de « Stade Okano » en dur.
+15. `GROUP_PHASES` unifié (`lib/helpers.ts`) ; seed corrigé (`'Groupe A'` au lieu de `'A'`) ; calcul du classement extrait en fonction pure testable (`lib/standings.ts`).
+16. Montant d'inscription centralisé (`lib/constants.ts` : `REGISTRATION_FEE`).
+
+### Qualité
+17. **Lint : 176 → 0 problème** (88 `any` typés, 29 apostrophes, imports morts, `<img>` → `next/image`, règles React Compiler).
+18. `.env.example` créé ; **README réécrit** avec le schéma réel de la base (vérifié par introspection).
+19. Zoom mobile réactivé (suppression de `userScalable: false` — WCAG 1.4.4).
+20. Dépendances mortes retirées (`react-hook-form`, `@hookform/resolvers`).
+
+---
+
+## 🔴 RESTE À FAIRE — actions manuelles côté Supabase / Vercel
+
+> Le code est prêt, mais ces étapes ne peuvent être faites que par vous (le connecteur Supabase de la session n'a pas accès au projet CCFO).
+
+### 1. ⚠️ CRITIQUE : la clé service_role du `.env` est fausse
+`SUPABASE_SERVICE_ROLE_KEY` contient actuellement **la clé anon** (identique à `NEXT_PUBLIC_SUPABASE_ANON_KEY`, rôle JWT `anon` vérifié). Conséquence : **toutes les écritures « admin » (régie live, validation d'équipes, ajout de joueurs…) sont bloquées par RLS en production.**
+→ Dashboard Supabase → Settings → API → copier la clé **service_role** dans `.env` **et** dans les variables d'environnement Vercel.
+
+### 2. Exécuter les migrations SQL (dossier `sql/`)
+- `add_team_documents.sql` — les colonnes documents n'existent pas sur `teams` : sans elles, la soumission d'inscription avec documents échoue et les pages admin Documents/Paiements sont vides.
+- `harden_profiles_trigger.sql` — **risque d'escalade en admin** : le rôle est envoyé dans les `user_metadata` (modifiables par le client). Ce script force `role = 'manager'` dans le trigger. Vérifier ensuite : `SELECT id, full_name, role FROM profiles WHERE role = 'admin';`
+- `cleanup_and_storage_notes.sql` — fusion des colonnes dupliquées de `players` (`birth_date`→`date_of_birth`, `village`→`origin_village`) + procédure pour passer le bucket `team-docs` en privé.
+
+### 3. Confidentialité du Storage
+Le bucket `team-docs` (pièces d'identité, reçus) est **lisible publiquement** (vérifié le 10/07). Suivre la procédure du fichier SQL : passer le bucket en privé **après** avoir adapté l'affichage admin en URLs signées ; les photos joueurs restent publiques (affichées sur le site).
+
+### 4. Vérifications complémentaires
+- Lancer les **Security Advisors** Supabase (RLS policies non versionnées dans le repo — envisager `supabase/migrations/`).
+- La lecture anon de `profiles` est ouverte (noms + rôles de tous les comptes) : restreindre la policy SELECT si non voulu.
+- Renseigner le vrai numéro Mobile Money (placeholder `+241 00000000` dans `RegistrationForm`).
 
 ---
 
-## 📱 Responsivité & Mobile Optimization (Audit 2.0)
-
-### Améliorations majeures effectuées
-- **Admin Équipes & Joueurs** : Remplacement des tableaux larges par une **Vue par Cartes (Cards)** sur mobile.
-- **Boutons d'action** : Suppression de l'`opacity-0` sur mobile pour rendre les boutons toujours visibles.
-- **Navigation** : Optimisation du menu BottomNav pour une sensation d'application native.
-
-### 📊 Nouveau Score Global Responsivité
-
-| Section | Score Mobile | État |
-|---|---|---|
-| Layout général (header + nav) | ✅ 10/10 | Parfait, indicateurs actifs OK |
-| Dashboard admin | ✅ 9/10 | Très fluide |
-| Dashboard manager | ✅ 9/10 | Très fluide |
-| Admin Équipes | ✅ 8/10 | **Amélioré** (Vue Cards implémentée) |
-| Admin Joueurs | ✅ 8/10 | **Amélioré** (Vue Cards implémentée) |
-| Inscription (steps) | ⚠️ 7/10 | Mieux, mais les formulaires longs demandent de l'attention |
-| Régie Live | ✅ 8/10 | Fonctionnel sur mobile |
+## 🟡 Améliorations futures (non bloquantes)
+- **Événements par `player_id`** au lieu du nom libre (homonymes/fautes cassent buteurs et suspensions) — la table `match_events` existe déjà mais n'est pas utilisée.
+- **Colonne `matches.started_at`** au lieu du hack dans le JSON `stats`.
+- **Tests** : `lib/standings.ts#computeStandings` est désormais pur et prêt à tester (vitest) ; ajouter des tests sur les guards d'autorisation et le mapping d'inscription.
+- Édition du staff côté manager (actuellement création avec placeholder « Nouveau Membre » sans édition possible).
+- `teams.tournament_id` et `matches.is_published` existent en base mais ne sont pas exploités par le code.
 
 ---
 
-## 🔧 Prochaines Étapes Recommandées
-
-1. **Intégration de paiement** : Choisir un agrégateur pour le bouton "Payer maintenant".
-2. **Bibliothèque d'export** : Intégrer `jspdf` ou similaire pour les exports Excel/PDF globaux.
-3. **Optimisation Mobile Inscription** : Transformer les listes de staff/joueurs en accordéons ou steps plus courts pour réduire le scroll.
-
----
-**Verdict Final** : L'application est maintenant **Data-Driven**. La boucle de configuration -> inscription -> validation -> dashboard est bouclée et synchronisée avec Supabase.
+## ✅ Points forts confirmés
+- Défense en profondeur : proxy (`proxy.ts`, conforme Next 16) → layouts → Server Actions.
+- RLS activé sur toutes les tables (écritures anon bloquées — vérifié par sondes FK non persistantes).
+- ISR (30 s) + Realtime pour le live ; SEO complet (metadata, sitemap, JSON-LD) ; PWA.

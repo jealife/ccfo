@@ -20,9 +20,10 @@ export async function seedDatabase() {
 
   // 2. Create Matches
   if (teamData) {
+    // group_name doit correspondre à GROUP_PHASES (lib/helpers.ts) pour compter au classement
     const matches = [
-      { home_team_id: teamData[0].id, away_team_id: teamData[1].id, status: 'finished', home_score: 2, away_score: 1, group_name: 'A' },
-      { home_team_id: teamData[2].id, away_team_id: teamData[3].id, status: 'scheduled', home_score: 0, away_score: 0, group_name: 'A' },
+      { home_team_id: teamData[0].id, away_team_id: teamData[1].id, status: 'finished', home_score: 2, away_score: 1, group_name: 'Groupe A' },
+      { home_team_id: teamData[2].id, away_team_id: teamData[3].id, status: 'scheduled', home_score: 0, away_score: 0, group_name: 'Groupe A' },
     ];
 
     const { error: matchError } = await supabase

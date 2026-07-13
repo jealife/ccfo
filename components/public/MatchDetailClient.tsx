@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { BarChart2, Goal, Square, User, Award, Star, ArrowLeftRight } from "lucide-react";
+import { Goal, Square, User, Award, Star, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { getStartedAt, formatFrenchDate, formatMatchStatus } from "@/lib/helpers";
@@ -23,24 +23,24 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+/** Sépare le started_at (stocké dans le JSON stats) des vraies statistiques */
+function splitStats(raw: unknown[]): { stats: MatchStat[]; startedAt: string | null } {
+  return {
+    stats: (raw as MatchStat[]).filter((s) => s.label !== "started_at"),
+    startedAt: getStartedAt(raw),
+  };
+}
+
 export function MatchDetailClient({ match: initialMatch, events: initialEvents, stats: initialStats }: MatchDetailClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [match,  setMatch]        = useState<Match>(initialMatch);
   const [events, setEvents]       = useState<MatchEvent[]>(initialEvents);
-  const [stats,  setStats]        = useState<MatchStat[]>([]);
-  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [stats,  setStats]        = useState<MatchStat[]>(() => splitStats(initialStats ?? []).stats);
+  const [startedAt, setStartedAt] = useState<string | null>(() => splitStats(initialStats ?? []).startedAt);
 
   const supabase = createClient();
 
   useEffect(() => {
-    const processStats = (raw: unknown[]): MatchStat[] => {
-      const found = getStartedAt(raw);
-      if (found) setStartedAt(found);
-      return (raw as MatchStat[]).filter((s) => s.label !== "started_at");
-    };
-
-    setStats(processStats(initialStats ?? []));
-
     const channel = supabase
       .channel(`match-${match.id}`)
       .on(
@@ -49,13 +49,17 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
         (payload) => {
           setMatch((prev) => ({ ...prev, ...payload.new }));
           if (payload.new.events) setEvents(payload.new.events as MatchEvent[]);
-          if (payload.new.stats)  setStats(processStats(payload.new.stats as unknown[]));
+          if (payload.new.stats) {
+            const next = splitStats(payload.new.stats as unknown[]);
+            setStats(next.stats);
+            if (next.startedAt) setStartedAt(next.startedAt);
+          }
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [match.id, supabase, initialStats]);
+  }, [match.id, supabase]);
 
   const getPlayerInfo = (name: string, teamSide: "home" | "away"): Player | undefined => {
     const players = teamSide === "home" ? match.home?.players : match.away?.players;
@@ -230,7 +234,7 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
                 <div className="glass-card p-5 space-y-3">
                   <p className="text-[9px] font-black uppercase tracking-widest text-muted mb-1">Infos match</p>
                   <InfoRow label="Compétition" value="Coupe Cantonale Fieng Okano" />
-                  <InfoRow label="Stade"       value="Stade Okano" />
+                  <InfoRow label="Stade"       value={match.venue || "Stade Okano"} />
                   <InfoRow label="Date"        value={formatFrenchDate(match.match_date)} />
                   <InfoRow label="Statut"      value={formatMatchStatus(match.status)} />
                 </div>

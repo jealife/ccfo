@@ -1,37 +1,48 @@
 "use server";
 
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { z } from "zod";
+import { createAdminClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
+import { computeStandings } from "@/lib/standings";
 import { revalidatePath } from "next/cache";
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Non authentifié" };
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  if (profile?.role !== 'admin') return { error: "Accès refusé" };
-  return { error: null };
-}
+const matchEventSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  type: z.enum(["goal", "yellow", "red", "substitution"]),
+  minute: z.coerce.number().int().min(0).max(150),
+  player: z.string().trim().min(1),
+  playerIn: z.string().optional(),
+  team: z.enum(["home", "away"]),
+});
 
-export async function updateMatchLive(id: string, updates: {
-  status?: string;
-  motm_player?: string;
-  home_score?: number;
-  away_score?: number;
-  events?: unknown[];
-  stats?: unknown[];
-}) {
+const matchStatSchema = z.union([
+  z.object({ label: z.string(), home: z.union([z.number(), z.string()]), away: z.union([z.number(), z.string()]) }),
+  z.object({ label: z.literal("started_at"), value: z.string() }),
+]);
+
+const matchUpdateSchema = z.object({
+  status: z.enum(["scheduled", "live", "finished"]).optional(),
+  motm_player: z.string().optional(),
+  home_score: z.number().int().min(0).optional(),
+  away_score: z.number().int().min(0).optional(),
+  events: z.array(matchEventSchema).optional(),
+  stats: z.array(matchStatSchema).optional(),
+});
+
+export async function updateMatchLive(id: string, updates: z.input<typeof matchUpdateSchema>) {
   const { error: authError } = await requireAdmin();
   if (authError) return { success: false, error: authError };
 
-  const supabase = await createClient();
+  const parsed = matchUpdateSchema.safeParse(updates);
+  if (!parsed.success) {
+    return { success: false, error: "Données invalides : " + parsed.error.issues.map(i => `${i.path.join('.')} ${i.message}`).join(', ') };
+  }
+
+  const supabase = createAdminClient();
 
   const { data: matchData, error: updateError } = await supabase
     .from('matches')
-    .update(updates)
+    .update(parsed.data)
     .eq('id', id)
     .select()
     .single();
@@ -41,7 +52,7 @@ export async function updateMatchLive(id: string, updates: {
     return { success: false, error: updateError.message };
   }
 
-  if (updates.status === 'finished' || matchData.status === 'finished') {
+  if (parsed.data.status === 'finished' || matchData.status === 'finished') {
     await recalculateStandings();
   }
 
@@ -54,11 +65,43 @@ export async function updateMatchLive(id: string, updates: {
   return { success: true, data: matchData };
 }
 
+const matchCreateSchema = z.object({
+  home_team_id: z.string().uuid("Équipe domicile requise"),
+  away_team_id: z.string().uuid("Équipe extérieur requise"),
+  match_date: z.string().min(1, "Date requise"),
+  venue: z.string().trim().optional().default(""),
+  status: z.enum(["scheduled", "live", "finished"]).default("scheduled"),
+  group_name: z.string().trim().min(1, "Phase requise"),
+});
+
+export async function createMatch(matchData: z.input<typeof matchCreateSchema>) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
+
+  const parsed = matchCreateSchema.safeParse(matchData);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides" };
+  }
+  if (parsed.data.home_team_id === parsed.data.away_team_id) {
+    return { success: false, error: "Une équipe ne peut pas s'affronter elle-même" };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('matches').insert([parsed.data]);
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath('/admin/matches');
+  revalidatePath('/matches');
+  revalidatePath('/');
+
+  return { success: true };
+}
+
 export async function deleteMatch(id: string) {
   const { error: authError } = await requireAdmin();
   if (authError) return { success: false, error: authError };
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { error } = await supabase.from('matches').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
 
@@ -71,23 +114,6 @@ export async function deleteMatch(id: string) {
 
   return { success: true };
 }
-
-// Phases de groupes dont les résultats comptent pour le classement
-const GROUP_PHASES = ['Groupe A', 'Groupe B'] as const;
-
-type TeamStats = {
-  team_id: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goals_for: number;
-  goals_against: number;
-  goal_diff: number;
-  points: number;
-  position: number;
-  group_name: string;
-};
 
 async function recalculateStandings() {
   const supabase = createAdminClient();
@@ -106,66 +132,14 @@ async function recalculateStandings() {
       .select('id, name'),
   ]);
 
-  const pointsWin  = configResult.data?.points_win  ?? 3;
-  const pointsDraw = configResult.data?.points_draw ?? 1;
-  const pointsLoss = configResult.data?.points_loss ?? 0;
-
   const teamNames: Record<string, string> = {};
   for (const t of teamsResult.data || []) teamNames[t.id] = t.name;
 
-  // Seuls les matchs de phase de groupe comptent pour le classement
-  const groupMatches = (matchesResult.data || []).filter(
-    (m) => (GROUP_PHASES as readonly string[]).includes(m.group_name)
-  );
-
-  type RawStats = Omit<TeamStats, 'goal_diff' | 'position'>;
-  const stats: Record<string, RawStats> = {};
-
-  for (const match of groupMatches) {
-    const h = match.home_team_id;
-    const a = match.away_team_id;
-    const group = match.group_name;
-
-    if (!stats[h]) stats[h] = { team_id: h, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0, group_name: group };
-    if (!stats[a]) stats[a] = { team_id: a, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, points: 0, group_name: group };
-
-    stats[h].played++;
-    stats[a].played++;
-    stats[h].goals_for     += match.home_score ?? 0;
-    stats[h].goals_against += match.away_score ?? 0;
-    stats[a].goals_for     += match.away_score ?? 0;
-    stats[a].goals_against += match.home_score ?? 0;
-
-    const hs = match.home_score ?? 0;
-    const as = match.away_score ?? 0;
-
-    if (hs > as) {
-      stats[h].won++;   stats[h].points += pointsWin;
-      stats[a].lost++;  stats[a].points += pointsLoss;
-    } else if (hs < as) {
-      stats[a].won++;   stats[a].points += pointsWin;
-      stats[h].lost++;  stats[h].points += pointsLoss;
-    } else {
-      stats[h].drawn++; stats[h].points += pointsDraw;
-      stats[a].drawn++; stats[a].points += pointsDraw;
-    }
-  }
-
-  // Trier par groupe puis assigner la position au sein du groupe (1–4)
-  const allSorted: TeamStats[] = [];
-  for (const group of GROUP_PHASES) {
-    const groupTeams = Object.values(stats)
-      .filter((s) => s.group_name === group)
-      .map((s) => ({ ...s, goal_diff: s.goals_for - s.goals_against, position: 0 }))
-      .sort((a, b) =>
-        b.points - a.points ||
-        b.goal_diff - a.goal_diff ||
-        b.goals_for - a.goals_for ||
-        (teamNames[a.team_id] || '').localeCompare(teamNames[b.team_id] || '')
-      )
-      .map((s, i) => ({ ...s, position: i + 1 }));
-    allSorted.push(...groupTeams);
-  }
+  const allSorted = computeStandings(matchesResult.data || [], teamNames, {
+    points_win:  configResult.data?.points_win  ?? 3,
+    points_draw: configResult.data?.points_draw ?? 1,
+    points_loss: configResult.data?.points_loss ?? 0,
+  });
 
   if (allSorted.length > 0) {
     await supabase.from('standings').upsert(allSorted, { onConflict: 'team_id' });
