@@ -29,29 +29,39 @@ export async function updateTeamStatus(teamId: string, newStatus: string) {
     return { success: false, error: teamError.message };
   }
 
-  // 2. If validated, handle payment
-  if (newStatus === 'validated') {
-    const { error: paymentError } = await adminSupabase
-      .from('payments')
-      .upsert({
-        team_id: teamId,
-        amount: REGISTRATION_FEE,
-        status: 'paid',
-        created_at: new Date().toISOString()
-      }, { onConflict: 'team_id' });
-
-    if (paymentError) {
-      console.error('[updateTeamStatus] Error creating payment:', paymentError);
-      // We don't fail the whole action if payment fails, but we log it
-    }
-  }
-
   // 3. Revalidate paths to refresh UI
   revalidatePath('/admin/teams');
   revalidatePath('/admin/payments');
   revalidatePath('/admin');
   revalidatePath('/teams');
   revalidatePath('/');
+
+  return { success: true };
+}
+
+export async function validatePayment(teamId: string) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
+
+  const adminSupabase = createAdminClient();
+
+  const { error: paymentError } = await adminSupabase
+    .from('payments')
+    .upsert({
+      team_id: teamId,
+      amount: REGISTRATION_FEE,
+      status: 'paid',
+      created_at: new Date().toISOString()
+    }, { onConflict: 'team_id' });
+
+  if (paymentError) {
+    console.error('[validatePayment] Error creating payment:', paymentError);
+    return { success: false, error: paymentError.message };
+  }
+
+  // Revalidate paths
+  revalidatePath('/admin/payments');
+  revalidatePath('/admin');
 
   return { success: true };
 }

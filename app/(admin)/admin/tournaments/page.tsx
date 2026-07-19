@@ -354,18 +354,7 @@ export default function AdminTournamentsPage() {
         </div>
       </div>
 
-      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-        <div className="flex items-center gap-2 text-muted uppercase text-[10px] font-black tracking-widest">
-          <Shield className="w-3 h-3" /> Note Technique
-        </div>
-        <p className="text-xs text-muted leading-relaxed">
-          Les colonnes <code className="text-primary font-bold">points_win</code>, <code className="text-primary font-bold">points_draw</code>,{" "}
-          <code className="text-primary font-bold">points_loss</code> et <code className="text-primary font-bold">qualification_spots</code> doivent
-          exister dans la table <code className="text-primary font-bold">tournament_config</code>. Les colonnes{" "}
-          <code className="text-primary font-bold">goal_diff</code> et <code className="text-primary font-bold">position</code> doivent exister dans
-          la table <code className="text-primary font-bold">standings</code>. Exécutez la migration SQL fournie si ce n’est pas encore fait.
-        </p>
-      </div>
+      
     </div>
   );
 }

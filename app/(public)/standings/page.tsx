@@ -87,7 +87,7 @@ export default async function StandingsPage() {
               <h1 className="text-3xl md:text-4xl font-black font-outfit uppercase tracking-tighter text-foreground">
                 Classement Officiel
               </h1>
-              <p className="text-muted text-sm mt-1">2 poules de 4 équipes — les 2 premiers de chaque poule accèdent aux demi-finales.</p>
+              <p className="text-muted text-sm mt-1">2 poules de 4 équipes, les 2 premiers de chaque poule accèdent aux demi-finales.</p>
             </div>
             <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-muted shrink-0">
               <span className="px-3 py-1.5 rounded-full bg-secondary border border-border">V = {pointsWin} pts</span>

@@ -1,11 +1,12 @@
 # 📋 Audit Complet — CCFO Platform
-*Dernière mise à jour : 19/07/2026 — centralisation des constantes, placeholder Mobile Money, .env.example*
+*Dernière mise à jour : 19/07/2026 — Vérification de l'infrastructure Supabase (clés & base)*
 
 ---
 
 ## 🔍 Contexte
 Audit complet mené le 10/07/2026 (code + base de données réelle via les clés du `.env`), suivi d'une passe de correction intégrale le 11/07/2026 : `next build` ✓, `tsc --noEmit` ✓, `eslint` 0 erreur / 0 warning.
 Audit de déploiement le 19/07/2026 : 5 corrections de code supplémentaires (constantes, URL, Mobile Money).
+Re-vérification complète de l'infrastructure (19/07/2026) : audit de la base de données réelle pour confirmer les actions manuelles.
 
 ---
 
@@ -51,34 +52,37 @@ Audit de déploiement le 19/07/2026 : 5 corrections de code supplémentaires (co
 
 ---
 
-## 🔴 RESTE À FAIRE — actions manuelles côté Supabase / Vercel
+## 🔴 RESTE À FAIRE — Dernières actions manuelles (Supabase / Vercel)
 
-> Le code est prêt, mais ces étapes ne peuvent être faites que par vous (le connecteur Supabase de la session n'a pas accès au projet CCFO).
+> Bonne nouvelle : La clé `service_role` est désormais correcte (vérifié en base, le rôle JWT est bien `service_role`) ! Les actions d'administration fonctionneront.
+> Bonne nouvelle : La migration `add_team_documents.sql` a bien été exécutée (les colonnes sont présentes sur la table `teams`).
 
-### 1. ⚠️ CRITIQUE : la clé service_role du `.env` est fausse
-`SUPABASE_SERVICE_ROLE_KEY` contient actuellement **la clé anon** (identique à `NEXT_PUBLIC_SUPABASE_ANON_KEY`, rôle JWT `anon` vérifié). Conséquence : **toutes les écritures « admin » (régie live, validation d'équipes, ajout de joueurs…) sont bloquées par RLS en production.**
-→ Dashboard Supabase → Settings → API → copier la clé **service_role** dans `.env` **et** dans les variables d'environnement Vercel.
+### 1. Finaliser le nettoyage SQL (`sql/cleanup_and_storage_notes.sql`)
+La fusion des colonnes de `players` a été amorcée, mais les anciennes colonnes existent toujours.
+→ Dans le SQL editor, vous pouvez maintenant exécuter :
+```sql
+ALTER TABLE public.players DROP COLUMN IF EXISTS birth_date;
+ALTER TABLE public.players DROP COLUMN IF EXISTS village;
+```
 
-### 2. Exécuter les migrations SQL (dossier `sql/`)
-- `add_team_documents.sql` — les colonnes documents n'existent pas sur `teams` : sans elles, la soumission d'inscription avec documents échoue et les pages admin Documents/Paiements sont vides.
-- `harden_profiles_trigger.sql` — **risque d'escalade en admin** : le rôle est envoyé dans les `user_metadata` (modifiables par le client). Ce script force `role = 'manager'` dans le trigger. Vérifier ensuite : `SELECT id, full_name, role FROM profiles WHERE role = 'admin';`
-- `cleanup_and_storage_notes.sql` — fusion des colonnes dupliquées de `players` (`birth_date`→`date_of_birth`, `village`→`origin_village`) + procédure pour passer le bucket `team-docs` en privé.
+### 2. Confidentialité du Storage
+Le bucket `team-docs` (pièces d'identité, reçus) est toujours **lisible publiquement** (vérifié lors du dernier audit).
+→ Suivre la procédure du fichier SQL : passer le bucket en privé **après** avoir adapté l'affichage admin en URLs signées. Les photos joueurs resteront publiques.
 
-### 3. Confidentialité du Storage
-Le bucket `team-docs` (pièces d'identité, reçus) est **lisible publiquement** (vérifié le 10/07). Suivre la procédure du fichier SQL : passer le bucket en privé **après** avoir adapté l'affichage admin en URLs signées ; les photos joueurs restent publiques (affichées sur le site).
-
-### 4. Variables Vercel à configurer avant lancement
+### 3. Variables Vercel à configurer avant lancement
+Le `.env` local est propre, assurez-vous de répliquer ces variables sur **Vercel** :
 | Variable | Valeur |
 |---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role depuis Supabase Dashboard → Settings → API |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL du projet Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé anon |
-| `NEXT_PUBLIC_SITE_URL` | `https://ccfo.vercel.app` (ou domaine final) |
-| `NEXT_PUBLIC_MOBILE_MONEY_NUMBER` | `+241 XX XX XX XX` (vrai numéro) |
+| `SUPABASE_SERVICE_ROLE_KEY` | La nouvelle clé (correcte) |
+| `NEXT_PUBLIC_MOBILE_MONEY_NUMBER` | `+241 66 75 03 29` |
+| `NEXT_PUBLIC_SITE_URL` | L'URL de production |
+
+### 4. Note sur les données (Classement)
+Le classement s'affiche vide. L'audit montre que c'est une question de données et non de code : le seul match actuellement en base n'a pas de `group_name` (valeur `null`). La vue SQL `standings` a besoin d'un groupe pour classer les équipes. Lors de la saisie des vrais matchs, veillez à bien assigner le groupe.
 
 ### 5. Vérifications complémentaires
-- Lancer les **Security Advisors** Supabase (RLS policies non versionnées dans le repo — envisager `supabase/migrations/`).
-- La lecture anon de `profiles` est ouverte (noms + rôles de tous les comptes) : restreindre la policy SELECT si non voulu.
+- Lancer les **Security Advisors** Supabase (RLS policies non versionnées dans le repo).
+- La lecture anon de `profiles` est toujours ouverte (noms + rôles de tous les comptes lisibles). Restreindre la policy SELECT si ce n'est pas voulu.
 
 ---
 
