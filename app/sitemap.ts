@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { createAdminClient } from "@/lib/supabase/server";
+import { SITE_URL } from "@/lib/constants";
 
-const BASE = "https://ccfo.vercel.app";
+const BASE = SITE_URL;
 
 export const revalidate = 3600;
 

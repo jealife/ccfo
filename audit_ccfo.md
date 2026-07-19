@@ -1,10 +1,11 @@
 # 📋 Audit Complet — CCFO Platform
-*Dernière mise à jour : 11/07/2026 — corrections appliquées (voir « Reste à faire »)*
+*Dernière mise à jour : 19/07/2026 — centralisation des constantes, placeholder Mobile Money, .env.example*
 
 ---
 
 ## 🔍 Contexte
 Audit complet mené le 10/07/2026 (code + base de données réelle via les clés du `.env`), suivi d'une passe de correction intégrale le 11/07/2026 : `next build` ✓, `tsc --noEmit` ✓, `eslint` 0 erreur / 0 warning.
+Audit de déploiement le 19/07/2026 : 5 corrections de code supplémentaires (constantes, URL, Mobile Money).
 
 ---
 
@@ -40,6 +41,16 @@ Audit complet mené le 10/07/2026 (code + base de données réelle via les clés
 
 ---
 
+## ✅ Corrigé dans le code (19/07/2026)
+
+21. **`SITE_URL` centralisé** (`lib/constants.ts`) — lire `NEXT_PUBLIC_SITE_URL` depuis l'env en priorité, fallback sur `ccfo.vercel.app`. 4 fichiers mis à jour : `app/layout.tsx`, `app/sitemap.ts`, `app/robots.ts`, `app/(public)/matches/[id]/page.tsx`.
+22. **`MOBILE_MONEY_NUMBER` centralisé** (`lib/constants.ts`) — lire `NEXT_PUBLIC_MOBILE_MONEY_NUMBER` depuis l'env. Suppression du placeholder `+241 00000000` codé en dur dans `RegistrationForm.tsx`.
+23. **`.env.example` complet et documenté** — inclut toutes les variables requises avec explications et le avertissement critique sur `SUPABASE_SERVICE_ROLE_KEY`.
+
+**État code après 19/07 :** `tsc --noEmit` ✓ · `eslint` 0 erreur ✓ · `next build` 28 routes ✓
+
+---
+
 ## 🔴 RESTE À FAIRE — actions manuelles côté Supabase / Vercel
 
 > Le code est prêt, mais ces étapes ne peuvent être faites que par vous (le connecteur Supabase de la session n'a pas accès au projet CCFO).
@@ -56,10 +67,18 @@ Audit complet mené le 10/07/2026 (code + base de données réelle via les clés
 ### 3. Confidentialité du Storage
 Le bucket `team-docs` (pièces d'identité, reçus) est **lisible publiquement** (vérifié le 10/07). Suivre la procédure du fichier SQL : passer le bucket en privé **après** avoir adapté l'affichage admin en URLs signées ; les photos joueurs restent publiques (affichées sur le site).
 
-### 4. Vérifications complémentaires
+### 4. Variables Vercel à configurer avant lancement
+| Variable | Valeur |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role depuis Supabase Dashboard → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL du projet Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé anon |
+| `NEXT_PUBLIC_SITE_URL` | `https://ccfo.vercel.app` (ou domaine final) |
+| `NEXT_PUBLIC_MOBILE_MONEY_NUMBER` | `+241 XX XX XX XX` (vrai numéro) |
+
+### 5. Vérifications complémentaires
 - Lancer les **Security Advisors** Supabase (RLS policies non versionnées dans le repo — envisager `supabase/migrations/`).
 - La lecture anon de `profiles` est ouverte (noms + rôles de tous les comptes) : restreindre la policy SELECT si non voulu.
-- Renseigner le vrai numéro Mobile Money (placeholder `+241 00000000` dans `RegistrationForm`).
 
 ---
 
@@ -76,3 +95,4 @@ Le bucket `team-docs` (pièces d'identité, reçus) est **lisible publiquement**
 - Défense en profondeur : proxy (`proxy.ts`, conforme Next 16) → layouts → Server Actions.
 - RLS activé sur toutes les tables (écritures anon bloquées — vérifié par sondes FK non persistantes).
 - ISR (30 s) + Realtime pour le live ; SEO complet (metadata, sitemap, JSON-LD) ; PWA.
+- `tsc --noEmit` ✓ · `eslint` 0 erreur ✓ · `next build` ✓ (19/07/2026)

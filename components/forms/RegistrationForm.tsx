@@ -20,6 +20,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AlertDialog } from "@/components/ui/Modal";
 import type { TournamentConfig } from "@/lib/types";
 import Link from "next/link";
+import { MOBILE_MONEY_NUMBER } from "@/lib/constants";
 
 type TeamFormState = { name: string; village: string; color: string; president: string; phone: string; whatsapp: string; email: string };
 type StaffFormState = { name: string; role: string; origin: string };
@@ -560,7 +561,7 @@ function PaymentStep({ data, updateData, receiptData }: {
       <div className="p-6 rounded-2xl bg-secondary border border-border max-w-sm mx-auto space-y-4 text-left">
         <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl text-blue-400 text-sm flex gap-3 mb-6">
           <Info className="w-5 h-5 shrink-0" />
-          <p>Veuillez effectuer le paiement via Mobile Money au <b>+241 00000000</b>. Ensuite, téléversez la capture d’écran du SMS de confirmation ci-dessous.</p>
+          <p>Veuillez effectuer le paiement via Mobile Money au <b>{MOBILE_MONEY_NUMBER}</b>. Ensuite, téléversez la capture d’écran du SMS de confirmation ci-dessous.</p>
         </div>
 
         <FileUpload

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { MatchDetailClient } from "@/components/public/MatchDetailClient";
 import { cn } from "@/lib/utils";
+import { SITE_URL } from "@/lib/constants";
 
 export const revalidate = 10;
 
@@ -99,7 +100,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     "organizer": {
       "@type": "Organization",
       "name": "Coupe Cantonale Fieng Okano",
-      "url": "https://ccfo.vercel.app",
+      "url": SITE_URL,
     },
     "competitor": [
       { "@type": "SportsTeam", "name": match.home?.name ?? "Équipe A" },

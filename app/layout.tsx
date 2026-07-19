@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { SITE_URL } from "@/lib/constants";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -13,7 +14,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ccfo.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: {
     template: "%s | CCFO26",
     default: "CCFO26 | Coupe Cantonale Fieng Okano 2026",
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "CCFO26 — Coupe Cantonale Fieng Okano 2026",
     description: "Vivez l'excellence du football au cœur du canton Fieng Okano. L'élite s'affronte, l'histoire s'écrit ici.",
-    url: "https://ccfo.vercel.app",
+    url: SITE_URL,
     siteName: "CCFO26",
     images: [
       {
