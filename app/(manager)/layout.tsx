@@ -72,8 +72,8 @@ export default async function ManagerLayout({ children }: { children: React.Reac
               <Image src="/Logo-CCFO-Blanc.png" alt="Logo" width={20} height={20} />
             </div>
             <div>
-              <span className="font-outfit font-bold text-xl tracking-tight uppercase">CCFO26</span>
-              <span className="block text-[9px] font-black uppercase tracking-widest text-muted">Manager</span>
+              <span className="font-outfit font-bold text-xl tracking-tight uppercase">CCFO</span>
+              <span className="block text-[9px] font-black uppercase tracking-widest text-muted">Matora2026</span>
             </div>
           </Link>
         </div>
