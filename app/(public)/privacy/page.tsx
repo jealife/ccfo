@@ -1,6 +1,21 @@
 import type { Metadata } from "next";
+import type { ElementType } from "react";
 import Link from "next/link";
 import { Shield, ChevronRight, Lock, Database, Eye, UserCheck, Cookie, Mail, Phone, Scale } from "lucide-react";
+
+type ContentBlock =
+  | { type: "text"; value: string }
+  | { type: "list"; items: string[] }
+  | { type: "categories"; items: { label: string; items: string[] }[] }
+  | { type: "dl"; items: { label: string; value: string }[] }
+  | { type: "contact" };
+
+type Section = {
+  id: string;
+  title: string;
+  icon: ElementType;
+  content: ContentBlock[];
+};
 
 export const metadata: Metadata = {
   title: "Politique de Confidentialité | CCFO26",
@@ -8,7 +23,7 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-const SECTIONS = [
+const SECTIONS: Section[] = [
   {
     id: "collecte",
     title: "1. Données collectées",

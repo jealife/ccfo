@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
+import type { ElementType } from "react";
 import Link from "next/link";
 import { Scale, ChevronRight, Shield, FileText, Mail, Phone } from "lucide-react";
+
+type ContentBlock =
+  | { type: "text"; value: string }
+  | { type: "list"; items: string[] }
+  | { type: "dl"; items: { label: string; value: string }[] }
+  | { type: "contact" };
+
+type Section = {
+  id: string;
+  title: string;
+  content: ContentBlock[];
+  icon?: ElementType;
+};
 
 export const metadata: Metadata = {
   title: "Mentions Légales | CCFO26",
@@ -8,7 +22,7 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-const SECTIONS = [
+const SECTIONS: Section[] = [
   {
     id: "editeur",
     title: "1. Éditeur du site",
