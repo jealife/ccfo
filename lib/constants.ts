@@ -10,7 +10,7 @@ export const REGISTRATION_FEE = 400_000;
  */
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-  "https://ccfo.vercel.app";
+  "https://www.coupecantonalefiengokano.ga";
 
 /**
  * Numéro Mobile Money pour le paiement des frais d'affiliation.
