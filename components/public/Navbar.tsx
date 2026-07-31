@@ -22,9 +22,9 @@ export function PublicNavbar() {
             </div>
             <div className="flex flex-col leading-none">
               <span className="font-black text-[17px] tracking-tight text-foreground font-outfit">
-                CC<span className="text-primary">FO26</span>
+                CC<span className="text-primary">FO</span>
               </span>
-              <span className="text-[8px] font-bold uppercase tracking-widest text-muted">Fieng Okano</span>
+              <span className="text-[8px] font-bold uppercase tracking-widest text-muted">Matora2026</span>
             </div>
           </Link>
 
