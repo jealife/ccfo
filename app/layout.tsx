@@ -70,8 +70,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
-      {/* Anti-FOUC : applique le thème choisi avant le premier paint */}
+    <html lang="fr" suppressHydrationWarning>  
       <head>
         <script
           dangerouslySetInnerHTML={{
