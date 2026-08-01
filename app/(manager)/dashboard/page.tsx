@@ -6,7 +6,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -140,6 +141,11 @@ export default async function ManagerDashboardPage() {
                   {(team.status === 'incomplete' || team.status === 'rejected') && (
                     <Link href="/manager/registration" className="flex-1 sm:flex-none px-5 py-3 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform flex items-center justify-center gap-2">
                       <PlusCircle className="w-4 h-4" /> Compléter le dossier
+                    </Link>
+                  )}
+                  {team.status === 'validated' && (
+                    <Link href="/dashboard/receipt" className="flex-1 sm:flex-none px-5 py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 font-black uppercase tracking-widest text-xs hover:bg-green-500/20 transition-all flex items-center justify-center gap-2">
+                      <Receipt className="w-4 h-4" /> Voir mon reçu
                     </Link>
                   )}
                   <Link href="/dashboard/my-team" className="flex-1 sm:flex-none px-5 py-3 rounded-xl border border-white/10 hover:bg-white/5 font-bold text-xs transition-all flex items-center justify-center gap-2">

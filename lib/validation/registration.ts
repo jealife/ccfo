@@ -20,11 +20,28 @@ export const staffMemberSchema = z.object({
   origin_village: z.string().trim().optional().default(""),
 });
 
+/**
+ * Date de naissance : champ obligatoire.
+ * Attendue au format ISO (AAAA-MM-JJ), tel que produit par <input type="date">
+ * et stocké par la colonne `date` de Postgres.
+ */
+export const dateOfBirthSchema = z
+  .string()
+  .trim()
+  .min(1, "Date de naissance requise")
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date de naissance invalide (AAAA-MM-JJ)")
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) return false;
+    const year = date.getUTCFullYear();
+    return year >= 1900 && date.getTime() <= Date.now();
+  }, "Date de naissance invalide");
+
 export const playerEntrySchema = z.object({
   full_name: z.string().trim().min(2, "Nom du joueur requis"),
   jersey_number: z.coerce.number().int().min(1, "Numéro invalide").max(99, "Numéro invalide"),
   position: z.string().trim().optional().default(""),
-  date_of_birth: z.union([z.literal(""), z.string()]).optional().default(""),
+  date_of_birth: dateOfBirthSchema,
   origin_village: z.string().trim().optional().default(""),
 });
 

@@ -12,12 +12,20 @@ import {
   Banknote,
   ChevronRight
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
-import { updateTeamStatus } from "@/app/api/teams/actions";
+import { getTeamsWithPayments, updateTeamStatus } from "@/app/api/teams/actions";
 import { REGISTRATION_FEE } from "@/lib/constants";
+import { formatFrenchDate, formatReceiptNumber } from "@/lib/helpers";
+
+type PaymentRow = {
+  id: string;
+  amount: number | null;
+  status: string | null;
+  created_at: string | null;
+  receipt_url: string | null;
+};
 
 type PaymentTeam = {
   id: string;
@@ -25,7 +33,17 @@ type PaymentTeam = {
   village: string | null;
   status: string;
   payment_receipt_url?: string | null;
+  payments?: PaymentRow[] | null;
 };
+
+/** Le paiement de référence d'une équipe (le plus ancien : un seul par équipe). */
+function getPayment(team: PaymentTeam): PaymentRow | null {
+  const rows = team.payments ?? [];
+  if (rows.length === 0) return null;
+  return [...rows].sort((a, b) =>
+    (a.created_at ?? "").localeCompare(b.created_at ?? "")
+  )[0];
+}
 
 export default function AdminPaymentsPage() {
   const [teams, setTeams] = useState<PaymentTeam[]>([]);
@@ -39,14 +57,11 @@ export default function AdminPaymentsPage() {
     message: "",
     type: "success"
   });
-  const supabase = createClient();
 
   async function fetchPayments() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('teams')
-      .select('*, payments(*)');
-    if (!error && data) setTeams(data);
+    const result = await getTeamsWithPayments();
+    if (result.success) setTeams(result.data as PaymentTeam[]);
     setLoading(false);
   }
 
@@ -54,7 +69,6 @@ export default function AdminPaymentsPage() {
     const kickoff = setTimeout(fetchPayments, 0);
     return () => clearTimeout(kickoff);
     // chargement initial uniquement
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredTeams = teams.filter(t =>
@@ -62,10 +76,16 @@ export default function AdminPaymentsPage() {
     (t.village ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
+  // Les recettes viennent des paiements réellement enregistrés, pas d'une
+  // estimation à partir du nombre d'équipes validées.
+  const paidPayments = teams
+    .map(getPayment)
+    .filter((p): p is PaymentRow => p?.status === 'paid');
+
   const stats = {
     pending: teams.filter(t => t.status === 'pending').length,
     validated: teams.filter(t => t.status === 'validated').length,
-    totalAmount: teams.filter(t => t.status === 'validated').length * REGISTRATION_FEE
+    totalAmount: paidPayments.reduce((sum, p) => sum + (p.amount ?? REGISTRATION_FEE), 0)
   };
 
   const handleStatusUpdate = async (teamId: string, newStatus: string) => {
@@ -140,7 +160,8 @@ export default function AdminPaymentsPage() {
               <tr>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Équipe</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Village</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Reçu</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Preuve</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted">Reçu Officiel</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-center">Statut</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted text-right">Actions</th>
               </tr>
@@ -148,19 +169,21 @@ export default function AdminPaymentsPage() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center">
+                  <td colSpan={6} className="py-20 text-center">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary opacity-20" />
                   </td>
                 </tr>
               ) : filteredTeams.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center text-muted italic text-sm">
+                  <td colSpan={6} className="py-20 text-center text-muted italic text-sm">
                     Aucun paiement trouvé.
                   </td>
                 </tr>
-              ) : filteredTeams.map((team) => (
-                <tr 
-                  key={team.id} 
+              ) : filteredTeams.map((team) => {
+                const payment = getPayment(team);
+                return (
+                <tr
+                  key={team.id}
                   className="hover:bg-white/5 transition-colors group cursor-pointer"
                   onClick={() => {
                     setSelectedTeam(team);
@@ -191,6 +214,22 @@ export default function AdminPaymentsPage() {
                       <span className="text-[10px] font-black text-red-500/50">NON FOURNI</span>
                     )}
                   </td>
+                  <td className="px-6 py-4">
+                    {payment?.status === 'paid' ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[11px] font-black font-mono tracking-tight text-green-500">
+                          {formatReceiptNumber(payment.id, payment.created_at)}
+                        </span>
+                        {payment.created_at && (
+                          <span className="text-[9px] font-bold text-muted uppercase tracking-widest">
+                            {formatFrenchDate(payment.created_at, { day: "2-digit", month: "2-digit", year: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] font-black text-muted/40 uppercase italic">Non émis</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className={cn(
@@ -201,11 +240,11 @@ export default function AdminPaymentsPage() {
                       )}>
                         {team.status === 'validated' ? 'Payé' : team.status === 'rejected' ? 'Annulé' : 'Attente'}
                       </span>
-                      {team.status === 'validated' && <span className="text-[8px] font-black text-green-500/60 uppercase">{REGISTRATION_FEE.toLocaleString('fr-FR')} FCFA</span>}
+                      {team.status === 'validated' && <span className="text-[8px] font-black text-green-500/60 uppercase">{(payment?.amount ?? REGISTRATION_FEE).toLocaleString('fr-FR')} FCFA</span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
+                    <button
                       className="p-2 rounded-lg bg-white/5 border border-white/10 hover:border-primary/50 text-muted hover:text-primary transition-all"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -217,7 +256,8 @@ export default function AdminPaymentsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -266,14 +306,22 @@ export default function AdminPaymentsPage() {
             </div>
 
             <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-1">
                 {team.payment_receipt_url ? (
                   <span className="flex items-center gap-1.5 text-[9px] font-black text-primary uppercase">
-                    <FileText className="w-3.5 h-3.5" /> Reçu disponible
+                    <FileText className="w-3.5 h-3.5" /> Preuve disponible
                   </span>
                 ) : (
-                  <span className="text-[9px] font-black text-red-500/50 uppercase italic">Reçu non fourni</span>
+                  <span className="text-[9px] font-black text-red-500/50 uppercase italic">Preuve non fournie</span>
                 )}
+                {(() => {
+                  const payment = getPayment(team);
+                  return payment?.status === 'paid' ? (
+                    <span className="text-[9px] font-black font-mono text-green-500 tracking-tight">
+                      Reçu {formatReceiptNumber(payment.id, payment.created_at)}
+                    </span>
+                  ) : null;
+                })()}
               </div>
               <button className="flex items-center gap-1 text-[9px] font-black text-muted uppercase">
                 Détails <ChevronRight className="w-3.5 h-3.5" />

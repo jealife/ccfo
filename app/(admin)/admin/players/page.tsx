@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PlayerLicense } from "@/components/dashboard/PlayerLicense";
+import { formatFrenchDate } from "@/lib/helpers";
 
 type TeamOption = { id: string; name: string; village: string | null };
 type AdminPlayer = {
@@ -24,6 +25,7 @@ type AdminPlayer = {
   photo_url: string | null;
   nationality?: string | null;
   origin_village?: string | null;
+  date_of_birth?: string | null;
   teams: { name: string; village: string | null } | null;
 };
 
@@ -86,9 +88,10 @@ export default function AdminPlayersPage() {
 
   const handleExportCSV = () => {
     const rows = [
-      ["Nom", "Équipe", "Village", "Numéro", "Poste", "Origine"],
+      ["Nom", "Date de naissance", "Équipe", "Village", "Numéro", "Poste", "Origine"],
       ...filteredPlayers.map(p => [
         p.full_name,
+        p.date_of_birth ? formatFrenchDate(p.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" }) : "",
         p.teams?.name || "",
         p.teams?.village || "",
         p.jersey_number || "",

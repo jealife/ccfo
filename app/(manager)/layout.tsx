@@ -6,7 +6,8 @@ import {
   LogOut, 
   Bell,
   Calendar,
-  PlusCircle
+  PlusCircle,
+  Receipt
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/api/auth/actions";
@@ -60,6 +61,10 @@ export default async function ManagerLayout({ children }: { children: React.Reac
     { href: "/manager/registration", icon: <PlusCircle />, label: "Inscription" },
     { href: "/dashboard/my-team", icon: <Users />, label: "Mon Équipe" },
     { href: "/dashboard/matches", icon: <Calendar />, label: "Calendrier" },
+    // Le reçu officiel n'existe qu'une fois l'équipe validée par l'administration.
+    ...(team?.status === "validated"
+      ? [{ href: "/dashboard/receipt", icon: <Receipt />, label: "Mon Reçu" }]
+      : []),
   ];
 
   return (

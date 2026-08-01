@@ -153,6 +153,14 @@ export function RegistrationForm() {
         showAlert("Liste incomplète", `Le règlement exige ${playersLimit} joueurs. Il vous en manque ${playersLimit - validPlayers.length}.`);
         return;
       }
+      const missingDob = validPlayers.filter(p => !p.dob.trim());
+      if (missingDob.length > 0) {
+        showAlert(
+          "Date de naissance manquante",
+          `La date de naissance est obligatoire pour chaque joueur. Il en manque ${missingDob.length} : ${missingDob.slice(0, 3).map(p => p.name.trim()).join(", ")}${missingDob.length > 3 ? "…" : ""}.`
+        );
+        return;
+      }
     }
 
     if (currentStep === STEPS.length) {
@@ -422,6 +430,14 @@ function PlayersStep({ data, updateData, limit }: {
               <FormInput label="Poste" placeholder="ATT" value={player.position} onChange={(e: InputChange) => updateData(i, {position: e.target.value})} />
               <FormInput label="Village" placeholder="Bassam" value={player.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
             </div>
+            <div className="mt-3">
+              <FormInput
+                label="Date de naissance *"
+                type="date"
+                value={player.dob}
+                onChange={(e: InputChange) => updateData(i, {dob: e.target.value})}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -577,17 +593,19 @@ function PaymentStep({ data, updateData, receiptData }: {
   );
 }
 
-function FormInput({ label, placeholder, className, value, onChange }: {
+function FormInput({ label, placeholder, className, value, onChange, type }: {
   label: string;
   placeholder?: string;
   className?: string;
   value: string;
   onChange: (e: InputChange) => void;
+  type?: string;
 }) {
   return (
     <div className={cn("space-y-1.5", className)}>
       <label className="text-[10px] font-black uppercase tracking-widest text-muted">{label}</label>
-      <input 
+      <input
+        type={type}
         placeholder={placeholder}
         value={value}
         onChange={onChange}

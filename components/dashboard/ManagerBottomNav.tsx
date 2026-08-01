@@ -8,7 +8,8 @@ import {
   Users,
   PlusCircle,
   Calendar,
-  FileText
+  FileText,
+  Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,10 @@ export function ManagerBottomNav({ teamStatus }: { teamStatus?: string | null })
       : { href: "/manager/registration", icon: PlusCircle, label: "S'inscrire" },
     { href: "/dashboard/my-team", icon: Users, label: "Équipe" },
     { href: "/dashboard/matches", icon: Calendar, label: "Calendrier" },
+    // Le reçu officiel n'existe qu'une fois l'équipe validée par l'administration.
+    ...(teamStatus === 'validated'
+      ? [{ href: "/dashboard/receipt", icon: Receipt, label: "Reçu" }]
+      : []),
   ];
 
   return (

@@ -50,6 +50,16 @@ export function formatMatchStatus(status: string): string {
   return labels[status] ?? status;
 }
 
+/**
+ * Numéro de reçu officiel des frais d'affiliation.
+ * Déterministe : dérivé de l'id du paiement, donc identique côté manager et admin.
+ */
+export function formatReceiptNumber(paymentId: string, createdAt?: string | null): string {
+  const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
+  const suffix = paymentId.replace(/-/g, "").slice(0, 6).toUpperCase();
+  return `CCFO${String(year).slice(-2)}-${suffix}`;
+}
+
 /** Phases de groupe (matchs comptant pour le classement) */
 export const GROUP_PHASES = ["Groupe A", "Groupe B"] as const;
 

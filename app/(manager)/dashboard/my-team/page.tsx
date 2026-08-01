@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { updatePlayerPhoto } from "@/app/api/players/actions";
 import { addPlayer, addStaff, deletePlayer, deleteStaff, updatePlayer } from "@/app/api/team/actions";
+import { formatFrenchDate } from "@/lib/helpers";
 
 type TeamRow = {
   id: string;
@@ -46,6 +47,7 @@ type PlayerRow = {
   jersey_number: string | number;
   position: string | null;
   origin_village: string | null;
+  date_of_birth: string | null;
   photo_url: string | null;
 };
 
@@ -118,6 +120,7 @@ export default function MyTeamPage() {
         jersey_number: updates.jersey_number,
         position: updates.position || "MIL",
         origin_village: updates.origin_village || "",
+        date_of_birth: updates.date_of_birth || "",
       });
       if (result.success) {
         setPlayers(prev => prev.map(p => p.id === DRAFT_ID ? result.data : p));
@@ -134,6 +137,7 @@ export default function MyTeamPage() {
       jersey_number: updates.jersey_number,
       position: updates.position ?? undefined,
       origin_village: updates.origin_village ?? undefined,
+      date_of_birth: updates.date_of_birth ?? undefined,
     });
     if (result.success) {
       setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
@@ -168,6 +172,7 @@ export default function MyTeamPage() {
       jersey_number: nextNumber.toString(),
       position: "MIL",
       origin_village: team.village || "",
+      date_of_birth: "",
       photo_url: null,
     };
 
@@ -491,6 +496,9 @@ function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload
     if (isNaN(num) || num < 1 || num > 99) {
       errs.jersey_number = "Numéro invalide (1–99)";
     }
+    if (!editedPlayer.date_of_birth) {
+      errs.date_of_birth = "Date de naissance requise";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -577,6 +585,28 @@ function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload
                 />
               ) : (
                 <span className="text-[10px] text-muted font-bold uppercase tracking-widest">{player.origin_village}</span>
+              )}
+            </div>
+            <div className="mt-1.5">
+              {isEditing ? (
+                <div>
+                  <input
+                    type="date"
+                    value={editedPlayer.date_of_birth ?? ""}
+                    className={cn(
+                      "bg-white/5 border rounded px-2 py-0.5 text-[10px] font-black uppercase outline-none focus:border-primary",
+                      errors.date_of_birth ? "border-red-500" : "border-white/10"
+                    )}
+                    onChange={(e) => setEditedPlayer({ ...editedPlayer, date_of_birth: e.target.value })}
+                  />
+                  {errors.date_of_birth && <p className="text-[9px] text-red-400 mt-0.5">{errors.date_of_birth}</p>}
+                </div>
+              ) : (
+                <span className="text-[10px] text-muted font-bold uppercase tracking-widest">
+                  {player.date_of_birth
+                    ? `Né(e) le ${formatFrenchDate(player.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" })}`
+                    : "Date de naissance manquante"}
+                </span>
               )}
             </div>
           </div>

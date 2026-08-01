@@ -2,13 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Vérifie que l'utilisateur courant est authentifié et a le rôle admin.
- * Retourne { error: null } si OK, sinon un message d'erreur.
+ * Retourne { error: null, userId } si OK, sinon un message d'erreur.
  */
-export async function requireAdmin(): Promise<{ error: string | null }> {
+export async function requireAdmin(): Promise<{ error: string | null; userId: string | null }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { error: "Non authentifié" };
+  if (!user) return { error: "Non authentifié", userId: null };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -16,8 +16,8 @@ export async function requireAdmin(): Promise<{ error: string | null }> {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "admin") return { error: "Accès refusé" };
-  return { error: null };
+  if (profile?.role !== "admin") return { error: "Accès refusé", userId: null };
+  return { error: null, userId: user.id };
 }
 
 /**

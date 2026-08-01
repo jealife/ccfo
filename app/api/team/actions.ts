@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/server";
 import { verifyTeamOwnership } from "@/lib/auth";
+import { dateOfBirthSchema } from "@/lib/validation/registration";
 import { revalidatePath } from "next/cache";
 
 const playerSchema = z.object({
@@ -11,7 +12,7 @@ const playerSchema = z.object({
   jersey_number: z.coerce.number().int().min(1, "Numéro invalide").max(99, "Numéro invalide"),
   position: z.string().trim().min(1),
   origin_village: z.string().trim().optional().default(""),
-  date_of_birth: z.string().nullable().optional(),
+  date_of_birth: dateOfBirthSchema,
 });
 
 export async function addPlayer(playerData: z.input<typeof playerSchema>) {
