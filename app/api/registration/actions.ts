@@ -70,6 +70,8 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
         full_name: s.full_name,
         role: s.role,
         origin_village: s.origin_village,
+        date_of_birth: s.date_of_birth || null,
+        photo_url: s.photo_url || null,
       };
     });
 

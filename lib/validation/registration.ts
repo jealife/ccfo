@@ -4,22 +4,6 @@
 
 import { z } from "zod";
 
-export const teamInfoSchema = z.object({
-  name: z.string().trim().min(2, "Nom d'équipe requis"),
-  village: z.string().trim().min(1, "Village requis"),
-  jersey_color: z.string().trim().optional().default(""),
-  president_name: z.string().trim().min(1, "Nom du président requis"),
-  president_phone: z.string().trim().min(6, "Téléphone requis"),
-  whatsapp: z.string().trim().optional().default(""),
-  email: z.union([z.literal(""), z.string().email("Email invalide")]).optional().default(""),
-});
-
-export const staffMemberSchema = z.object({
-  full_name: z.string().trim().min(2, "Nom du membre requis"),
-  role: z.string().trim().min(1, "Rôle requis"),
-  origin_village: z.string().trim().optional().default(""),
-});
-
 /**
  * Date de naissance : champ obligatoire.
  * Attendue au format ISO (AAAA-MM-JJ), tel que produit par <input type="date">
@@ -36,6 +20,25 @@ export const dateOfBirthSchema = z
     const year = date.getUTCFullYear();
     return year >= 1900 && date.getTime() <= Date.now();
   }, "Date de naissance invalide");
+
+export const teamInfoSchema = z.object({
+  name: z.string().trim().min(2, "Nom d'équipe requis"),
+  village: z.string().trim().min(1, "Village requis"),
+  jersey_color: z.string().trim().optional().default(""),
+  president_name: z.string().trim().min(1, "Nom du président requis"),
+  president_phone: z.string().trim().min(6, "Téléphone requis"),
+  whatsapp: z.string().trim().optional().default(""),
+  email: z.union([z.literal(""), z.string().email("Email invalide")]).optional().default(""),
+});
+
+export const staffMemberSchema = z.object({
+  full_name: z.string().trim().min(2, "Nom du membre requis"),
+  role: z.string().trim().min(1, "Rôle requis"),
+  origin_village: z.string().trim().optional().default(""),
+  // Le staff a une licence au même titre que les joueurs.
+  date_of_birth: z.union([z.literal(""), dateOfBirthSchema]).optional().default(""),
+  photo_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
+});
 
 export const playerEntrySchema = z.object({
   full_name: z.string().trim().min(2, "Nom du joueur requis"),

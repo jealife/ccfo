@@ -120,6 +120,32 @@ export async function updateTeamStatus(teamId: string, newStatus: string) {
   return { success: true };
 }
 
+/**
+ * Rouvre (ou referme) l'effectif d'une équipe validée, pour que son manager
+ * puisse à nouveau ajouter ou retirer des joueurs / membres du staff.
+ * Volontairement distinct du statut : rouvrir l'accès ne dévalide pas
+ * l'équipe et n'annule donc ni son reçu ni sa place au classement.
+ */
+export async function setRegistrationUnlocked(teamId: string, unlocked: boolean) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
+
+  const { error } = await createAdminClient()
+    .from('teams')
+    .update({ registration_unlocked: unlocked })
+    .eq('id', teamId);
+
+  if (error) {
+    console.error('[setRegistrationUnlocked]', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin/teams');
+  revalidatePath('/dashboard/my-team');
+
+  return { success: true };
+}
+
 export async function validatePayment(teamId: string) {
   const { error: authError, userId } = await requireAdmin();
   if (authError) return { success: false, error: authError };

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Camera,
   Users,
   UserPlus,
   FileText,
@@ -23,7 +25,7 @@ import Link from "next/link";
 import { MOBILE_MONEY_NUMBER } from "@/lib/constants";
 
 type TeamFormState = { name: string; village: string; color: string; president: string; phone: string; whatsapp: string; email: string };
-type StaffFormState = { name: string; role: string; origin: string };
+type StaffFormState = { name: string; role: string; village: string; dob: string; photo: string | null };
 type PlayerFormState = { name: string; number: string; dob: string; position: string; village: string };
 type DocumentsFormState = { idCards: string | null; certificate: string | null; receipt: string | null };
 type FormState = {
@@ -33,6 +35,11 @@ type FormState = {
   documents: DocumentsFormState;
 };
 type InputChange = React.ChangeEvent<HTMLInputElement>;
+
+/** Chemin de photo staff (hors composant : Date.now() ne doit pas être appelé au rendu) */
+function makeStaffPhotoPath(teamSlug: string, index: number, ext: string | undefined) {
+  return `staff-photos/${teamSlug}-staff-${index + 1}-${Date.now()}.${ext}`;
+}
 
 const STEPS = [
   { id: 1, title: "Équipe", icon: <Users className="w-5 h-5" /> },
@@ -56,7 +63,7 @@ export function RegistrationForm() {
   
   const [formData, setFormData] = useState<FormState>({
     team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "" },
-    staff: Array(6).fill({ name: "", role: "", origin: "" }),
+    staff: Array(6).fill({ name: "", role: "", village: "", dob: "", photo: null }),
     players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "" }),
     documents: { idCards: null, certificate: null, receipt: null }
   });
@@ -84,9 +91,15 @@ export function RegistrationForm() {
         const { data: playersData } = await supabase.from('players').select('*').eq('team_id', teamData.id).order('created_at', { ascending: true });
 
         // Map existing staff into fixed-size array
-        const mappedStaff = Array(sLimit).fill({ name: "", role: "", origin: "" });
+        const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null });
         staffData?.forEach((s, i) => {
-          if (i < sLimit) mappedStaff[i] = { name: `${s.first_name} ${s.last_name}`, role: s.role, origin: s.origin_village || "" };
+          if (i < sLimit) mappedStaff[i] = {
+            name: `${s.first_name} ${s.last_name}`,
+            role: s.role,
+            village: s.origin_village || "",
+            dob: s.date_of_birth || "",
+            photo: s.photo_url || null,
+          };
         });
 
         // Map existing players into fixed-size array
@@ -122,7 +135,7 @@ export function RegistrationForm() {
         // Default empty arrays if no team exists yet
         setFormData(prev => ({
           ...prev,
-          staff: Array(sLimit).fill({ name: "", role: "", origin: "" }),
+          staff: Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null }),
           players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" }),
         }));
       }
@@ -133,37 +146,45 @@ export function RegistrationForm() {
   const playersLimit = config?.players_per_team || 24;
   const staffLimit = config?.staff_per_team || 6;
 
-  const nextStep = async () => {
-    if (currentStep === 1) {
-      if (!formData.team.name || !formData.team.village || !formData.team.president || !formData.team.phone) {
-        showAlert("Champs manquants", "Veuillez remplir les informations obligatoires de l'équipe : Nom, Village, Président et Téléphone.");
-        return;
-      }
-    }
-    if (currentStep === 2) {
-      const validStaff = formData.staff.filter(s => s.name.trim() !== "");
-      if (validStaff.length < staffLimit) {
-        showAlert("Staff incomplet", `Vous devez enregistrer exactement ${staffLimit} membres du staff pour continuer.`);
-        return;
-      }
-    }
-    if (currentStep === 3) {
-      const validPlayers = formData.players.filter(p => p.name.trim() !== "");
-      if (validPlayers.length < playersLimit) {
-        showAlert("Liste incomplète", `Le règlement exige ${playersLimit} joueurs. Il vous en manque ${playersLimit - validPlayers.length}.`);
-        return;
-      }
-      const missingDob = validPlayers.filter(p => !p.dob.trim());
-      if (missingDob.length > 0) {
-        showAlert(
-          "Date de naissance manquante",
-          `La date de naissance est obligatoire pour chaque joueur. Il en manque ${missingDob.length} : ${missingDob.slice(0, 3).map(p => p.name.trim()).join(", ")}${missingDob.length > 3 ? "…" : ""}.`
-        );
-        return;
-      }
+  /**
+   * Contrôles du dossier complet. On ne bloque plus la navigation entre les
+   * étapes : le manager circule librement et remplit dans l'ordre qu'il veut.
+   * Ces règles ne s'appliquent qu'à la soumission finale.
+   */
+  const collectSubmissionIssues = (): string[] => {
+    const issues: string[] = [];
+    const { name, village, president, phone } = formData.team;
+    if (!name || !village || !president || !phone) {
+      issues.push("Étape Équipe : nom, village, président et téléphone sont obligatoires.");
     }
 
+    const validStaff = formData.staff.filter(s => s.name.trim() !== "");
+    if (validStaff.length < staffLimit) {
+      issues.push(`Étape Staff : ${staffLimit} membres requis, ${validStaff.length} renseigné(s).`);
+    }
+
+    const validPlayers = formData.players.filter(p => p.name.trim() !== "");
+    if (validPlayers.length < playersLimit) {
+      issues.push(`Étape Joueurs : ${playersLimit} joueurs requis, ${validPlayers.length} renseigné(s).`);
+    }
+
+    const missingDob = validPlayers.filter(p => !p.dob.trim());
+    if (missingDob.length > 0) {
+      issues.push(
+        `Étape Joueurs : date de naissance manquante pour ${missingDob.length} joueur(s) — ${missingDob.slice(0, 3).map(p => p.name.trim()).join(", ")}${missingDob.length > 3 ? "…" : ""}.`
+      );
+    }
+
+    return issues;
+  };
+
+  const nextStep = async () => {
     if (currentStep === STEPS.length) {
+      const issues = collectSubmissionIssues();
+      if (issues.length > 0) {
+        showAlert("Dossier incomplet", issues.join("\n\n"));
+        return;
+      }
       await handleSubmit();
       return;
     }
@@ -186,7 +207,13 @@ export function RegistrationForm() {
         },
         staff: formData.staff
           .filter((s) => s.name.trim())
-          .map((s) => ({ full_name: s.name.trim(), role: s.role, origin_village: s.origin })),
+          .map((s) => ({
+            full_name: s.name.trim(),
+            role: s.role,
+            origin_village: s.village,
+            date_of_birth: s.dob,
+            photo_url: s.photo,
+          })),
         players: formData.players
           .filter((p) => p.name.trim())
           .map((p) => ({
@@ -247,25 +274,34 @@ export function RegistrationForm() {
       {/* Stepper */}
       <div className="mb-12 flex justify-between items-center relative">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border -translate-y-1/2 z-0" />
+        {/* Navigation libre : cliquer sur une étape y va directement. */}
         {STEPS.map((step) => (
-          <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
-            <div 
+          <button
+            type="button"
+            key={step.id}
+            onClick={() => setCurrentStep(step.id)}
+            title={`Aller à l’étape ${step.title}`}
+            className="relative z-10 flex flex-col items-center gap-2 group cursor-pointer"
+          >
+            <div
               className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500",
-                currentStep >= step.id 
-                  ? "bg-primary border-primary text-white" 
-                  : "bg-background border-border text-muted"
+                "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500 group-hover:scale-110",
+                currentStep === step.id
+                  ? "bg-primary border-primary text-white"
+                  : currentStep > step.id
+                  ? "bg-primary/20 border-primary/40 text-primary"
+                  : "bg-background border-border text-muted group-hover:border-primary/40"
               )}
             >
               {currentStep > step.id ? <CheckCircle2 className="w-6 h-6" /> : step.icon}
             </div>
             <span className={cn(
-              "text-[10px] font-bold uppercase tracking-widest",
-              currentStep >= step.id ? "text-primary" : "text-muted"
+              "text-[10px] font-bold uppercase tracking-widest transition-colors",
+              currentStep >= step.id ? "text-primary" : "text-muted group-hover:text-foreground"
             )}>
               {step.title}
             </span>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -280,7 +316,7 @@ export function RegistrationForm() {
             className="space-y-8"
           >
             {currentStep === 1 && <TeamStep data={formData.team} updateData={(val) => setFormData({...formData, team: {...formData.team, ...val}})} />}
-            {currentStep === 2 && <StaffStep data={formData.staff} limit={staffLimit} updateData={(index, val) => {
+            {currentStep === 2 && <StaffStep data={formData.staff} limit={staffLimit} teamName={formData.team.name} updateData={(index, val) => {
               const newStaff = [...formData.staff];
               newStaff[index] = {...newStaff[index], ...val};
               setFormData({...formData, staff: newStaff});
@@ -365,17 +401,48 @@ function TeamStep({ data, updateData }: {
   );
 }
 
-function StaffStep({ data, updateData, limit }: {
+function StaffStep({ data, updateData, limit, teamName }: {
   data: StaffFormState[];
   updateData: (index: number, val: Partial<StaffFormState>) => void;
   limit: number;
+  teamName: string;
 }) {
+  const supabase = createClient();
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+
+  const handlePhotoUpload = async (e: InputChange, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateUploadFile(file, "image");
+    if (validationError) {
+      window.alert(validationError);
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingIndex(index);
+    const slug = (teamName || "equipe").replace(/\s+/g, '-').toLowerCase();
+    const filePath = makeStaffPhotoPath(slug, index, file.name.split('.').pop());
+
+    const { error: uploadError } = await supabase.storage.from('team-docs').upload(filePath, file);
+
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
+      updateData(index, { photo: publicUrlData.publicUrl });
+    } else {
+      console.error("[upload] Error:", uploadError.message);
+      window.alert("Erreur lors de l'upload de la photo. Vérifiez le format et réessayez.");
+    }
+    setUploadingIndex(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black font-outfit">Staff Technique</h2>
-          <p className="text-muted text-sm">Exactement {limit} membres requis</p>
+          <p className="text-muted text-sm">Exactement {limit} membres requis — chaque membre reçoit une licence</p>
         </div>
         <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase">
           Requis: {limit} / Actuel: {data.filter((s) => s.name).length}
@@ -384,12 +451,36 @@ function StaffStep({ data, updateData, limit }: {
 
       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
         {data.map((member, i) => (
-          <div key={i} className="p-4 rounded-xl border border-border bg-white/5 flex gap-4 items-end">
-            <div className="flex-1 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div key={i} className="p-4 rounded-xl border border-border bg-white/5 flex gap-4 items-start">
+            {/* Photo de licence */}
+            <label className="relative w-20 h-24 shrink-0 rounded-xl overflow-hidden border-2 border-dashed border-border bg-secondary/50 hover:border-primary/50 transition-all cursor-pointer flex items-center justify-center group">
+              <input
+                type="file"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => handlePhotoUpload(e, i)}
+                disabled={uploadingIndex === i}
+              />
+              {uploadingIndex === i ? (
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              ) : member.photo ? (
+                <Image src={member.photo} alt={member.name || `Membre ${i + 1}`} fill className="object-cover" />
+              ) : (
+                <div className="flex flex-col items-center gap-1 text-muted group-hover:text-primary transition-colors">
+                  <Camera className="w-5 h-5" />
+                  <span className="text-[8px] font-black uppercase tracking-widest">Photo</span>
+                </div>
+              )}
+            </label>
+
+            <div className="flex-1 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormInput label={`Nom Membre ${i + 1}`} placeholder="Nom complet" value={member.name} onChange={(e: InputChange) => updateData(i, {name: e.target.value})} />
                 <FormInput label="Rôle" placeholder="Coach, Assistant, etc." value={member.role} onChange={(e: InputChange) => updateData(i, {role: e.target.value})} />
-                <FormInput label="Origine" placeholder="Village" value={member.origin} onChange={(e: InputChange) => updateData(i, {origin: e.target.value})} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FormInput label="Village" placeholder="ex: Fieng Okano" value={member.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
+                <FormInput label="Date de naissance" type="date" value={member.dob} onChange={(e: InputChange) => updateData(i, {dob: e.target.value})} />
               </div>
             </div>
           </div>

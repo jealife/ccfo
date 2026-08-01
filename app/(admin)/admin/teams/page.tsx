@@ -6,13 +6,15 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Eye
+  Eye,
+  Lock,
+  LockOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
-import { updateTeamStatus } from "@/app/api/teams/actions";
+import { setRegistrationUnlocked, updateTeamStatus } from "@/app/api/teams/actions";
 import type { TournamentConfig } from "@/lib/types";
 
 type AdminTeam = {
@@ -20,6 +22,7 @@ type AdminTeam = {
   name: string;
   village: string | null;
   status: string;
+  registration_unlocked?: boolean | null;
   players?: { count: number }[];
   staff?: { count: number }[];
 };
@@ -97,6 +100,35 @@ export default function AdminTeamsPage() {
           });
         }
       }
+    });
+  };
+
+  const handleToggleRosterLock = async (team: AdminTeam) => {
+    const reopening = !team.registration_unlocked;
+    setAlert({
+      isOpen: true,
+      title: reopening ? "Rouvrir l’effectif ?" : "Refiger l’effectif ?",
+      message: reopening
+        ? `${team.name} pourra de nouveau ajouter et retirer des joueurs et membres du staff. L’équipe reste validée et conserve son reçu.`
+        : `${team.name} ne pourra plus modifier la composition de son effectif.`,
+      type: "warning",
+      isConfirm: true,
+      onConfirm: async () => {
+        const result = await setRegistrationUnlocked(team.id, reopening);
+        if (!result.success) {
+          setAlert({ isOpen: true, title: "Erreur", message: result.error || "Action impossible", type: "error" });
+          return;
+        }
+        fetchTeams();
+        setAlert({
+          isOpen: true,
+          title: "Succès",
+          message: reopening
+            ? "L’effectif est rouvert : le manager peut à nouveau le modifier."
+            : "L’effectif est de nouveau figé.",
+          type: "success",
+        });
+      },
     });
   };
 
@@ -209,8 +241,24 @@ export default function AdminTeamsPage() {
                           </button>
                         </>
                       )}
-                      <button 
-                        className="p-2 hover:bg-white/10 rounded-lg text-primary transition-colors" 
+                      {['validated', 'locked'].includes(team.status) && (
+                        <button
+                          className={cn(
+                            "p-2 rounded-lg transition-colors",
+                            team.registration_unlocked
+                              ? "text-yellow-500 hover:bg-yellow-500/10"
+                              : "text-muted hover:bg-white/10 hover:text-yellow-500"
+                          )}
+                          title={team.registration_unlocked
+                            ? "Effectif rouvert — cliquer pour le refiger"
+                            : "Effectif figé — cliquer pour rouvrir l’accès au manager"}
+                          onClick={() => handleToggleRosterLock(team)}
+                        >
+                          {team.registration_unlocked ? <LockOpen className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                        </button>
+                      )}
+                      <button
+                        className="p-2 hover:bg-white/10 rounded-lg text-primary transition-colors"
                         title="Voir les détails"
                         onClick={() => {
                           setSelectedTeam(team);

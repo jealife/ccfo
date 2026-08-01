@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   UserPlus,
@@ -16,14 +16,23 @@ import {
   CheckCircle2,
   AlertCircle,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { updatePlayerPhoto } from "@/app/api/players/actions";
-import { addPlayer, addStaff, deletePlayer, deleteStaff, updatePlayer } from "@/app/api/team/actions";
+import { updatePlayerPhoto, updateStaffPhoto } from "@/app/api/players/actions";
+import { addPlayer, addStaff, deletePlayer, deleteStaff, updatePlayer, updateStaff } from "@/app/api/team/actions";
 import { formatFrenchDate } from "@/lib/helpers";
+
+const ROSTER_LOCKED_MSG =
+  "Votre équipe est validée : l'effectif est figé. Contactez l'administration pour rouvrir l'accès.";
+
+/** Chemin de photo (hors composant : Date.now() ne doit pas être appelé au rendu) */
+function makePhotoPath(folder: "player-photos" | "staff-photos", id: string, ext: string | undefined) {
+  return `${folder}/${id}-${Date.now()}.${ext}`;
+}
 
 type TeamRow = {
   id: string;
@@ -31,13 +40,18 @@ type TeamRow = {
   village: string | null;
   status: string;
   president_name: string | null;
+  registration_unlocked?: boolean | null;
 };
 
 type StaffRow = {
   id: string;
+  team_id: string;
   first_name: string | null;
   last_name: string | null;
   role: string | null;
+  origin_village: string | null;
+  date_of_birth: string | null;
+  photo_url: string | null;
 };
 
 type PlayerRow = {
@@ -51,11 +65,6 @@ type PlayerRow = {
   photo_url: string | null;
 };
 
-/** Nom de fichier de photo (hors composant pour rester pur au rendu) */
-function makePhotoPath(playerId: string, ext: string | undefined) {
-  return `player-photos/${playerId}-${Date.now()}.${ext}`;
-}
-
 export default function MyTeamPage() {
   const [team, setTeam] = useState<TeamRow | null>(null);
   const [staff, setStaff] = useState<StaffRow[]>([]);
@@ -63,6 +72,7 @@ export default function MyTeamPage() {
   const [playersLimit, setPlayersLimit] = useState(24);
   const [staffLimit, setStaffLimit] = useState(6);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [confirm, setConfirm] = useState<{ type: "player" | "staff"; id: string; name: string } | null>(null);
@@ -106,8 +116,44 @@ export default function MyTeamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Id local d'un joueur en cours de création (non encore persisté)
+  // Id local d'une fiche en cours de création (non encore persistée)
   const DRAFT_ID = "__draft__";
+
+  /**
+   * Effectif figé : une fois l'équipe validée, le manager ne peut plus ajouter
+   * ni retirer de joueurs / membres du staff. Corriger une fiche existante
+   * reste possible. L'admin peut rouvrir l'accès (registration_unlocked).
+   */
+  const rosterLocked =
+    !!team && ['validated', 'locked'].includes(team.status) && !team.registration_unlocked;
+
+  /** Envoie un fichier dans le bucket et retourne son URL publique. */
+  const uploadPhoto = async (
+    folder: "player-photos" | "staff-photos",
+    id: string,
+    file: File
+  ): Promise<string | null> => {
+    if (!file.type.startsWith("image/")) {
+      showToast("Format non supporté. Utilisez JPG ou PNG.", "error");
+      return null;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Photo trop lourde (max 5 Mo)", "error");
+      return null;
+    }
+
+    const filePath = makePhotoPath(folder, id, file.name.split('.').pop());
+    const { error: uploadError } = await supabase.storage
+      .from('team-docs')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      showToast("Erreur upload : " + uploadError.message, "error");
+      return null;
+    }
+
+    return supabase.storage.from('team-docs').getPublicUrl(filePath).data.publicUrl;
+  };
 
   const handleUpdatePlayer = async (id: string, updates: PlayerRow) => {
     if (!team) return;
@@ -151,6 +197,10 @@ export default function MyTeamPage() {
   const handleAddPlayer = () => {
     if (players.length >= playersLimit) {
       showToast(`Limite de ${playersLimit} joueurs atteinte`, "error");
+      return;
+    }
+    if (rosterLocked) {
+      showToast(ROSTER_LOCKED_MSG, "error");
       return;
     }
     // Un seul brouillon à la fois
@@ -200,28 +250,99 @@ export default function MyTeamPage() {
     }
   };
 
-  const handleAddStaff = async () => {
+  const handleAddStaff = () => {
     if (staff.length >= staffLimit) {
       showToast(`Limite de ${staffLimit} membres atteinte`, "error");
       return;
     }
+    if (rosterLocked) {
+      showToast(ROSTER_LOCKED_MSG, "error");
+      return;
+    }
+    if (!team) return;
+    // Un seul brouillon à la fois — rien n'est écrit en base tant que le
+    // membre n'a pas été renseigné et enregistré.
+    if (staff.some(s => s.id === DRAFT_ID)) {
+      setEditingStaffId(DRAFT_ID);
+      return;
+    }
+
+    setStaff(prev => [...prev, {
+      id: DRAFT_ID,
+      team_id: team.id,
+      first_name: "",
+      last_name: "",
+      role: "Assistant",
+      origin_village: team.village || "",
+      date_of_birth: "",
+      photo_url: null,
+    }]);
+    setEditingStaffId(DRAFT_ID);
+  };
+
+  const handleUpdateStaff = async (id: string, updates: StaffRow) => {
     if (!team) return;
 
-    const newMember = {
-      team_id: team.id,
-      first_name: "Nouveau",
-      last_name: "Membre",
-      role: "Assistant"
-    };
-
-    const result = await addStaff(newMember);
-
-    if (!result.success) {
-      showToast(result.error || "Erreur lors de l'ajout", "error");
-    } else {
-      setStaff(prev => [...prev, result.data]);
-      showToast("Membre ajouté", "success");
+    if (id === DRAFT_ID) {
+      const result = await addStaff({
+        team_id: team.id,
+        first_name: updates.first_name || "",
+        last_name: updates.last_name || "",
+        role: updates.role || "",
+        origin_village: updates.origin_village || "",
+        date_of_birth: updates.date_of_birth || "",
+        photo_url: updates.photo_url,
+      });
+      if (result.success) {
+        setStaff(prev => prev.map(s => s.id === DRAFT_ID ? result.data : s));
+        setEditingStaffId(null);
+        showToast("Membre ajouté", "success");
+      } else {
+        showToast(result.error || "Erreur lors de l'ajout", "error");
+      }
+      return;
     }
+
+    const result = await updateStaff(id, team.id, {
+      first_name: updates.first_name || "",
+      last_name: updates.last_name || "",
+      role: updates.role || "",
+      origin_village: updates.origin_village || "",
+      date_of_birth: updates.date_of_birth || "",
+    });
+    if (result.success) {
+      setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+      setEditingStaffId(null);
+      showToast("Membre mis à jour", "success");
+    } else {
+      showToast(result.error || "Erreur lors de la mise à jour", "error");
+    }
+  };
+
+  const handleCancelStaffEdit = (staffId: string) => {
+    if (staffId === DRAFT_ID) {
+      setStaff(prev => prev.filter(s => s.id !== DRAFT_ID));
+    }
+    setEditingStaffId(null);
+  };
+
+  const handleStaffPhotoUpload = async (id: string, file: File): Promise<boolean> => {
+    if (id === DRAFT_ID) {
+      showToast("Enregistrez d'abord le membre avant d'ajouter une photo", "error");
+      return false;
+    }
+    const url = await uploadPhoto("staff-photos", id, file);
+    if (!url) return false;
+
+    const result = await updateStaffPhoto(id, url);
+    if (!result.success) {
+      showToast(`Erreur : ${result.error}`, "error");
+      return false;
+    }
+
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, photo_url: url } : s));
+    showToast("Photo mise à jour", "success");
+    return true;
   };
 
   const handleDeleteStaff = async (staffId: string) => {
@@ -241,35 +362,16 @@ export default function MyTeamPage() {
       showToast("Enregistrez d'abord le joueur avant d'ajouter une photo", "error");
       return false;
     }
-    if (!file.type.startsWith("image/")) {
-      showToast("Format non supporté. Utilisez JPG ou PNG.", "error");
-      return false;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Photo trop lourde (max 5 Mo)", "error");
-      return false;
-    }
+    const url = await uploadPhoto("player-photos", id, file);
+    if (!url) return false;
 
-    const filePath = makePhotoPath(id, file.name.split('.').pop());
-
-    const { error: uploadError } = await supabase.storage
-      .from('team-docs')
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      showToast("Erreur upload : " + uploadError.message, "error");
-      return false;
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('team-docs').getPublicUrl(filePath);
-    const result = await updatePlayerPhoto(id, publicUrl);
-
+    const result = await updatePlayerPhoto(id, url);
     if (!result.success) {
       showToast(`Erreur : ${result.error}`, "error");
       return false;
     }
 
-    setPlayers(prev => prev.map(p => p.id === id ? { ...p, photo_url: publicUrl } : p));
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, photo_url: url } : p));
     showToast("Photo mise à jour", "success");
     return true;
   };
@@ -364,6 +466,21 @@ export default function MyTeamPage() {
         <Users className="absolute -bottom-10 -right-10 w-48 md:w-64 h-48 md:h-64 text-white/5 rotate-12" />
       </div>
 
+      {/* Effectif figé après validation */}
+      {rosterLocked && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-yellow-500">
+          <Lock className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <span className="font-black uppercase tracking-widest">Effectif figé</span>
+            <p className="opacity-80 mt-0.5 font-medium">
+              Votre équipe est validée : vous ne pouvez plus ajouter ni retirer de joueurs
+              ou de membres du staff. Vous pouvez toujours corriger les fiches existantes.
+              Contactez l&apos;administration pour rouvrir l&apos;accès.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Staff Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
@@ -377,15 +494,17 @@ export default function MyTeamPage() {
           </div>
           <button
             onClick={handleAddStaff}
-            disabled={staff.length >= staffLimit}
+            disabled={staff.length >= staffLimit || rosterLocked}
+            title={rosterLocked ? ROSTER_LOCKED_MSG : undefined}
             className={cn(
               "text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 px-3 py-2 rounded-xl border transition-all",
-              staff.length >= staffLimit
+              staff.length >= staffLimit || rosterLocked
                 ? "bg-white/5 border-white/5 text-muted cursor-not-allowed opacity-50"
                 : "text-primary bg-primary/5 border-primary/10 hover:bg-primary/10"
             )}
           >
-            <UserPlus className="w-3 h-3" /> {staff.length >= staffLimit ? "Quota Atteint" : "Ajouter"}
+            {rosterLocked ? <Lock className="w-3 h-3" /> : <UserPlus className="w-3 h-3" />}
+            {rosterLocked ? "Figé" : staff.length >= staffLimit ? "Quota Atteint" : "Ajouter"}
           </button>
         </div>
         {staff.length === 0 ? (
@@ -393,22 +512,17 @@ export default function MyTeamPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {staff.map((member) => (
-              <div key={member.id} className="sports-card p-4 flex items-center gap-4 bg-card/30 hover:border-primary/20 transition-all group">
-                <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center font-bold text-muted group-hover:text-primary transition-colors shrink-0">
-                  {member.first_name?.[0] || "?"}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-sm tracking-tight truncate">{member.first_name} {member.last_name}</div>
-                  <div className="text-[10px] font-black text-primary uppercase tracking-widest">{member.role}</div>
-                </div>
-                <button
-                  onClick={() => setConfirm({ type: "staff", id: member.id, name: `${member.first_name} ${member.last_name}` })}
-                  className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-all shrink-0 opacity-0 group-hover:opacity-100"
-                  title="Supprimer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <StaffCard
+                key={member.id}
+                member={member}
+                isEditing={editingStaffId === member.id}
+                canDelete={!rosterLocked}
+                onEdit={() => setEditingStaffId(member.id)}
+                onCancel={() => handleCancelStaffEdit(member.id)}
+                onSave={(updates) => handleUpdateStaff(member.id, updates)}
+                onPhotoUpload={(file) => handleStaffPhotoUpload(member.id, file)}
+                onDelete={() => setConfirm({ type: "staff", id: member.id, name: `${member.first_name} ${member.last_name}` })}
+              />
             ))}
           </div>
         )}
@@ -427,15 +541,17 @@ export default function MyTeamPage() {
           </div>
           <button
             onClick={handleAddPlayer}
-            disabled={players.length >= playersLimit}
+            disabled={players.length >= playersLimit || rosterLocked}
+            title={rosterLocked ? ROSTER_LOCKED_MSG : undefined}
             className={cn(
               "text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 px-3 py-2 rounded-xl border transition-all",
-              players.length >= playersLimit
+              players.length >= playersLimit || rosterLocked
                 ? "bg-white/5 border-white/5 text-muted cursor-not-allowed opacity-50"
                 : "text-primary bg-primary/5 border-primary/10 hover:bg-primary/10"
             )}
           >
-            <UserPlus className="w-3 h-3" /> {players.length >= playersLimit ? "Quota Atteint" : "Ajouter"}
+            {rosterLocked ? <Lock className="w-3 h-3" /> : <UserPlus className="w-3 h-3" />}
+            {rosterLocked ? "Figé" : players.length >= playersLimit ? "Quota Atteint" : "Ajouter"}
           </button>
         </div>
 
@@ -451,6 +567,7 @@ export default function MyTeamPage() {
                 key={player.id}
                 player={player}
                 isEditing={editingPlayerId === player.id}
+                canDelete={!rosterLocked}
                 onEdit={() => setEditingPlayerId(player.id)}
                 onCancel={() => handleCancelEdit(player.id)}
                 onSave={(updates) => handleUpdatePlayer(player.id, updates)}
@@ -465,211 +582,373 @@ export default function MyTeamPage() {
   );
 }
 
-function PlayerCard({ player, isEditing, onEdit, onCancel, onSave, onPhotoUpload, onDelete }: {
+
+/** Petit champ étiqueté, partagé par les cartes joueur et staff. */
+function Field({ label, error, children }: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[9px] font-black uppercase tracking-widest text-muted">{label}</label>
+      {children}
+      {error && <p className="text-[9px] text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+const inputCls = (hasError?: boolean) => cn(
+  "w-full bg-white/5 border rounded-lg px-2 py-1.5 text-xs font-bold outline-none focus:border-primary transition-colors",
+  hasError ? "border-red-500" : "border-white/10"
+);
+
+/** Vignette photo cliquable (upload). */
+function PhotoThumb({ url, alt, uploading, onFile, className }: {
+  url: string | null;
+  alt: string;
+  uploading: boolean;
+  onFile: (file: File) => void;
+  className?: string;
+}) {
+  return (
+    <label className={cn(
+      "relative shrink-0 rounded-xl overflow-hidden bg-secondary/60 border border-white/10 cursor-pointer group/photo",
+      className
+    )}>
+      <input
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+          e.target.value = "";
+        }}
+      />
+      {url ? (
+        <Image src={url} alt={alt} fill sizes="80px" className="object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-muted/40">
+          <User className="w-6 h-6 stroke-[1.5px]" />
+        </div>
+      )}
+      {uploading ? (
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+          <Loader2 className="w-4 h-4 text-white animate-spin" />
+        </div>
+      ) : (
+        <div className="absolute inset-0 bg-primary/60 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center">
+          <Camera className="w-4 h-4 text-white" />
+        </div>
+      )}
+    </label>
+  );
+}
+
+function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDelete }: {
   player: PlayerRow;
   isEditing: boolean;
+  canDelete: boolean;
   onEdit: () => void;
   onCancel: () => void;
   onSave: (updates: PlayerRow) => void;
   onPhotoUpload: (file: File) => Promise<boolean>;
   onDelete: () => void;
 }) {
-  const [editedPlayer, setEditedPlayer] = useState(player);
+  const [edited, setEdited] = useState(player);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Resynchronise l'état local quand le joueur change (pattern "adjust state during render")
-  const [prevPlayer, setPrevPlayer] = useState(player);
-  if (prevPlayer !== player) {
-    setPrevPlayer(player);
-    setEditedPlayer(player);
+  // Resynchronise l'état local quand le joueur change
+  const [prev, setPrev] = useState(player);
+  if (prev !== player) {
+    setPrev(player);
+    setEdited(player);
     setErrors({});
   }
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!editedPlayer.full_name.trim() || editedPlayer.full_name === "Nouveau Joueur") {
-      errs.full_name = "Nom requis";
-    }
-    const num = parseInt(String(editedPlayer.jersey_number));
-    if (isNaN(num) || num < 1 || num > 99) {
-      errs.jersey_number = "Numéro invalide (1–99)";
-    }
-    if (!editedPlayer.date_of_birth) {
-      errs.date_of_birth = "Date de naissance requise";
-    }
+    if (!edited.full_name.trim() || edited.full_name === "Nouveau Joueur") errs.full_name = "Nom requis";
+    const num = parseInt(String(edited.jersey_number));
+    if (isNaN(num) || num < 1 || num > 99) errs.jersey_number = "1–99";
+    if (!edited.date_of_birth) errs.date_of_birth = "Requise";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave = () => {
-    if (validate()) onSave(editedPlayer);
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFile = async (file: File) => {
     setUploading(true);
     await onPhotoUpload(file);
     setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
     <div className={cn(
-      "relative group overflow-hidden rounded-xl transition-all duration-500",
-      "bg-card/40 border border-white/5 backdrop-blur-xl",
-      isEditing ? "ring-2 ring-primary border-transparent" : "hover:border-primary/30"
+      "rounded-xl bg-card/40 border backdrop-blur-xl transition-all group",
+      isEditing ? "ring-2 ring-primary border-transparent" : "border-white/5 hover:border-primary/30"
     )}>
-      {/* Header Info */}
-      <div className="p-4 md:p-6 pb-3 flex items-start justify-between relative z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={cn(
-            "w-11 h-11 rounded-2xl flex items-center justify-center font-black text-lg text-white shadow-xl shrink-0",
-            isEditing ? "bg-primary/50" : "bg-primary shadow-primary/20"
-          )}>
-            {isEditing ? (
-              <div className="w-full flex flex-col items-center">
-                <input
-                  type="number"
-                  min="1"
-                  max="99"
-                  value={editedPlayer.jersey_number}
-                  className="w-full bg-transparent text-center outline-none font-black text-sm"
-                  onChange={(e) => setEditedPlayer({ ...editedPlayer, jersey_number: e.target.value })}
-                />
-                {errors.jersey_number && <span className="text-[7px] text-red-300 leading-none">{errors.jersey_number}</span>}
-              </div>
-            ) : player.jersey_number}
+      {/* Ligne compacte */}
+      <div className="p-3 flex items-center gap-3">
+        <PhotoThumb
+          url={player.photo_url}
+          alt={player.full_name || "Joueur"}
+          uploading={uploading}
+          onFile={handleFile}
+          className="w-14 h-16"
+        />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center text-[10px] font-black shrink-0">
+              {player.jersey_number || "?"}
+            </span>
+            <h3 className="font-black font-outfit uppercase tracking-tight text-sm truncate">
+              {player.full_name || <span className="text-muted italic normal-case">Nouveau joueur</span>}
+            </h3>
           </div>
-          <div className="min-w-0">
-            {isEditing ? (
-              <div>
-                <input
-                  type="text"
-                  value={editedPlayer.full_name}
-                  className={cn(
-                    "w-full bg-white/5 border rounded px-2 py-1 font-bold text-sm outline-none focus:border-primary",
-                    errors.full_name ? "border-red-500" : "border-white/10"
-                  )}
-                  onChange={(e) => setEditedPlayer({ ...editedPlayer, full_name: e.target.value })}
-                />
-                {errors.full_name && <p className="text-[9px] text-red-400 mt-0.5">{errors.full_name}</p>}
-              </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-black uppercase tracking-widest">
+            <span className="text-primary">{player.position || "—"}</span>
+            <span className="text-muted/40">•</span>
+            <span className="text-muted">{player.origin_village || "—"}</span>
+            {player.date_of_birth ? (
+              <>
+                <span className="text-muted/40">•</span>
+                <span className="text-muted">{formatFrenchDate(player.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+              </>
             ) : (
-              <h3 className="font-black font-outfit uppercase tracking-tight text-base truncate">{player.full_name}</h3>
+              <>
+                <span className="text-muted/40">•</span>
+                <span className="text-red-400/70">Date manquante</span>
+              </>
             )}
-            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-              {isEditing ? (
-                <select
-                  value={editedPlayer.position ?? ""}
-                  className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-black uppercase outline-none"
-                  onChange={(e) => setEditedPlayer({ ...editedPlayer, position: e.target.value })}
-                >
-                  <option value="GB">GB (Gardien)</option>
-                  <option value="DEF">DEF (Défenseur)</option>
-                  <option value="MIL">MIL (Milieu)</option>
-                  <option value="ATT">ATT (Attaquant)</option>
-                </select>
-              ) : (
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest">{player.position}</span>
-              )}
-              <span className="text-[10px] text-muted">•</span>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editedPlayer.origin_village ?? ""}
-                  className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-black uppercase outline-none"
-                  onChange={(e) => setEditedPlayer({ ...editedPlayer, origin_village: e.target.value })}
-                />
-              ) : (
-                <span className="text-[10px] text-muted font-bold uppercase tracking-widest">{player.origin_village}</span>
-              )}
-            </div>
-            <div className="mt-1.5">
-              {isEditing ? (
-                <div>
-                  <input
-                    type="date"
-                    value={editedPlayer.date_of_birth ?? ""}
-                    className={cn(
-                      "bg-white/5 border rounded px-2 py-0.5 text-[10px] font-black uppercase outline-none focus:border-primary",
-                      errors.date_of_birth ? "border-red-500" : "border-white/10"
-                    )}
-                    onChange={(e) => setEditedPlayer({ ...editedPlayer, date_of_birth: e.target.value })}
-                  />
-                  {errors.date_of_birth && <p className="text-[9px] text-red-400 mt-0.5">{errors.date_of_birth}</p>}
-                </div>
-              ) : (
-                <span className="text-[10px] text-muted font-bold uppercase tracking-widest">
-                  {player.date_of_birth
-                    ? `Né(e) le ${formatFrenchDate(player.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" })}`
-                    : "Date de naissance manquante"}
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+        <div className="flex items-center gap-1 shrink-0">
           {isEditing ? (
             <>
-              <button onClick={handleSave} className="p-2 bg-green-500 text-white rounded-xl shadow-lg shadow-green-500/20 hover:scale-110 transition-transform">
-                <Save className="w-4 h-4" />
+              <button onClick={() => { if (validate()) onSave(edited); }} className="p-2 bg-green-500 text-white rounded-lg hover:scale-110 transition-transform" title="Enregistrer">
+                <Save className="w-3.5 h-3.5" />
               </button>
-              <button onClick={onCancel} className="p-2 bg-white/5 text-muted hover:text-white rounded-xl transition-all">
-                <X className="w-4 h-4" />
+              <button onClick={onCancel} className="p-2 bg-white/5 text-muted hover:text-white rounded-lg transition-all" title="Annuler">
+                <X className="w-3.5 h-3.5" />
               </button>
             </>
           ) : (
             <>
-              <button onClick={onEdit} className="p-2 bg-white/5 text-muted hover:text-primary hover:bg-primary/10 rounded-xl transition-all">
-                <Edit2 className="w-4 h-4" />
+              <button onClick={onEdit} className="p-2 bg-white/5 text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Modifier">
+                <Edit2 className="w-3.5 h-3.5" />
               </button>
-              <button onClick={onDelete} className="p-2 bg-white/5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {canDelete && (
+                <button onClick={onDelete} className="p-2 bg-white/5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100" title="Supprimer">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
 
-      {/* Photo Section */}
-      <div className="px-4 md:px-6 pb-4 md:pb-6 pt-2">
-        <div className="relative aspect-4/3 w-full rounded-xl bg-secondary/50 overflow-hidden">
-          {player.photo_url ? (
-            <Image src={player.photo_url} alt={player.full_name} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover" />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-muted/30 gap-3">
-              <User className="w-16 h-16 stroke-[1px]" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-muted/40">Aucune photo</span>
-            </div>
-          )}
+      {/* Formulaire complet, uniquement en édition */}
+      {isEditing && (
+        <div className="px-3 pb-3 pt-1 border-t border-white/5 grid grid-cols-2 gap-2">
+          <div className="col-span-2">
+            <Field label="Nom complet" error={errors.full_name}>
+              <input
+                type="text"
+                value={edited.full_name}
+                className={inputCls(!!errors.full_name)}
+                onChange={(e) => setEdited({ ...edited, full_name: e.target.value })}
+              />
+            </Field>
+          </div>
+          <Field label="Numéro" error={errors.jersey_number}>
+            <input
+              type="number"
+              min="1"
+              max="99"
+              value={edited.jersey_number}
+              className={inputCls(!!errors.jersey_number)}
+              onChange={(e) => setEdited({ ...edited, jersey_number: e.target.value })}
+            />
+          </Field>
+          <Field label="Poste">
+            <select
+              value={edited.position ?? ""}
+              className={inputCls()}
+              onChange={(e) => setEdited({ ...edited, position: e.target.value })}
+            >
+              <option value="GB">GB (Gardien)</option>
+              <option value="DEF">DEF (Défenseur)</option>
+              <option value="MIL">MIL (Milieu)</option>
+              <option value="ATT">ATT (Attaquant)</option>
+            </select>
+          </Field>
+          <Field label="Village">
+            <input
+              type="text"
+              value={edited.origin_village ?? ""}
+              className={inputCls()}
+              onChange={(e) => setEdited({ ...edited, origin_village: e.target.value })}
+            />
+          </Field>
+          <Field label="Date de naissance" error={errors.date_of_birth}>
+            <input
+              type="date"
+              value={edited.date_of_birth ?? ""}
+              className={inputCls(!!errors.date_of_birth)}
+              onChange={(e) => setEdited({ ...edited, date_of_birth: e.target.value })}
+            />
+          </Field>
+        </div>
+      )}
+    </div>
+  );
+}
 
-          {uploading ? (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-              <Loader2 className="w-8 h-8 text-white animate-spin" />
-            </div>
+function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDelete }: {
+  member: StaffRow;
+  isEditing: boolean;
+  canDelete: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: (updates: StaffRow) => void;
+  onPhotoUpload: (file: File) => Promise<boolean>;
+  onDelete: () => void;
+}) {
+  const [edited, setEdited] = useState(member);
+  const [uploading, setUploading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [prev, setPrev] = useState(member);
+  if (prev !== member) {
+    setPrev(member);
+    setEdited(member);
+    setErrors({});
+  }
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!edited.first_name?.trim()) errs.first_name = "Prénom requis";
+    if (!edited.last_name?.trim()) errs.last_name = "Nom requis";
+    if (!edited.role?.trim()) errs.role = "Rôle requis";
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    await onPhotoUpload(file);
+    setUploading(false);
+  };
+
+  const displayName = `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim();
+
+  return (
+    <div className={cn(
+      "rounded-xl bg-card/40 border backdrop-blur-xl transition-all group",
+      isEditing ? "ring-2 ring-primary border-transparent" : "border-white/5 hover:border-primary/30"
+    )}>
+      <div className="p-3 flex items-center gap-3">
+        <PhotoThumb
+          url={member.photo_url}
+          alt={displayName || "Membre du staff"}
+          uploading={uploading}
+          onFile={handleFile}
+          className="w-14 h-16"
+        />
+
+        <div className="min-w-0 flex-1">
+          <h3 className="font-black font-outfit uppercase tracking-tight text-sm truncate">
+            {displayName || <span className="text-muted italic normal-case">Nouveau membre</span>}
+          </h3>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-black uppercase tracking-widest">
+            <span className="text-primary">{member.role || "—"}</span>
+            <span className="text-muted/40">•</span>
+            <span className="text-muted">{member.origin_village || "—"}</span>
+            {member.date_of_birth && (
+              <>
+                <span className="text-muted/40">•</span>
+                <span className="text-muted">{formatFrenchDate(member.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {isEditing ? (
+            <>
+              <button onClick={() => { if (validate()) onSave(edited); }} className="p-2 bg-green-500 text-white rounded-lg hover:scale-110 transition-transform" title="Enregistrer">
+                <Save className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={onCancel} className="p-2 bg-white/5 text-muted hover:text-white rounded-lg transition-all" title="Annuler">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
           ) : (
             <>
-              <label className="absolute inset-0 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity md:flex hidden items-center justify-center cursor-pointer backdrop-blur-sm">
-                <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                <div className="flex flex-col items-center gap-2 text-white">
-                  <Camera className="w-8 h-8" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Changer la photo</span>
-                </div>
-              </label>
-              <label className="md:hidden absolute bottom-2 right-2 bg-primary text-white p-2.5 rounded-xl cursor-pointer shadow-lg shadow-primary/30 active:scale-95 transition-transform">
-                <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                <Camera className="w-4 h-4" />
-              </label>
+              <button onClick={onEdit} className="p-2 bg-white/5 text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Modifier">
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              {canDelete && (
+                <button onClick={onDelete} className="p-2 bg-white/5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100" title="Supprimer">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
 
-      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-3xl -mr-12 -mt-12" />
+      {isEditing && (
+        <div className="px-3 pb-3 pt-1 border-t border-white/5 grid grid-cols-2 gap-2">
+          <Field label="Prénom" error={errors.first_name}>
+            <input
+              type="text"
+              value={edited.first_name ?? ""}
+              className={inputCls(!!errors.first_name)}
+              onChange={(e) => setEdited({ ...edited, first_name: e.target.value })}
+            />
+          </Field>
+          <Field label="Nom" error={errors.last_name}>
+            <input
+              type="text"
+              value={edited.last_name ?? ""}
+              className={inputCls(!!errors.last_name)}
+              onChange={(e) => setEdited({ ...edited, last_name: e.target.value })}
+            />
+          </Field>
+          <Field label="Rôle" error={errors.role}>
+            <input
+              type="text"
+              placeholder="Coach, Assistant…"
+              value={edited.role ?? ""}
+              className={inputCls(!!errors.role)}
+              onChange={(e) => setEdited({ ...edited, role: e.target.value })}
+            />
+          </Field>
+          <Field label="Village">
+            <input
+              type="text"
+              value={edited.origin_village ?? ""}
+              className={inputCls()}
+              onChange={(e) => setEdited({ ...edited, origin_village: e.target.value })}
+            />
+          </Field>
+          <div className="col-span-2">
+            <Field label="Date de naissance">
+              <input
+                type="date"
+                value={edited.date_of_birth ?? ""}
+                className={inputCls()}
+                onChange={(e) => setEdited({ ...edited, date_of_birth: e.target.value })}
+              />
+            </Field>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
