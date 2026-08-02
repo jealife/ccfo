@@ -8,13 +8,14 @@ import {
   Clock,
   Eye,
   Lock,
-  LockOpen
+  LockOpen,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
-import { setRegistrationUnlocked, updateTeamStatus } from "@/app/api/teams/actions";
+import { setRegistrationUnlocked, updateTeamStatus, deleteTeamAndManager } from "@/app/api/teams/actions";
 import type { TournamentConfig } from "@/lib/types";
 
 type AdminTeam = {
@@ -126,6 +127,30 @@ export default function AdminTeamsPage() {
           message: reopening
             ? "L’effectif est rouvert : le manager peut à nouveau le modifier."
             : "L’effectif est de nouveau figé.",
+          type: "success",
+        });
+      },
+    });
+  };
+
+  const handleDeleteTeam = async (team: AdminTeam) => {
+    setAlert({
+      isOpen: true,
+      title: "Supprimer l'équipe ?",
+      message: `Voulez-vous vraiment supprimer l'équipe ${team.name} ainsi que le compte de son manager ? Cette action est irréversible.`,
+      type: "warning",
+      isConfirm: true,
+      onConfirm: async () => {
+        const result = await deleteTeamAndManager(team.id);
+        if (!result.success) {
+          setAlert({ isOpen: true, title: "Erreur", message: result.error || "Action impossible", type: "error" });
+          return;
+        }
+        fetchTeams();
+        setAlert({
+          isOpen: true,
+          title: "Succès",
+          message: "L'équipe et son manager ont été supprimés avec succès.",
           type: "success",
         });
       },
@@ -267,6 +292,13 @@ export default function AdminTeamsPage() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      <button
+                        className="p-2 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors"
+                        title="Supprimer l'équipe"
+                        onClick={() => handleDeleteTeam(team)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -310,22 +342,43 @@ export default function AdminTeamsPage() {
                 </div>
               </div>
             </div>
-            {team.status === 'pending' && (
-              <div className="flex gap-2 pt-2 border-t border-white/5">
-                <button 
-                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-green-500/10 text-green-500 text-xs font-black uppercase" 
-                  onClick={() => handleStatusUpdate(team.id, 'validated')}
+            <div className="flex gap-2 pt-2 border-t border-white/5">
+              {team.status === 'pending' && (
+                <>
+                  <button 
+                    className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-green-500/10 text-green-500 text-xs font-black uppercase" 
+                    onClick={() => handleStatusUpdate(team.id, 'validated')}
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Valider
+                  </button>
+                  <button 
+                    className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase" 
+                    onClick={() => handleStatusUpdate(team.id, 'rejected')}
+                  >
+                    <XCircle className="w-4 h-4" /> Rejeter
+                  </button>
+                </>
+              )}
+              <div className="flex gap-2 ml-auto">
+                <button
+                  className="p-2 hover:bg-white/10 rounded-lg text-primary transition-colors bg-white/5"
+                  title="Voir les détails"
+                  onClick={() => {
+                    setSelectedTeam(team);
+                    setIsDetailModalOpen(true);
+                  }}
                 >
-                  <CheckCircle2 className="w-4 h-4" /> Valider
+                  <Eye className="w-4 h-4" />
                 </button>
-                <button 
-                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase" 
-                  onClick={() => handleStatusUpdate(team.id, 'rejected')}
+                <button
+                  className="p-2 hover:bg-red-500/20 rounded-lg text-red-500 transition-colors bg-red-500/10"
+                  title="Supprimer l'équipe"
+                  onClick={() => handleDeleteTeam(team)}
                 >
-                  <XCircle className="w-4 h-4" /> Rejeter
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            )}
+            </div>
           </div>
         ))}
       </div>

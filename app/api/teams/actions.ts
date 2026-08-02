@@ -164,3 +164,55 @@ export async function validatePayment(teamId: string) {
 
   return { success: true };
 }
+
+export async function deleteTeamAndManager(teamId: string) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
+
+  const adminSupabase = createAdminClient();
+
+  // 1. Fetch team to get manager_id
+  const { data: team, error: teamError } = await adminSupabase
+    .from('teams')
+    .select('manager_id')
+    .eq('id', teamId)
+    .single();
+
+  if (teamError) {
+    console.error('[deleteTeamAndManager] Error fetching team:', teamError);
+    return { success: false, error: "Équipe introuvable." };
+  }
+
+  // 2. Delete related records just in case ON DELETE CASCADE is not configured
+  await adminSupabase.from('players').delete().eq('team_id', teamId);
+  await adminSupabase.from('staff').delete().eq('team_id', teamId);
+  await adminSupabase.from('payments').delete().eq('team_id', teamId);
+
+  // 3. Delete the team
+  const { error: deleteTeamError } = await adminSupabase
+    .from('teams')
+    .delete()
+    .eq('id', teamId);
+
+  if (deleteTeamError) {
+    console.error('[deleteTeamAndManager] Error deleting team:', deleteTeamError);
+    return { success: false, error: "Erreur lors de la suppression de l'équipe." };
+  }
+
+  // 3. Delete the manager (auth account + profile via cascade)
+  if (team.manager_id) {
+    const { error: deleteUserError } = await adminSupabase.auth.admin.deleteUser(team.manager_id);
+    if (deleteUserError) {
+      console.error('[deleteTeamAndManager] Error deleting user:', deleteUserError);
+      return { success: false, error: "L'équipe a été supprimée mais pas le manager." };
+    }
+  }
+
+  revalidatePath('/admin/teams');
+  revalidatePath('/admin/payments');
+  revalidatePath('/admin');
+  revalidatePath('/teams');
+  revalidatePath('/');
+
+  return { success: true };
+}
