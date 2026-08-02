@@ -64,6 +64,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -72,6 +74,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>  
       <head>
+        <link rel="manifest" href="/manifest.json" />
         <script
           dangerouslySetInnerHTML={{
             __html: `try{var t=localStorage.getItem('ccfo-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-color-scheme',t)}catch(e){}`,
@@ -86,6 +89,25 @@ export default function RootLayout({
         )}
       >
         {children}
+        <PWAInstallPrompt />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    },
+                    function(err) {
+                      console.log('ServiceWorker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
