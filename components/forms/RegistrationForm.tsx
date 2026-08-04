@@ -344,7 +344,7 @@ export function RegistrationForm() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Stepper */}
-      <div className="mb-12 flex justify-between items-center relative">
+      <div className="mb-8 md:mb-12 flex justify-between items-center relative">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border -translate-y-1/2 z-0" />
         {/* Navigation libre : cliquer sur une étape y va directement. */}
         {STEPS.map((step) => (
@@ -353,11 +353,11 @@ export function RegistrationForm() {
             key={step.id}
             onClick={() => setCurrentStep(step.id)}
             title={`Aller à l’étape ${step.title}`}
-            className="relative z-10 flex flex-col items-center gap-2 group cursor-pointer"
+            className="relative z-10 flex flex-col items-center gap-1 md:gap-2 group cursor-pointer"
           >
             <div
               className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500 group-hover:scale-110",
+                "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500 group-hover:scale-110",
                 currentStep === step.id
                   ? "bg-primary border-primary text-white"
                   : currentStep > step.id
@@ -365,10 +365,10 @@ export function RegistrationForm() {
                   : "bg-background border-border text-muted group-hover:border-primary/40"
               )}
             >
-              {currentStep > step.id ? <CheckCircle2 className="w-6 h-6" /> : step.icon}
+              {currentStep > step.id ? <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6" /> : <div className="scale-75 md:scale-100">{step.icon}</div>}
             </div>
             <span className={cn(
-              "text-[10px] font-bold uppercase tracking-widest transition-colors",
+              "text-[8px] md:text-[10px] font-bold uppercase tracking-widest transition-colors mt-1 text-center leading-tight max-w-[60px] md:max-w-none",
               currentStep >= step.id ? "text-primary" : "text-muted group-hover:text-foreground"
             )}>
               {step.title}
@@ -378,7 +378,7 @@ export function RegistrationForm() {
       </div>
 
       {/* Form Content */}
-      <div className="sports-card p-8 bg-card/40 backdrop-blur-xl border-white/5 min-h-[400px]">
+      <div className="sports-card p-4 sm:p-8 bg-card/40 backdrop-blur-xl border-white/5 min-h-[400px]">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -511,21 +511,21 @@ function StaffStep({ data, updateData, limit, teamName }: {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-2xl font-black font-outfit">Staff Technique</h2>
-          <p className="text-muted text-sm">Exactement {limit} membres requis — chaque membre reçoit une licence</p>
+          <p className="text-muted text-xs md:text-sm">Exactement {limit} membres requis — chaque membre reçoit une licence</p>
         </div>
-        <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase">
+        <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase self-start md:self-auto">
           Requis: {limit} / Actuel: {data.filter((s) => s.name).length}
         </div>
       </div>
 
       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
         {data.map((member, i) => (
-          <div key={i} className="p-4 rounded-xl border border-border bg-white/5 flex gap-4 items-start">
+          <div key={i} className="p-4 rounded-xl border border-border bg-white/5 flex flex-col md:flex-row gap-4 items-start">
             {/* Photo de licence */}
-            <label className="relative w-20 h-24 shrink-0 rounded-xl overflow-hidden border-2 border-dashed border-border bg-secondary/50 hover:border-primary/50 transition-all cursor-pointer flex items-center justify-center group">
+            <label className="relative w-full md:w-20 h-32 md:h-24 shrink-0 rounded-xl overflow-hidden border-2 border-dashed border-border bg-secondary/50 hover:border-primary/50 transition-all cursor-pointer flex items-center justify-center group">
               <input
                 type="file"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
@@ -569,12 +569,12 @@ function PlayersStep({ data, updateData, limit }: {
 }) {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-2xl font-black font-outfit">Liste des Joueurs</h2>
-          <p className="text-muted text-sm">Exactement {limit} joueurs requis pour valider l’inscription</p>
+          <p className="text-muted text-xs md:text-sm">Exactement {limit} joueurs requis pour valider l’inscription</p>
         </div>
-        <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase">
+        <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase self-start md:self-auto">
           Joueurs: {limit} / Actuel: {data.filter((p) => p.name).length}
         </div>
       </div>
@@ -588,10 +588,12 @@ function PlayersStep({ data, updateData, limit }: {
               </span>
               <FormInput label="Nom Complet" className="flex-1" value={player.name} onChange={(e: InputChange) => updateData(i, {name: e.target.value})} />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <FormInput label="N°" placeholder="10" value={player.number} onChange={(e: InputChange) => updateData(i, {number: e.target.value})} />
               <FormInput label="Poste" placeholder="ATT" value={player.position} onChange={(e: InputChange) => updateData(i, {position: e.target.value})} />
-              <FormInput label="Village" placeholder="Bassam" value={player.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
+              <div className="col-span-2 md:col-span-1">
+                <FormInput label="Village" placeholder="Bassam" value={player.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
+              </div>
             </div>
             <div className="mt-3">
               <FormInput
