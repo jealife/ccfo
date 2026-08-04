@@ -4,6 +4,15 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { registrationSchema, type RegistrationFormData } from "@/lib/validation/registration";
 import { revalidatePath } from "next/cache";
 
+function toIsoDateHelper(frDate: string | null | undefined): string | null {
+  if (!frDate || frDate.length !== 10) return null;
+  const parts = frDate.split('/');
+  if (parts.length !== 3) return null;
+  const iso = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  if (isNaN(new Date(iso).getTime())) return null;
+  return iso;
+}
+
 export async function submitTeamRegistration(formData: RegistrationFormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -189,7 +198,7 @@ export async function saveRegistrationDraft(formData: any) {
         full_name: s.name.trim(),
         role: s.role || null,
         origin_village: s.village || null,
-        date_of_birth: s.dob || null,
+        date_of_birth: toIsoDateHelper(s.dob),
         photo_url: s.photo || null,
       };
     });
@@ -214,7 +223,7 @@ export async function saveRegistrationDraft(formData: any) {
         full_name: fullName,
         jersey_number: p.number ? parseInt(p.number) : null,
         position: p.position || null,
-        date_of_birth: p.dob || null,
+        date_of_birth: toIsoDateHelper(p.dob),
         origin_village: p.village || null,
       };
       const existingId = existingByName.get(fullName);

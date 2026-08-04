@@ -41,6 +41,22 @@ function makeStaffPhotoPath(teamSlug: string, index: number, ext: string | undef
   return `staff-photos/${teamSlug}-staff-${index + 1}-${Date.now()}.${ext}`;
 }
 
+function toFrDate(isoDate: string | null | undefined) {
+  if (!isoDate) return "";
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return isoDate;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function toIsoDate(frDate: string | null | undefined) {
+  if (!frDate || frDate.length !== 10) return "";
+  const parts = frDate.split('/');
+  if (parts.length !== 3) return "";
+  const iso = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  if (isNaN(new Date(iso).getTime())) return "";
+  return iso;
+}
+
 const STEPS = [
   { id: 1, title: "Équipe", icon: <Users className="w-5 h-5" /> },
   { id: 2, title: "Staff", icon: <UserPlus className="w-5 h-5" /> },
@@ -121,7 +137,7 @@ export function RegistrationForm() {
             name: `${s.first_name} ${s.last_name}`,
             role: s.role,
             village: s.origin_village || "",
-            dob: s.date_of_birth || "",
+            dob: toFrDate(s.date_of_birth),
             photo: s.photo_url || null,
           };
         });
@@ -129,7 +145,7 @@ export function RegistrationForm() {
         // Map existing players into fixed-size array
         const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" });
         playersData?.forEach((p, i) => {
-          if (i < pLimit) mappedPlayers[i] = { name: p.full_name, number: String(p.jersey_number ?? ""), dob: p.date_of_birth || "", position: p.position || "", village: p.origin_village || "" };
+          if (i < pLimit) mappedPlayers[i] = { name: p.full_name, number: String(p.jersey_number ?? ""), dob: toFrDate(p.date_of_birth), position: p.position || "", village: p.origin_village || "" };
         });
 
         setFormData({
@@ -236,10 +252,10 @@ export function RegistrationForm() {
       issues.push(`Étape Joueurs : ${playersLimit} joueurs requis, ${validPlayers.length} renseigné(s).`);
     }
 
-    const missingDob = validPlayers.filter(p => !p.dob.trim());
+    const missingDob = validPlayers.filter(p => p.dob.length !== 10 || !toIsoDate(p.dob));
     if (missingDob.length > 0) {
       issues.push(
-        `Étape Joueurs : date de naissance manquante pour ${missingDob.length} joueur(s) — ${missingDob.slice(0, 3).map(p => p.name.trim()).join(", ")}${missingDob.length > 3 ? "…" : ""}.`
+        `Étape Joueurs : date de naissance manquante ou invalide pour ${missingDob.length} joueur(s) — ${missingDob.slice(0, 3).map(p => p.name.trim()).join(", ")}${missingDob.length > 3 ? "…" : ""}.`
       );
     }
 
@@ -279,7 +295,7 @@ export function RegistrationForm() {
             full_name: s.name.trim(),
             role: s.role,
             origin_village: s.village,
-            date_of_birth: s.dob,
+            date_of_birth: toIsoDate(s.dob),
             photo_url: s.photo,
           })),
         players: formData.players
@@ -288,7 +304,7 @@ export function RegistrationForm() {
             full_name: p.name.trim(),
             jersey_number: p.number,
             position: p.position,
-            date_of_birth: p.dob,
+            date_of_birth: toIsoDate(p.dob),
             origin_village: p.village,
           })),
         documents: {
@@ -552,7 +568,7 @@ function StaffStep({ data, updateData, limit, teamName }: {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormInput label="Village" placeholder="ex: Fieng Okano" value={member.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
-                <FormInput label="Date de naissance" type="date" value={member.dob} onChange={(e: InputChange) => updateData(i, {dob: e.target.value})} />
+                <FormDateInput label="Date de naissance" value={member.dob} onChange={(val) => updateData(i, {dob: val})} />
               </div>
             </div>
           </div>
@@ -596,11 +612,10 @@ function PlayersStep({ data, updateData, limit }: {
               </div>
             </div>
             <div className="mt-3">
-              <FormInput
+              <FormDateInput
                 label="Date de naissance *"
-                type="date"
                 value={player.dob}
-                onChange={(e: InputChange) => updateData(i, {dob: e.target.value})}
+                onChange={(val) => updateData(i, {dob: val})}
               />
             </div>
           </div>
@@ -774,6 +789,45 @@ function FormInput({ label, placeholder, className, value, onChange, type }: {
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+      />
+    </div>
+  );
+}
+
+function FormDateInput({ label, value, onChange, className }: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  className?: string;
+}) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/[^\d/]/g, ""); 
+    
+    // Si l'utilisateur supprime un slash, on supprime aussi le chiffre précédent
+    if (value.endsWith("/") && e.target.value.length < value.length) {
+       val = e.target.value.slice(0, -1);
+    }
+
+    const digits = val.replace(/\D/g, "");
+    let formatted = "";
+    if (digits.length > 0) formatted += digits.substring(0, 2);
+    if (digits.length > 2) formatted += "/" + digits.substring(2, 4);
+    if (digits.length > 4) formatted += "/" + digits.substring(4, 8);
+    
+    onChange(formatted);
+  };
+
+  return (
+    <div className={cn("space-y-1.5", className)}>
+      <label className="text-[10px] font-black uppercase tracking-widest text-muted">{label}</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder="JJ/MM/AAAA"
+        value={value}
+        onChange={handleChange}
+        maxLength={10}
         className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
       />
     </div>
