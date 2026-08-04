@@ -38,6 +38,7 @@ export const staffMemberSchema = z.object({
   // Le staff a une licence au même titre que les joueurs.
   date_of_birth: z.union([z.literal(""), dateOfBirthSchema]).optional().default(""),
   photo_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
+  identity_docs_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
 });
 
 export const playerEntrySchema = z.object({
@@ -50,8 +51,6 @@ export const playerEntrySchema = z.object({
 });
 
 export const documentsSchema = z.object({
-  identity_docs: z.string().url().nullable().optional(),
-  village_attestation: z.string().url().nullable().optional(),
   payment_receipt: z.string().url().nullable().optional(),
 });
 

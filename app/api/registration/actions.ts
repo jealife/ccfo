@@ -51,10 +51,9 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
     email: teamInfo.email,
     status: 'pending',
   };
-  // Colonnes documents (nécessite la migration sql/add_team_documents.sql) —
-  // on ne les envoie que si un document a été fourni, pour ne pas écraser l'existant.
-  if (documents?.identity_docs) teamPayload.identity_docs_url = documents.identity_docs;
-  if (documents?.village_attestation) teamPayload.village_attestation_url = documents.village_attestation;
+  // Colonne document (nécessite la migration sql/add_team_documents.sql) —
+  // on ne l'envoie que si fournie, pour ne pas écraser l'existant. Les pièces
+  // d'identité (staff + joueurs) sont désormais individuelles, voir plus bas.
   if (documents?.payment_receipt) teamPayload.payment_receipt_url = documents.payment_receipt;
 
   const { data: team, error: teamError } = await admin
@@ -81,6 +80,7 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
         origin_village: s.origin_village,
         date_of_birth: s.date_of_birth || null,
         photo_url: s.photo_url || null,
+        identity_docs_url: s.identity_docs_url || null,
       };
     });
 
@@ -174,8 +174,6 @@ export async function saveRegistrationDraft(formData: any) {
     status: existingTeam?.status === 'pending' ? 'pending' : 'incomplete',
   };
 
-  if (documents?.idCards) teamPayload.identity_docs_url = documents.idCards;
-  if (documents?.certificate) teamPayload.village_attestation_url = documents.certificate;
   if (documents?.receipt) teamPayload.payment_receipt_url = documents.receipt;
 
   const { data: team, error: teamError } = await admin
@@ -205,6 +203,7 @@ export async function saveRegistrationDraft(formData: any) {
         origin_village: s.village || null,
         date_of_birth: toIsoDateHelper(s.dob),
         photo_url: s.photo || null,
+        identity_docs_url: s.idDocument || null,
       };
     });
     const { error: staffInsertError } = await admin.from('staff').insert(staffData);

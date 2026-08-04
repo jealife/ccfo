@@ -19,10 +19,12 @@ type DocTeam = {
   id: string;
   name: string;
   village: string | null;
-  identity_docs_url: string | null;
-  village_attestation_url: string | null;
   payment_receipt_url: string | null;
   status: string;
+  staffTotal: number;
+  staffWithDocs: number;
+  playersTotal: number;
+  playersWithDocs: number;
 };
 
 export default function AdminDocumentsPage() {
@@ -41,12 +43,32 @@ export default function AdminDocumentsPage() {
 
   useEffect(() => {
     async function fetchTeamsWithDocs() {
-      const { data, error } = await supabase
-        .from('teams')
-        .select('id, name, village, identity_docs_url, village_attestation_url, payment_receipt_url, status')
-        .order('created_at', { ascending: false });
+      // Les pièces d'identité sont désormais individuelles (players/staff),
+      // et non plus un fichier unique par équipe : on récupère les 3 tables
+      // et on agrège les compteurs par équipe côté client.
+      const [{ data: teamsData, error }, { data: staffData }, { data: playersData }] = await Promise.all([
+        supabase
+          .from('teams')
+          .select('id, name, village, payment_receipt_url, status')
+          .order('created_at', { ascending: false }),
+        supabase.from('staff').select('team_id, identity_docs_url'),
+        supabase.from('players').select('team_id, identity_docs_url'),
+      ]);
 
-      if (!error && data) setTeams(data);
+      if (!error && teamsData) {
+        const merged = teamsData.map((t) => {
+          const teamStaff = (staffData || []).filter((s) => s.team_id === t.id);
+          const teamPlayers = (playersData || []).filter((p) => p.team_id === t.id);
+          return {
+            ...t,
+            staffTotal: teamStaff.length,
+            staffWithDocs: teamStaff.filter((s) => !!s.identity_docs_url).length,
+            playersTotal: teamPlayers.length,
+            playersWithDocs: teamPlayers.filter((p) => !!p.identity_docs_url).length,
+          };
+        });
+        setTeams(merged);
+      }
       setLoading(false);
     }
     fetchTeamsWithDocs();
@@ -85,7 +107,10 @@ export default function AdminDocumentsPage() {
   };
 
   const docsComplete = (team: DocTeam | undefined) =>
-    !!team && !!team.identity_docs_url && !!team.village_attestation_url && !!team.payment_receipt_url;
+    !!team &&
+    !!team.payment_receipt_url &&
+    team.staffTotal > 0 && team.staffWithDocs === team.staffTotal &&
+    team.playersTotal > 0 && team.playersWithDocs === team.playersTotal;
 
   return (
     <div className="space-y-8 animate-fade-in pb-20">
@@ -198,8 +223,8 @@ export default function AdminDocumentsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3">
-              <DocRow label="Pièces d'Identité (PDF)" url={team.identity_docs_url ?? undefined} />
-              <DocRow label="Attestation de Village" url={team.village_attestation_url ?? undefined} />
+              <CountRow label="Pièces d'Identité Staff" done={team.staffWithDocs} total={team.staffTotal} />
+              <CountRow label="Pièces d'Identité Joueurs" done={team.playersWithDocs} total={team.playersTotal} />
               <DocRow label="Preuve de Paiement" url={team.payment_receipt_url ?? undefined} />
             </div>
 
@@ -275,5 +300,23 @@ function DocRow({ label, url }: { label: string, url?: string }) {
       </div>
       <ExternalLink className="w-3 h-3 text-muted group-hover/row:text-primary transition-colors" />
     </a>
+  );
+}
+
+function CountRow({ label, done, total }: { label: string; done: number; total: number }) {
+  const complete = total > 0 && done === total;
+  return (
+    <div className={cn(
+      "flex items-center justify-between p-3 rounded-xl border",
+      complete ? "bg-white/5 border-white/5" : "bg-red-500/5 border-red-500/10 opacity-80"
+    )}>
+      <div className="flex items-center gap-3">
+        <FileText className={cn("w-4 h-4", complete ? "text-primary" : "text-red-500/80")} />
+        <span className={cn("text-[10px] font-black uppercase tracking-widest", !complete && "text-red-500/80")}>{label}</span>
+      </div>
+      <span className={cn("text-[9px] font-bold", complete ? "text-muted" : "text-red-500 italic")}>
+        {done} / {total}
+      </span>
+    </div>
   );
 }

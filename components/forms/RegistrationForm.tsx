@@ -26,9 +26,9 @@ import Link from "next/link";
 import { MOBILE_MONEY_NUMBER } from "@/lib/constants";
 
 type TeamFormState = { name: string; village: string; color: string; president: string; phone: string; whatsapp: string; email: string };
-type StaffFormState = { name: string; role: string; village: string; dob: string; photo: string | null };
+type StaffFormState = { name: string; role: string; village: string; dob: string; photo: string | null; idDocument: string | null };
 type PlayerFormState = { name: string; number: string; dob: string; position: string; village: string; idDocument: string | null };
-type DocumentsFormState = { idCards: string | null; certificate: string | null; receipt: string | null };
+type DocumentsFormState = { receipt: string | null };
 type FormState = {
   team: TeamFormState;
   staff: StaffFormState[];
@@ -62,8 +62,7 @@ const STEPS = [
   { id: 1, title: "Équipe", icon: <Users className="w-5 h-5" /> },
   { id: 2, title: "Staff", icon: <UserPlus className="w-5 h-5" /> },
   { id: 3, title: "Joueurs", icon: <Users className="w-4 h-4" /> },
-  { id: 4, title: "Documents", icon: <FileText className="w-5 h-5" /> },
-  { id: 5, title: "Paiement", icon: <CreditCard className="w-5 h-5" /> },
+  { id: 4, title: "Paiement", icon: <CreditCard className="w-5 h-5" /> },
 ];
 
 export function RegistrationForm() {
@@ -81,9 +80,9 @@ export function RegistrationForm() {
   
   const [formData, setFormData] = useState<FormState>({
     team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "" },
-    staff: Array(6).fill({ name: "", role: "", village: "", dob: "", photo: null }),
+    staff: Array(6).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null }),
     players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null }),
-    documents: { idCards: null, certificate: null, receipt: null }
+    documents: { receipt: null }
   });
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
@@ -218,7 +217,7 @@ export function RegistrationForm() {
         const { data: playersData } = await supabase.from('players').select('*').eq('team_id', teamData.id).order('created_at', { ascending: true });
 
         // Map existing staff into fixed-size array
-        const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null });
+        const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null });
         staffData?.forEach((s, i) => {
           if (i < sLimit) mappedStaff[i] = {
             name: `${s.first_name} ${s.last_name}`,
@@ -226,6 +225,7 @@ export function RegistrationForm() {
             village: s.origin_village || "",
             dob: toFrDate(s.date_of_birth),
             photo: s.photo_url || null,
+            idDocument: s.identity_docs_url || null,
           };
         });
 
@@ -248,8 +248,6 @@ export function RegistrationForm() {
           staff: mappedStaff,
           players: mappedPlayers,
           documents: {
-            idCards: teamData.identity_docs_url || null,
-            certificate: teamData.village_attestation_url || null,
             receipt: teamData.payment_receipt_url || null
           }
         });
@@ -265,7 +263,6 @@ export function RegistrationForm() {
           const isStaffComplete = validStaffCount >= sLimit;
           const validPlayersCount = playersData?.length || 0;
           const isPlayersComplete = validPlayersCount >= pLimit;
-          const isDocsComplete = teamData.identity_docs_url && teamData.village_attestation_url;
 
           if (isTeamComplete) {
             nextStep = 2;
@@ -273,9 +270,6 @@ export function RegistrationForm() {
               nextStep = 3;
               if (isPlayersComplete) {
                 nextStep = 4;
-                if (isDocsComplete) {
-                  nextStep = 5;
-                }
               }
             }
           }
@@ -293,7 +287,7 @@ export function RegistrationForm() {
             const parsedDraft = JSON.parse(draft);
             
             // On s'assure de respecter les limites actuelles du tournoi
-            const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null });
+            const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null });
             if (parsedDraft.staff && Array.isArray(parsedDraft.staff)) {
               parsedDraft.staff.forEach((s: any, i: number) => {
                 if (i < sLimit) mappedStaff[i] = { ...mappedStaff[i], ...s };
@@ -311,7 +305,7 @@ export function RegistrationForm() {
               team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "", ...(parsedDraft.team || {}) },
               staff: mappedStaff,
               players: mappedPlayers,
-              documents: { idCards: null, certificate: null, receipt: null, ...(parsedDraft.documents || {}) }
+              documents: { receipt: null, ...(parsedDraft.documents || {}) }
             });
 
             const savedStep = localStorage.getItem("registrationFormStep");
@@ -332,7 +326,7 @@ export function RegistrationForm() {
         // Default empty arrays if no team exists yet and no valid draft
         setFormData(prev => ({
           ...prev,
-          staff: Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null }),
+          staff: Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null }),
           players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null }),
         }));
       }
@@ -418,6 +412,7 @@ export function RegistrationForm() {
             origin_village: s.village,
             date_of_birth: toIsoDate(s.dob),
             photo_url: s.photo,
+            identity_docs_url: s.idDocument,
           })),
         players: formData.players
           .filter((p) => p.name.trim())
@@ -430,8 +425,6 @@ export function RegistrationForm() {
             identity_docs_url: p.idDocument,
           })),
         documents: {
-          identity_docs: formData.documents.idCards,
-          village_attestation: formData.documents.certificate,
           payment_receipt: formData.documents.receipt,
         },
       });
@@ -540,8 +533,7 @@ export function RegistrationForm() {
               newPlayers[index] = {...newPlayers[index], ...val};
               setFormData({...formData, players: newPlayers});
             }} />}
-            {currentStep === 4 && <DocumentsStep data={formData.documents} updateData={(val) => setFormData({...formData, documents: {...formData.documents, ...val}})} teamName={formData.team.name} />}
-            {currentStep === 5 && <PaymentStep data={formData.team} updateData={(val) => setFormData({...formData, documents: {...formData.documents, ...val}})} receiptData={formData.documents.receipt} />}
+            {currentStep === 4 && <PaymentStep data={formData.team} updateData={(val) => setFormData({...formData, documents: {...formData.documents, ...val}})} receiptData={formData.documents.receipt} />}
           </motion.div>
         </AnimatePresence>
 
@@ -690,12 +682,40 @@ function StaffStep({ data, updateData, limit, teamName }: {
     setUploadingIndex(null);
   };
 
+  const [uploadingIdIndex, setUploadingIdIndex] = useState<number | null>(null);
+
+  const handleIdUpload = async (e: InputChange, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateUploadFile(file, "document");
+    if (validationError) {
+      window.alert(validationError);
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingIdIndex(index);
+    const filePath = `staff-docs/membre-${index + 1}-${Date.now()}.${file.name.split('.').pop()}`;
+
+    const { error: uploadError } = await supabase.storage.from('team-docs').upload(filePath, file);
+
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
+      updateData(index, { idDocument: publicUrlData.publicUrl });
+    } else {
+      console.error("[upload] Error:", uploadError.message);
+      window.alert("Erreur lors de l'upload de la pièce d'identité. Vérifiez le format et réessayez.");
+    }
+    setUploadingIdIndex(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-2xl font-black font-outfit">Staff Technique</h2>
-          <p className="text-muted text-xs md:text-sm">Exactement {limit} membres requis — chaque membre reçoit une licence</p>
+          <p className="text-muted text-xs md:text-sm">Exactement {limit} membres requis — chaque membre fournit sa propre pièce d’identité</p>
         </div>
         <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase self-start md:self-auto">
           Requis: {limit} / Actuel: {data.filter((s) => s.name).length}
@@ -733,7 +753,33 @@ function StaffStep({ data, updateData, limit, teamName }: {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormInput label="Village" placeholder="ex: Fieng Okano" value={member.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
-                <FormDateInput label="Date de naissance" value={member.dob} onChange={(val) => updateData(i, {dob: val})} />
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <FormDateInput label="Date de naissance" value={member.dob} onChange={(val) => updateData(i, {dob: val})} />
+                  </div>
+                  <label className={cn(
+                    "shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-all text-[9px] font-black uppercase tracking-widest",
+                    member.idDocument
+                      ? "border-green-500/40 bg-green-500/10 text-green-500"
+                      : "border-border bg-secondary/50 text-muted hover:border-primary/50 hover:text-primary"
+                  )}>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.zip,image/jpeg,image/png,image/webp"
+                      onChange={(e) => handleIdUpload(e, i)}
+                      disabled={uploadingIdIndex === i}
+                    />
+                    {uploadingIdIndex === i ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : member.idDocument ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <FileText className="w-3.5 h-3.5" />
+                    )}
+                    Pièce ID
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -859,69 +905,6 @@ function validateUploadFile(file: File, kind: "document" | "image"): string | nu
     return "Fichier trop lourd (max 10 Mo).";
   }
   return null;
-}
-
-function DocumentsStep({ data, updateData, teamName }: {
-  data: DocumentsFormState;
-  updateData: (val: Partial<DocumentsFormState>) => void;
-  teamName: string;
-}) {
-  const supabase = createClient();
-  const [uploading, setUploading] = useState<string | null>(null);
-
-  const handleUpload = async (e: InputChange, key: "idCards" | "certificate") => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validationError = validateUploadFile(file, "document");
-    if (validationError) {
-      window.alert(validationError);
-      e.target.value = "";
-      return;
-    }
-
-    setUploading(key);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${teamName.replace(/\s+/g, '-').toLowerCase()}-${key}-${Date.now()}.${fileExt}`;
-    const filePath = `documents/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('team-docs')
-      .upload(filePath, file);
-
-    if (!uploadError) {
-      const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
-      updateData({ [key]: publicUrlData.publicUrl });
-    } else {
-      console.error("[upload] Error:", uploadError.message);
-      window.alert("Erreur lors de l'upload. Vérifiez le format du fichier et réessayez.");
-    }
-    setUploading(null);
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-black font-outfit">Documents Obligatoires</h2>
-      <div className="grid grid-cols-1 gap-6">
-        <FileUpload
-          label="Pièces d'identité du Staff (Groupées en un seul PDF ou ZIP)"
-          description="Scans de tous les membres du staff — chaque joueur fournit la sienne à l'étape Joueurs"
-          value={data.idCards}
-          isUploading={uploading === 'idCards'}
-          accept=".pdf,.zip,image/jpeg,image/png,image/webp"
-          onChange={(e: InputChange) => handleUpload(e, 'idCards')}
-        />
-        <FileUpload
-          label="Certificat de l'autorité locale"
-          description="Signé et tamponné par le chef de village/canton"
-          value={data.certificate}
-          isUploading={uploading === 'certificate'}
-          accept=".pdf,.zip,image/jpeg,image/png,image/webp"
-          onChange={(e: InputChange) => handleUpload(e, 'certificate')}
-        />
-      </div>
-    </div>
-  );
 }
 
 function PaymentStep({ data, updateData, receiptData }: {
