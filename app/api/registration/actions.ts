@@ -187,7 +187,11 @@ export async function saveRegistrationDraft(formData: any) {
 
   // Staff
   const validStaff = (staff || []).filter((s: any) => s?.name?.trim());
-  await admin.from('staff').delete().eq('team_id', team.id);
+  const { error: staffDeleteError } = await admin.from('staff').delete().eq('team_id', team.id);
+  if (staffDeleteError) {
+    console.error('[draft] staff delete error:', staffDeleteError);
+    return { success: false, error: staffDeleteError.message };
+  }
   if (validStaff.length > 0) {
     const staffData = validStaff.map((s: any) => {
       const [first_name, ...rest] = s.name.trim().split(/\s+/);
@@ -202,7 +206,11 @@ export async function saveRegistrationDraft(formData: any) {
         photo_url: s.photo || null,
       };
     });
-    await admin.from('staff').insert(staffData);
+    const { error: staffInsertError } = await admin.from('staff').insert(staffData);
+    if (staffInsertError) {
+      console.error('[draft] staff insert error:', staffInsertError);
+      return { success: false, error: staffInsertError.message };
+    }
   }
 
   // Players
@@ -227,10 +235,13 @@ export async function saveRegistrationDraft(formData: any) {
         origin_village: p.village || null,
       };
       const existingId = existingByName.get(fullName);
-      if (existingId) {
-        await admin.from('players').update(payload).eq('id', existingId);
-      } else {
-        await admin.from('players').insert([payload]);
+      const { error: playerError } = existingId
+        ? await admin.from('players').update(payload).eq('id', existingId)
+        : await admin.from('players').insert([payload]);
+
+      if (playerError) {
+        console.error('[draft] player write error:', playerError);
+        return { success: false, error: playerError.message };
       }
     }
 
@@ -238,10 +249,18 @@ export async function saveRegistrationDraft(formData: any) {
       .filter((p) => !submittedNames.has(p.full_name))
       .map((p) => p.id);
     if (toDelete.length > 0) {
-      await admin.from('players').delete().in('id', toDelete);
+      const { error: deleteError } = await admin.from('players').delete().in('id', toDelete);
+      if (deleteError) {
+        console.error('[draft] player delete error:', deleteError);
+        return { success: false, error: deleteError.message };
+      }
     }
   } else {
-    await admin.from('players').delete().eq('team_id', team.id);
+    const { error: deleteAllError } = await admin.from('players').delete().eq('team_id', team.id);
+    if (deleteAllError) {
+      console.error('[draft] player delete-all error:', deleteAllError);
+      return { success: false, error: deleteAllError.message };
+    }
   }
 
   return { success: true };

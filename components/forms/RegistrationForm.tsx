@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,7 @@ import {
   Upload,
   Info,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { submitTeamRegistration, saveRegistrationDraft } from "@/app/api/registration/actions";
@@ -84,6 +85,76 @@ export function RegistrationForm() {
     players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "" }),
     documents: { idCards: null, certificate: null, receipt: null }
   });
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  // Toujours pointer vers les dernières données, pour les handlers hors-cycle React (visibilitychange, pagehide).
+  const formDataRef = useRef(formData);
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
+
+  // Un seul appel serveur à la fois : évite que deux sauvegardes en base se chevauchent
+  // (delete + réinsertion du staff/joueurs n'est pas transactionnel) et corrompent les données.
+  const savingRef = useRef(false);
+  const pendingSaveRef = useRef<FormState | null>(null);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const performSaveDraftRef = useRef<(data: FormState) => Promise<void>>(async () => {});
+
+  const performSaveDraft = useCallback(async (data: FormState) => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    savingRef.current = true;
+    setSaveStatus("saving");
+    try {
+      const result = await saveRegistrationDraft(data);
+      if (!result?.success) throw new Error(result?.error || "Échec de la sauvegarde");
+      retryCountRef.current = 0;
+      setSaveStatus("saved");
+    } catch (err) {
+      console.error("Erreur lors de la sauvegarde automatique en base", err);
+      setSaveStatus("error");
+      // Nouvelle tentative (jusqu'à 3x) : un échec de sauvegarde ne doit jamais rester silencieux.
+      if (retryCountRef.current < 3) {
+        retryCountRef.current += 1;
+        retryTimeoutRef.current = setTimeout(() => {
+          if (!savingRef.current) performSaveDraftRef.current(data);
+        }, 5000);
+      }
+    } finally {
+      savingRef.current = false;
+      // Une nouvelle version des données est arrivée pendant l'appel : on l'enchaîne
+      // au lieu de la sauvegarder en parallèle.
+      if (pendingSaveRef.current) {
+        const next = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        performSaveDraftRef.current(next);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    performSaveDraftRef.current = performSaveDraft;
+  }, [performSaveDraft]);
+
+  const requestSaveDraft = useCallback((data: FormState) => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    retryCountRef.current = 0;
+    if (savingRef.current) {
+      pendingSaveRef.current = data;
+    } else {
+      performSaveDraft(data);
+    }
+  }, [performSaveDraft]);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
+  }, []);
 
   // Sauvegarde automatique dans le localStorage ET en base de données
   useEffect(() => {
@@ -95,18 +166,34 @@ export function RegistrationForm() {
 
   useEffect(() => {
     if (!isLoaded || isSubmitting || isSuccess) return;
-    
+
     // Auto-save en base de données avec debounce de 3 secondes
-    const handler = setTimeout(async () => {
-      try {
-        await saveRegistrationDraft(formData);
-      } catch (err) {
-        console.error("Erreur lors de la sauvegarde automatique en base", err);
-      }
+    const handler = setTimeout(() => {
+      requestSaveDraft(formData);
     }, 3000);
 
     return () => clearTimeout(handler);
-  }, [formData, isLoaded, isSubmitting, isSuccess]);
+  }, [formData, isLoaded, isSubmitting, isSuccess, requestSaveDraft]);
+
+  // Filet de sécurité : si l'utilisateur change d'onglet, met l'app en arrière-plan
+  // ou ferme la page avant la fin des 3s de debounce, on force une sauvegarde immédiate
+  // pour ne pas perdre les dernières modifications.
+  useEffect(() => {
+    if (!isLoaded) return;
+    const flush = () => {
+      if (isSubmitting || isSuccess) return;
+      requestSaveDraft(formDataRef.current);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [isLoaded, isSubmitting, isSuccess, requestSaveDraft]);
 
   useEffect(() => {
     async function loadData() {
@@ -303,6 +390,13 @@ export function RegistrationForm() {
   };
 
   const handleSubmit = async () => {
+    // La soumission finale remplace le brouillon : on annule toute sauvegarde
+    // auto en attente pour éviter qu'elle n'écrase le résultat juste après.
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    pendingSaveRef.current = null;
     setIsSubmitting(true);
     try {
       // Transforme l'état du formulaire vers le schéma partagé (lib/validation/registration)
@@ -446,6 +540,8 @@ export function RegistrationForm() {
           </motion.div>
         </AnimatePresence>
 
+        <SaveStatusIndicator status={saveStatus} />
+
         {/* Actions */}
         <div className="mt-12 pt-8 border-t border-border flex items-center justify-between">
           <button
@@ -484,6 +580,33 @@ export function RegistrationForm() {
         message={alertDialog.message}
         type={alertDialog.type}
       />
+    </div>
+  );
+}
+
+function SaveStatusIndicator({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
+  if (status === "idle") return null;
+
+  return (
+    <div className="mt-4 flex items-center justify-end gap-2 text-xs font-bold uppercase tracking-widest">
+      {status === "saving" && (
+        <span className="flex items-center gap-1.5 text-muted">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Sauvegarde en cours…
+        </span>
+      )}
+      {status === "saved" && (
+        <span className="flex items-center gap-1.5 text-primary">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Brouillon enregistré
+        </span>
+      )}
+      {status === "error" && (
+        <span className="flex items-center gap-1.5 text-red-400">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Échec de la sauvegarde — nouvelle tentative…
+        </span>
+      )}
     </div>
   );
 }
