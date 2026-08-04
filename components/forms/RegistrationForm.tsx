@@ -17,7 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { submitTeamRegistration } from "@/app/api/registration/actions";
+import { submitTeamRegistration, saveRegistrationDraft } from "@/app/api/registration/actions";
 import { createClient } from "@/lib/supabase/client";
 import { AlertDialog } from "@/components/ui/Modal";
 import type { TournamentConfig } from "@/lib/types";
@@ -53,6 +53,7 @@ export function RegistrationForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [config, setConfig] = useState<TournamentConfig | null>(null);
   const [alertDialog, setAlertDialog] = useState<{ isOpen: boolean; title: string; message: string; type: "error" | "warning" | "info" }>({
     isOpen: false, title: "", message: "", type: "info"
@@ -67,6 +68,29 @@ export function RegistrationForm() {
     players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "" }),
     documents: { idCards: null, certificate: null, receipt: null }
   });
+
+  // Sauvegarde automatique dans le localStorage ET en base de données
+  useEffect(() => {
+    if (isLoaded && typeof window !== "undefined") {
+      localStorage.setItem("registrationFormDraft", JSON.stringify(formData));
+      localStorage.setItem("registrationFormStep", currentStep.toString());
+    }
+  }, [formData, currentStep, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded || isSubmitting || isSuccess) return;
+    
+    // Auto-save en base de données avec debounce de 3 secondes
+    const handler = setTimeout(async () => {
+      try {
+        await saveRegistrationDraft(formData);
+      } catch (err) {
+        console.error("Erreur lors de la sauvegarde automatique en base", err);
+      }
+    }, 3000);
+
+    return () => clearTimeout(handler);
+  }, [formData, isLoaded, isSubmitting, isSuccess]);
 
   useEffect(() => {
     async function loadData() {
@@ -110,7 +134,7 @@ export function RegistrationForm() {
 
         setFormData({
           team: {
-            name: teamData.name || "",
+            name: teamData.name === "Brouillon" ? "" : (teamData.name || ""),
             village: teamData.village || "",
             color: teamData.jersey_color || "",
             president: teamData.president_name || "",
@@ -132,13 +156,57 @@ export function RegistrationForm() {
           setIsSuccess(true);
         }
       } else {
-        // Default empty arrays if no team exists yet
+        // Aucune équipe en base, on tente de récupérer le brouillon local
+        const draft = typeof window !== "undefined" ? localStorage.getItem("registrationFormDraft") : null;
+        if (draft) {
+          try {
+            const parsedDraft = JSON.parse(draft);
+            
+            // On s'assure de respecter les limites actuelles du tournoi
+            const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null });
+            if (parsedDraft.staff && Array.isArray(parsedDraft.staff)) {
+              parsedDraft.staff.forEach((s: any, i: number) => {
+                if (i < sLimit) mappedStaff[i] = { ...mappedStaff[i], ...s };
+              });
+            }
+            
+            const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" });
+            if (parsedDraft.players && Array.isArray(parsedDraft.players)) {
+              parsedDraft.players.forEach((p: any, i: number) => {
+                if (i < pLimit) mappedPlayers[i] = { ...mappedPlayers[i], ...p };
+              });
+            }
+
+            setFormData({
+              team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "", ...(parsedDraft.team || {}) },
+              staff: mappedStaff,
+              players: mappedPlayers,
+              documents: { idCards: null, certificate: null, receipt: null, ...(parsedDraft.documents || {}) }
+            });
+
+            const savedStep = localStorage.getItem("registrationFormStep");
+            if (savedStep) {
+              const step = parseInt(savedStep, 10);
+              if (!isNaN(step) && step >= 1 && step <= STEPS.length) {
+                setCurrentStep(step);
+              }
+            }
+
+            setIsLoaded(true);
+            return;
+          } catch(e) {
+            console.error("Failed to parse form draft from localStorage", e);
+          }
+        }
+
+        // Default empty arrays if no team exists yet and no valid draft
         setFormData(prev => ({
           ...prev,
           staff: Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null }),
           players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" }),
         }));
       }
+      setIsLoaded(true);
     }
     loadData();
   }, []);
@@ -230,6 +298,10 @@ export function RegistrationForm() {
         },
       });
       if (result.success) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("registrationFormDraft");
+          localStorage.removeItem("registrationFormStep");
+        }
         setIsSuccess(true);
       } else {
         showAlert("Erreur", result.error || "Erreur lors de l'inscription. Veuillez réessayer.", "error");

@@ -130,3 +130,110 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
 
   return { success: true };
 }
+
+// ── Sauvegarde du Brouillon (Sans validation stricte) ──
+
+export async function saveRegistrationDraft(formData: any) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Non autorisé" };
+
+  const admin = createAdminClient();
+
+  const { data: existingTeam } = await admin
+    .from('teams')
+    .select('id, status')
+    .eq('manager_id', user.id)
+    .maybeSingle();
+
+  if (existingTeam && ['validated', 'locked'].includes(existingTeam.status)) {
+    return { success: false, error: "Équipe validée ou verrouillée" };
+  }
+
+  const { team: teamInfo, staff, players, documents } = formData;
+
+  const teamPayload: Record<string, unknown> = {
+    manager_id: user.id,
+    name: teamInfo?.name?.trim() || "Brouillon",
+    village: teamInfo?.village || null,
+    jersey_color: teamInfo?.color || null,
+    president_name: teamInfo?.president || null,
+    president_phone: teamInfo?.phone || null,
+    whatsapp: teamInfo?.whatsapp || null,
+    email: teamInfo?.email || null,
+    status: existingTeam?.status === 'pending' ? 'pending' : 'incomplete',
+  };
+
+  if (documents?.idCards) teamPayload.identity_docs_url = documents.idCards;
+  if (documents?.certificate) teamPayload.village_attestation_url = documents.certificate;
+  if (documents?.receipt) teamPayload.payment_receipt_url = documents.receipt;
+
+  const { data: team, error: teamError } = await admin
+    .from('teams')
+    .upsert([teamPayload], { onConflict: 'manager_id' })
+    .select()
+    .single();
+
+  if (teamError) return { success: false, error: teamError.message };
+
+  // Staff
+  const validStaff = (staff || []).filter((s: any) => s?.name?.trim());
+  await admin.from('staff').delete().eq('team_id', team.id);
+  if (validStaff.length > 0) {
+    const staffData = validStaff.map((s: any) => {
+      const [first_name, ...rest] = s.name.trim().split(/\s+/);
+      return {
+        team_id: team.id,
+        first_name,
+        last_name: rest.join(' ') || first_name,
+        full_name: s.name.trim(),
+        role: s.role || null,
+        origin_village: s.village || null,
+        date_of_birth: s.dob || null,
+        photo_url: s.photo || null,
+      };
+    });
+    await admin.from('staff').insert(staffData);
+  }
+
+  // Players
+  const validPlayers = (players || []).filter((p: any) => p?.name?.trim());
+  if (validPlayers.length > 0) {
+    const { data: existingPlayers } = await admin
+      .from('players')
+      .select('id, full_name')
+      .eq('team_id', team.id);
+
+    const existingByName = new Map((existingPlayers || []).map((p) => [p.full_name, p.id]));
+    const submittedNames = new Set(validPlayers.map((p: any) => p.name.trim()));
+
+    for (const p of validPlayers) {
+      const fullName = p.name.trim();
+      const payload = {
+        team_id: team.id,
+        full_name: fullName,
+        jersey_number: p.number ? parseInt(p.number) : null,
+        position: p.position || null,
+        date_of_birth: p.dob || null,
+        origin_village: p.village || null,
+      };
+      const existingId = existingByName.get(fullName);
+      if (existingId) {
+        await admin.from('players').update(payload).eq('id', existingId);
+      } else {
+        await admin.from('players').insert([payload]);
+      }
+    }
+
+    const toDelete = (existingPlayers || [])
+      .filter((p) => !submittedNames.has(p.full_name))
+      .map((p) => p.id);
+    if (toDelete.length > 0) {
+      await admin.from('players').delete().in('id', toDelete);
+    }
+  } else {
+    await admin.from('players').delete().eq('team_id', team.id);
+  }
+
+  return { success: true };
+}
