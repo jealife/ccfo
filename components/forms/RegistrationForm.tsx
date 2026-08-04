@@ -167,9 +167,36 @@ export function RegistrationForm() {
           }
         });
 
-        // If team is already validated or complete, show success
-        if (teamData.status === 'validated' || (staffData?.length === sLimit && playersData?.length === pLimit)) {
+        // If team is already submitted or validated, show success
+        if (teamData.status === 'validated' || teamData.status === 'pending') {
           setIsSuccess(true);
+        } else {
+          // Compute highest step to resume from
+          let nextStep = 1;
+          const isTeamComplete = teamData.name && teamData.name !== "Brouillon" && teamData.village && teamData.president_name && teamData.president_phone;
+          const validStaffCount = staffData?.length || 0;
+          const isStaffComplete = validStaffCount >= sLimit;
+          const validPlayersCount = playersData?.length || 0;
+          const isPlayersComplete = validPlayersCount >= pLimit;
+          const isDocsComplete = teamData.identity_docs_url && teamData.village_attestation_url;
+
+          if (isTeamComplete) {
+            nextStep = 2;
+            if (isStaffComplete) {
+              nextStep = 3;
+              if (isPlayersComplete) {
+                nextStep = 4;
+                if (isDocsComplete) {
+                  nextStep = 5;
+                }
+              }
+            }
+          }
+
+          if (teamData.name !== "Brouillon" || validStaffCount > 0 || validPlayersCount > 0) {
+            showAlert("Brouillon trouvé", "Nous avons restauré votre inscription en cours.", "info");
+            setCurrentStep(nextStep);
+          }
         }
       } else {
         // Aucune équipe en base, on tente de récupérer le brouillon local
@@ -394,7 +421,7 @@ export function RegistrationForm() {
       </div>
 
       {/* Form Content */}
-      <div className="sports-card p-4 sm:p-8 bg-card/40 backdrop-blur-xl border-white/5 min-h-[400px]">
+      <div className="sports-card p-3 sm:p-8 bg-card/40 backdrop-blur-xl border-white/5 min-h-[400px]">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
