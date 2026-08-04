@@ -452,6 +452,10 @@ export function RegistrationForm() {
 
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
+  // N'évalue les règles de complétude que sur la dernière étape : c'est là
+  // que "Soumettre" doit rester désactivé tant que le dossier n'est pas prêt.
+  const submissionIssues = currentStep === STEPS.length ? collectSubmissionIssues() : [];
+
   if (isSuccess) {
     return (
       <motion.div 
@@ -542,6 +546,15 @@ export function RegistrationForm() {
 
         <SaveStatusIndicator status={saveStatus} />
 
+        {currentStep === STEPS.length && submissionIssues.length > 0 && (
+          <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs space-y-1.5">
+            <p className="font-black uppercase tracking-widest">Dossier incomplet — à corriger avant de soumettre</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              {submissionIssues.map((issue, i) => <li key={i}>{issue}</li>)}
+            </ul>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="mt-12 pt-8 border-t border-border flex items-center justify-between">
           <button
@@ -552,11 +565,12 @@ export function RegistrationForm() {
             <ChevronLeft className="w-5 h-5" />
             Retour
           </button>
-          
+
           <button
             onClick={nextStep}
-            disabled={isSubmitting}
-            className="flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-white font-bold hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100"
+            disabled={isSubmitting || (currentStep === STEPS.length && submissionIssues.length > 0)}
+            title={submissionIssues.length > 0 ? submissionIssues.join("\n") : undefined}
+            className="flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-white font-bold hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100 disabled:hover:scale-100"
           >
             {isSubmitting ? (
               <>
