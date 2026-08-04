@@ -27,7 +27,7 @@ import { MOBILE_MONEY_NUMBER } from "@/lib/constants";
 
 type TeamFormState = { name: string; village: string; color: string; president: string; phone: string; whatsapp: string; email: string };
 type StaffFormState = { name: string; role: string; village: string; dob: string; photo: string | null };
-type PlayerFormState = { name: string; number: string; dob: string; position: string; village: string };
+type PlayerFormState = { name: string; number: string; dob: string; position: string; village: string; idDocument: string | null };
 type DocumentsFormState = { idCards: string | null; certificate: string | null; receipt: string | null };
 type FormState = {
   team: TeamFormState;
@@ -82,7 +82,7 @@ export function RegistrationForm() {
   const [formData, setFormData] = useState<FormState>({
     team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "" },
     staff: Array(6).fill({ name: "", role: "", village: "", dob: "", photo: null }),
-    players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "" }),
+    players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null }),
     documents: { idCards: null, certificate: null, receipt: null }
   });
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -230,9 +230,9 @@ export function RegistrationForm() {
         });
 
         // Map existing players into fixed-size array
-        const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" });
+        const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null });
         playersData?.forEach((p, i) => {
-          if (i < pLimit) mappedPlayers[i] = { name: p.full_name, number: String(p.jersey_number ?? ""), dob: toFrDate(p.date_of_birth), position: p.position || "", village: p.origin_village || "" };
+          if (i < pLimit) mappedPlayers[i] = { name: p.full_name, number: String(p.jersey_number ?? ""), dob: toFrDate(p.date_of_birth), position: p.position || "", village: p.origin_village || "", idDocument: p.identity_docs_url || null };
         });
 
         setFormData({
@@ -300,7 +300,7 @@ export function RegistrationForm() {
               });
             }
             
-            const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" });
+            const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null });
             if (parsedDraft.players && Array.isArray(parsedDraft.players)) {
               parsedDraft.players.forEach((p: any, i: number) => {
                 if (i < pLimit) mappedPlayers[i] = { ...mappedPlayers[i], ...p };
@@ -333,7 +333,7 @@ export function RegistrationForm() {
         setFormData(prev => ({
           ...prev,
           staff: Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null }),
-          players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "" }),
+          players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null }),
         }));
       }
       setIsLoaded(true);
@@ -427,6 +427,7 @@ export function RegistrationForm() {
             position: p.position,
             date_of_birth: toIsoDate(p.dob),
             origin_village: p.village,
+            identity_docs_url: p.idDocument,
           })),
         documents: {
           identity_docs: formData.documents.idCards,
@@ -747,12 +748,41 @@ function PlayersStep({ data, updateData, limit }: {
   updateData: (index: number, val: Partial<PlayerFormState>) => void;
   limit: number;
 }) {
+  const supabase = createClient();
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+
+  const handleIdUpload = async (e: InputChange, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateUploadFile(file, "document");
+    if (validationError) {
+      window.alert(validationError);
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingIndex(index);
+    const filePath = `player-docs/joueur-${index + 1}-${Date.now()}.${file.name.split('.').pop()}`;
+
+    const { error: uploadError } = await supabase.storage.from('team-docs').upload(filePath, file);
+
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
+      updateData(index, { idDocument: publicUrlData.publicUrl });
+    } else {
+      console.error("[upload] Error:", uploadError.message);
+      window.alert("Erreur lors de l'upload de la pièce d'identité. Vérifiez le format et réessayez.");
+    }
+    setUploadingIndex(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-2xl font-black font-outfit">Liste des Joueurs</h2>
-          <p className="text-muted text-xs md:text-sm">Exactement {limit} joueurs requis pour valider l’inscription</p>
+          <p className="text-muted text-xs md:text-sm">Exactement {limit} joueurs requis — chaque joueur doit fournir sa propre pièce d’identité</p>
         </div>
         <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase self-start md:self-auto">
           Joueurs: {limit} / Actuel: {data.filter((p) => p.name).length}
@@ -775,12 +805,36 @@ function PlayersStep({ data, updateData, limit }: {
                 <FormInput label="Village" placeholder="Bassam" value={player.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
               </div>
             </div>
-            <div className="mt-3">
-              <FormDateInput
-                label="Date de naissance *"
-                value={player.dob}
-                onChange={(val) => updateData(i, {dob: val})}
-              />
+            <div className="mt-3 flex items-end gap-2">
+              <div className="flex-1">
+                <FormDateInput
+                  label="Date de naissance *"
+                  value={player.dob}
+                  onChange={(val) => updateData(i, {dob: val})}
+                />
+              </div>
+              <label className={cn(
+                "shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-all text-[9px] font-black uppercase tracking-widest",
+                player.idDocument
+                  ? "border-green-500/40 bg-green-500/10 text-green-500"
+                  : "border-border bg-secondary/50 text-muted hover:border-primary/50 hover:text-primary"
+              )}>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.zip,image/jpeg,image/png,image/webp"
+                  onChange={(e) => handleIdUpload(e, i)}
+                  disabled={uploadingIndex === i}
+                />
+                {uploadingIndex === i ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : player.idDocument ? (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5" />
+                )}
+                Pièce ID
+              </label>
             </div>
           </div>
         ))}
@@ -850,8 +904,8 @@ function DocumentsStep({ data, updateData, teamName }: {
       <h2 className="text-2xl font-black font-outfit">Documents Obligatoires</h2>
       <div className="grid grid-cols-1 gap-6">
         <FileUpload
-          label="Pièces d'identité (Groupées en un seul PDF ou ZIP)"
-          description="Scans de tous les joueurs et staff"
+          label="Pièces d'identité du Staff (Groupées en un seul PDF ou ZIP)"
+          description="Scans de tous les membres du staff — chaque joueur fournit la sienne à l'étape Joueurs"
           value={data.idCards}
           isUploading={uploading === 'idCards'}
           accept=".pdf,.zip,image/jpeg,image/png,image/webp"

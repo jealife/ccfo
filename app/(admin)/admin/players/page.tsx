@@ -23,6 +23,7 @@ type AdminPlayer = {
   jersey_number: number | string | null;
   position: string | null;
   photo_url: string | null;
+  identity_docs_url?: string | null;
   nationality?: string | null;
   origin_village?: string | null;
   date_of_birth?: string | null;
@@ -88,7 +89,7 @@ export default function AdminPlayersPage() {
 
   const handleExportCSV = () => {
     const rows = [
-      ["Nom", "Date de naissance", "Équipe", "Village", "Numéro", "Poste", "Origine"],
+      ["Nom", "Date de naissance", "Équipe", "Village", "Numéro", "Poste", "Origine", "Lien Photo", "Lien Pièce d'Identité"],
       ...filteredPlayers.map(p => [
         p.full_name,
         p.date_of_birth ? formatFrenchDate(p.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" }) : "",
@@ -97,6 +98,8 @@ export default function AdminPlayersPage() {
         p.jersey_number || "",
         p.position || "",
         p.origin_village || "",
+        p.photo_url || "",
+        p.identity_docs_url || "",
       ])
     ];
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");

@@ -46,6 +46,7 @@ export const playerEntrySchema = z.object({
   position: z.string().trim().optional().default(""),
   date_of_birth: dateOfBirthSchema,
   origin_village: z.string().trim().optional().default(""),
+  identity_docs_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
 });
 
 export const documentsSchema = z.object({
