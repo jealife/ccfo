@@ -25,7 +25,7 @@ export default async function ManagerDashboardPage() {
     .from('teams')
     .select('*, players(count), staff(count)')
     .eq('manager_id', user?.id)
-    .single();
+    .maybeSingle();
 
   const { data: config } = await supabase
     .from('tournament_config')
@@ -139,9 +139,12 @@ export default async function ManagerDashboardPage() {
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/5">
                   {(team.status === 'incomplete' || team.status === 'rejected') && (
-                    <Link href="/manager/registration" className="flex-1 sm:flex-none px-5 py-3 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform flex items-center justify-center gap-2">
-                      <PlusCircle className="w-4 h-4" /> Compléter le dossier
-                    </Link>
+                    <div className="flex-1 sm:flex-none flex flex-col gap-2">
+                      {team.status === 'incomplete' && <span className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest">Inscription en cours non finalisée</span>}
+                      <Link href="/manager/registration" className="w-full px-5 py-3 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform flex items-center justify-center gap-2">
+                        <PlusCircle className="w-4 h-4" /> Continuer l'inscription
+                      </Link>
+                    </div>
                   )}
                   {team.status === 'validated' && (
                     <Link href="/dashboard/receipt" className="flex-1 sm:flex-none px-5 py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 font-black uppercase tracking-widest text-xs hover:bg-green-500/20 transition-all flex items-center justify-center gap-2">
