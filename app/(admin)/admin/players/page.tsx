@@ -88,19 +88,30 @@ export default function AdminPlayersPage() {
   };
 
   const handleExportCSV = () => {
+    const currentYear = new Date().getFullYear();
+    const yearSuffix = currentYear.toString().slice(-2);
+
     const rows = [
-      ["Nom", "Date de naissance", "Équipe", "Village", "Numéro", "Poste", "Origine", "Lien Photo", "Lien Pièce d'Identité"],
-      ...filteredPlayers.map(p => [
-        p.full_name,
-        p.date_of_birth ? formatFrenchDate(p.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" }) : "",
-        p.teams?.name || "",
-        p.teams?.village || "",
-        p.jersey_number || "",
-        p.position || "",
-        p.origin_village || "",
-        p.photo_url || "",
-        p.identity_docs_url || "",
-      ])
+      ["Numéro de Licence", "Nom", "Date de naissance", "Équipe", "Village", "Numéro", "Poste", "Origine", "Lien Photo", "Lien Pièce d'Identité"],
+      ...filteredPlayers.map(p => {
+        const village = p.teams?.village || "";
+        const villageCode = village.substring(0, 3).toUpperCase();
+        const jerseyNumber = p.jersey_number?.toString().padStart(2, "0") || "00";
+        const licenseNumber = `CCFO${yearSuffix}${villageCode}${jerseyNumber}`;
+
+        return [
+          licenseNumber,
+          p.full_name,
+          p.date_of_birth ? formatFrenchDate(p.date_of_birth, { day: "2-digit", month: "2-digit", year: "numeric" }) : "",
+          p.teams?.name || "",
+          village,
+          p.jersey_number || "",
+          p.position || "",
+          p.origin_village || "",
+          p.photo_url || "",
+          p.identity_docs_url || "",
+        ];
+      })
     ];
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
