@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { verifyTeamOwnership } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { translateDbError } from "@/lib/errors";
 
 async function verifyPlayerOwnership(playerId: string) {
   const supabase = await createClient();
@@ -57,7 +58,7 @@ export async function updateStaffPhoto(staffId: string, photoUrl: string) {
 
   if (updateError) {
     console.error('[update_staff_photo]', updateError);
-    return { success: false, error: updateError.message };
+    return { success: false, error: translateDbError(updateError.message) };
   }
 
   revalidatePath('/dashboard/my-team');
@@ -82,7 +83,7 @@ export async function updatePlayerPhoto(playerId: string, photoUrl: string) {
 
   if (updateError) {
     console.error('[server_action] Update error:', updateError);
-    return { success: false, error: updateError.message };
+    return { success: false, error: translateDbError(updateError.message) };
   }
 
   revalidatePath('/dashboard/my-team');

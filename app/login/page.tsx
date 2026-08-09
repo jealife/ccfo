@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { Shield, Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/errors";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function LoginContent() {
@@ -42,7 +43,7 @@ function LoginContent() {
       router.push(destination);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de connexion");
+      setError(err instanceof Error ? translateAuthError(err.message) : "Erreur de connexion. Contactez l'administration si le problème persiste.");
     } finally {
       setIsLoading(false);
     }

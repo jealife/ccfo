@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { registrationSchema, type RegistrationFormData } from "@/lib/validation/registration";
 import { revalidatePath } from "next/cache";
+import { translateDbError } from "@/lib/errors";
 
 function toIsoDateHelper(frDate: string | null | undefined): string | null {
   if (!frDate || frDate.length !== 10) return null;
@@ -64,7 +65,7 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
 
   if (teamError) {
     console.error('[registration] team upsert error:', teamError);
-    return { success: false, error: teamError.message };
+    return { success: false, error: translateDbError(teamError.message) };
   }
 
   // 2. Staff : remplacement complet (pas d'état à préserver côté staff)
@@ -87,12 +88,12 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
     const { error: deleteError } = await admin.from('staff').delete().eq('team_id', team.id);
     if (deleteError) {
       console.error('[registration] staff delete error:', deleteError);
-      return { success: false, error: deleteError.message };
+      return { success: false, error: translateDbError(deleteError.message) };
     }
     const { error: staffError } = await admin.from('staff').insert(staffData);
     if (staffError) {
       console.error('[registration] staff insert error:', staffError);
-      return { success: false, error: staffError.message };
+      return { success: false, error: translateDbError(staffError.message) };
     }
   }
 
@@ -124,7 +125,7 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
 
       if (playerError) {
         console.error('[registration] player write error:', playerError);
-        return { success: false, error: playerError.message };
+        return { success: false, error: translateDbError(playerError.message) };
       }
     }
 
@@ -182,14 +183,14 @@ export async function saveRegistrationDraft(formData: any) {
     .select()
     .single();
 
-  if (teamError) return { success: false, error: teamError.message };
+  if (teamError) return { success: false, error: translateDbError(teamError.message) };
 
   // Staff
   const validStaff = (staff || []).filter((s: any) => s?.name?.trim());
   const { error: staffDeleteError } = await admin.from('staff').delete().eq('team_id', team.id);
   if (staffDeleteError) {
     console.error('[draft] staff delete error:', staffDeleteError);
-    return { success: false, error: staffDeleteError.message };
+    return { success: false, error: translateDbError(staffDeleteError.message) };
   }
   if (validStaff.length > 0) {
     const staffData = validStaff.map((s: any) => {
@@ -209,7 +210,7 @@ export async function saveRegistrationDraft(formData: any) {
     const { error: staffInsertError } = await admin.from('staff').insert(staffData);
     if (staffInsertError) {
       console.error('[draft] staff insert error:', staffInsertError);
-      return { success: false, error: staffInsertError.message };
+      return { success: false, error: translateDbError(staffInsertError.message) };
     }
   }
 
@@ -242,7 +243,7 @@ export async function saveRegistrationDraft(formData: any) {
 
       if (playerError) {
         console.error('[draft] player write error:', playerError);
-        return { success: false, error: playerError.message };
+        return { success: false, error: translateDbError(playerError.message) };
       }
     }
 
@@ -253,14 +254,14 @@ export async function saveRegistrationDraft(formData: any) {
       const { error: deleteError } = await admin.from('players').delete().in('id', toDelete);
       if (deleteError) {
         console.error('[draft] player delete error:', deleteError);
-        return { success: false, error: deleteError.message };
+        return { success: false, error: translateDbError(deleteError.message) };
       }
     }
   } else {
     const { error: deleteAllError } = await admin.from('players').delete().eq('team_id', team.id);
     if (deleteAllError) {
       console.error('[draft] player delete-all error:', deleteAllError);
-      return { success: false, error: deleteAllError.message };
+      return { success: false, error: translateDbError(deleteAllError.message) };
     }
   }
 

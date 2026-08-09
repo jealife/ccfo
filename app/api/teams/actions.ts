@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { REGISTRATION_FEE } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 import type { TeamStatus } from "@/lib/types";
+import { translateDbError } from "@/lib/errors";
 
 const VALID_STATUSES: TeamStatus[] = ['incomplete', 'pending', 'validated', 'rejected', 'locked'];
 
@@ -67,7 +68,7 @@ export async function getTeamsWithPayments() {
 
   if (error) {
     console.error('[getTeamsWithPayments]', error);
-    return { success: false, error: error.message, data: [] };
+    return { success: false, error: translateDbError(error.message), data: [] };
   }
 
   return { success: true, error: null, data: data ?? [] };
@@ -91,7 +92,7 @@ export async function updateTeamStatus(teamId: string, newStatus: string) {
 
   if (teamError) {
     console.error('[updateTeamStatus] Error updating team:', teamError);
-    return { success: false, error: teamError.message };
+    return { success: false, error: translateDbError(teamError.message) };
   }
 
   // 2. Le paiement suit le statut de l'équipe : validée => reçu officiel émis,
@@ -105,7 +106,7 @@ export async function updateTeamStatus(teamId: string, newStatus: string) {
 
   if (paymentError) {
     console.error('[updateTeamStatus] Error syncing payment:', paymentError);
-    return { success: false, error: paymentError.message };
+    return { success: false, error: translateDbError(paymentError.message) };
   }
 
   // 3. Revalidate paths to refresh UI
@@ -137,7 +138,7 @@ export async function setRegistrationUnlocked(teamId: string, unlocked: boolean)
 
   if (error) {
     console.error('[setRegistrationUnlocked]', error);
-    return { success: false, error: error.message };
+    return { success: false, error: translateDbError(error.message) };
   }
 
   revalidatePath('/admin/teams');
@@ -155,7 +156,7 @@ export async function validatePayment(teamId: string) {
 
   if (paymentError) {
     console.error('[validatePayment] Error creating payment:', paymentError);
-    return { success: false, error: paymentError.message };
+    return { success: false, error: translateDbError(paymentError.message) };
   }
 
   revalidatePath('/admin/payments');

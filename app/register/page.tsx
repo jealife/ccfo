@@ -4,6 +4,7 @@ import { useState } from "react";
 import { UserPlus, Loader2, ChevronLeft, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/errors";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
@@ -39,7 +40,7 @@ export default function RegisterPage() {
         router.push("/login?message=Compte créé avec succès. Veuillez vous connecter.");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'inscription");
+      setError(err instanceof Error ? translateAuthError(err.message) : "Erreur lors de l'inscription. Contactez l'administration si le problème persiste.");
     } finally {
       setIsLoading(false);
     }

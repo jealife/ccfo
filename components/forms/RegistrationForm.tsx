@@ -24,6 +24,7 @@ import { AlertDialog } from "@/components/ui/Modal";
 import type { TournamentConfig } from "@/lib/types";
 import Link from "next/link";
 import { MOBILE_MONEY_NUMBER } from "@/lib/constants";
+import { translateUploadError } from "@/lib/errors";
 
 type TeamFormState = { name: string; village: string; color: string; president: string; phone: string; whatsapp: string; email: string };
 type StaffFormState = { name: string; role: string; village: string; dob: string; photo: string | null; idDocument: string | null };
@@ -438,7 +439,7 @@ export function RegistrationForm() {
         showAlert("Erreur", result.error || "Erreur lors de l'inscription. Veuillez réessayer.", "error");
       }
     } catch {
-      showAlert("Erreur", "Une erreur imprévue est survenue. Veuillez réessayer.", "error");
+      showAlert("Erreur", "Une erreur inattendue est survenue. Contactez l'administration si le problème persiste.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -523,17 +524,17 @@ export function RegistrationForm() {
             className="space-y-8"
           >
             {currentStep === 1 && <TeamStep data={formData.team} updateData={(val) => setFormData({...formData, team: {...formData.team, ...val}})} />}
-            {currentStep === 2 && <StaffStep data={formData.staff} limit={staffLimit} teamName={formData.team.name} updateData={(index, val) => {
+            {currentStep === 2 && <StaffStep data={formData.staff} limit={staffLimit} teamName={formData.team.name} showAlert={showAlert} updateData={(index, val) => {
               const newStaff = [...formData.staff];
               newStaff[index] = {...newStaff[index], ...val};
               setFormData({...formData, staff: newStaff});
             }} />}
-            {currentStep === 3 && <PlayersStep data={formData.players} limit={playersLimit} updateData={(index, val) => {
+            {currentStep === 3 && <PlayersStep data={formData.players} limit={playersLimit} showAlert={showAlert} updateData={(index, val) => {
               const newPlayers = [...formData.players];
               newPlayers[index] = {...newPlayers[index], ...val};
               setFormData({...formData, players: newPlayers});
             }} />}
-            {currentStep === 4 && <PaymentStep data={formData.team} updateData={(val) => setFormData({...formData, documents: {...formData.documents, ...val}})} receiptData={formData.documents.receipt} />}
+            {currentStep === 4 && <PaymentStep data={formData.team} showAlert={showAlert} updateData={(val) => setFormData({...formData, documents: {...formData.documents, ...val}})} receiptData={formData.documents.receipt} />}
           </motion.div>
         </AnimatePresence>
 
@@ -611,7 +612,7 @@ function SaveStatusIndicator({ status }: { status: "idle" | "saving" | "saved" |
       {status === "error" && (
         <span className="flex items-center gap-1.5 text-red-400">
           <AlertTriangle className="w-3.5 h-3.5" />
-          Échec de la sauvegarde — nouvelle tentative…
+          Échec de la sauvegarde — nouvelle tentative… Si le problème persiste, contactez l'administration.
         </span>
       )}
     </div>
@@ -646,11 +647,12 @@ function TeamStep({ data, updateData }: {
   );
 }
 
-function StaffStep({ data, updateData, limit, teamName }: {
+function StaffStep({ data, updateData, limit, teamName, showAlert }: {
   data: StaffFormState[];
   updateData: (index: number, val: Partial<StaffFormState>) => void;
   limit: number;
   teamName: string;
+  showAlert: (title: string, message: string, type?: "error" | "warning" | "info") => void;
 }) {
   const supabase = createClient();
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
@@ -661,7 +663,7 @@ function StaffStep({ data, updateData, limit, teamName }: {
 
     const validationError = validateUploadFile(file, "image");
     if (validationError) {
-      window.alert(validationError);
+      showAlert("Photo non acceptée", validationError, "error");
       e.target.value = "";
       return;
     }
@@ -677,7 +679,7 @@ function StaffStep({ data, updateData, limit, teamName }: {
       updateData(index, { photo: publicUrlData.publicUrl });
     } else {
       console.error("[upload] Error:", uploadError.message);
-      window.alert("Erreur lors de l'upload de la photo. Vérifiez le format et réessayez.");
+      showAlert("Erreur d'envoi", translateUploadError(uploadError.message), "error");
     }
     setUploadingIndex(null);
   };
@@ -690,7 +692,7 @@ function StaffStep({ data, updateData, limit, teamName }: {
 
     const validationError = validateUploadFile(file, "document");
     if (validationError) {
-      window.alert(validationError);
+      showAlert("Document non accepté", validationError, "error");
       e.target.value = "";
       return;
     }
@@ -705,7 +707,7 @@ function StaffStep({ data, updateData, limit, teamName }: {
       updateData(index, { idDocument: publicUrlData.publicUrl });
     } else {
       console.error("[upload] Error:", uploadError.message);
-      window.alert("Erreur lors de l'upload de la pièce d'identité. Vérifiez le format et réessayez.");
+      showAlert("Erreur d'envoi", translateUploadError(uploadError.message), "error");
     }
     setUploadingIdIndex(null);
   };
@@ -789,10 +791,11 @@ function StaffStep({ data, updateData, limit, teamName }: {
   );
 }
 
-function PlayersStep({ data, updateData, limit }: {
+function PlayersStep({ data, updateData, limit, showAlert }: {
   data: PlayerFormState[];
   updateData: (index: number, val: Partial<PlayerFormState>) => void;
   limit: number;
+  showAlert: (title: string, message: string, type?: "error" | "warning" | "info") => void;
 }) {
   const supabase = createClient();
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
@@ -803,7 +806,7 @@ function PlayersStep({ data, updateData, limit }: {
 
     const validationError = validateUploadFile(file, "document");
     if (validationError) {
-      window.alert(validationError);
+      showAlert("Document non accepté", validationError, "error");
       e.target.value = "";
       return;
     }
@@ -818,7 +821,7 @@ function PlayersStep({ data, updateData, limit }: {
       updateData(index, { idDocument: publicUrlData.publicUrl });
     } else {
       console.error("[upload] Error:", uploadError.message);
-      window.alert("Erreur lors de l'upload de la pièce d'identité. Vérifiez le format et réessayez.");
+      showAlert("Erreur d'envoi", translateUploadError(uploadError.message), "error");
     }
     setUploadingIndex(null);
   };
@@ -907,10 +910,11 @@ function validateUploadFile(file: File, kind: "document" | "image"): string | nu
   return null;
 }
 
-function PaymentStep({ data, updateData, receiptData }: {
+function PaymentStep({ data, updateData, receiptData, showAlert }: {
   data: TeamFormState;
   updateData: (val: Partial<DocumentsFormState>) => void;
   receiptData: string | null;
+  showAlert: (title: string, message: string, type?: "error" | "warning" | "info") => void;
 }) {
   const supabase = createClient();
   const [uploading, setUploading] = useState(false);
@@ -921,7 +925,7 @@ function PaymentStep({ data, updateData, receiptData }: {
 
     const validationError = validateUploadFile(file, "image");
     if (validationError) {
-      window.alert(validationError);
+      showAlert("Reçu non accepté", validationError, "error");
       e.target.value = "";
       return;
     }
@@ -940,7 +944,7 @@ function PaymentStep({ data, updateData, receiptData }: {
       updateData({ receipt: publicUrlData.publicUrl });
     } else {
       console.error("[upload] Error:", uploadError.message);
-      window.alert("Erreur lors de l'upload du reçu. Vérifiez le format et réessayez.");
+      showAlert("Erreur d'envoi", translateUploadError(uploadError.message), "error");
     }
     setUploading(false);
   };

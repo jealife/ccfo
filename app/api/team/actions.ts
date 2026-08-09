@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { verifyTeamOwnership } from "@/lib/auth";
 import { dateOfBirthSchema } from "@/lib/validation/registration";
 import { revalidatePath } from "next/cache";
+import { translateDbError } from "@/lib/errors";
 
 /**
  * Une équipe validée (ou verrouillée) a un effectif figé : le manager ne peut
@@ -78,7 +79,7 @@ export async function addPlayer(playerData: z.input<typeof playerSchema>) {
 
   if (insertError) {
     console.error('[add_player_error]', insertError);
-    return { success: false, error: insertError.message };
+    return { success: false, error: translateDbError(insertError.message) };
   }
 
   revalidatePath("/dashboard/my-team");
@@ -128,7 +129,7 @@ export async function updatePlayer(playerId: string, teamId: string, updates: z.
     .select()
     .single();
 
-  if (updateError) return { success: false, error: updateError.message };
+  if (updateError) return { success: false, error: translateDbError(updateError.message) };
 
   revalidatePath("/dashboard/my-team");
   return { success: true, data };
@@ -148,7 +149,7 @@ export async function deletePlayer(playerId: string, teamId: string) {
     .eq('id', playerId)
     .eq('team_id', teamId);
 
-  if (deleteError) return { success: false, error: deleteError.message };
+  if (deleteError) return { success: false, error: translateDbError(deleteError.message) };
 
   revalidatePath("/dashboard/my-team");
   return { success: true };
@@ -190,7 +191,7 @@ export async function addStaff(staffData: z.input<typeof staffSchema>) {
 
   if (insertError) {
     console.error('[add_staff_error]', insertError);
-    return { success: false, error: insertError.message };
+    return { success: false, error: translateDbError(insertError.message) };
   }
 
   revalidatePath("/dashboard/my-team");
@@ -240,7 +241,7 @@ export async function updateStaff(staffId: string, teamId: string, updates: z.in
     .select()
     .single();
 
-  if (updateError) return { success: false, error: updateError.message };
+  if (updateError) return { success: false, error: translateDbError(updateError.message) };
 
   revalidatePath("/dashboard/my-team");
   return { success: true, data };
@@ -260,7 +261,7 @@ export async function deleteStaff(staffId: string, teamId: string) {
     .eq('id', staffId)
     .eq('team_id', teamId);
 
-  if (deleteError) return { success: false, error: deleteError.message };
+  if (deleteError) return { success: false, error: translateDbError(deleteError.message) };
 
   revalidatePath("/dashboard/my-team");
   return { success: true };
