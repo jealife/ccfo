@@ -10,7 +10,8 @@ import {
   Printer,
   Shield,
   User,
-  Activity
+  Activity,
+  FileText
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PlayerLicense } from "@/components/dashboard/PlayerLicense";
@@ -218,8 +219,28 @@ export default function AdminPlayersPage() {
                 </div>
               </div>
 
-              {/* Print Button - Visible on mobile, hover on desktop */}
-              <div className="absolute top-2 right-2 md:inset-0 md:bg-primary/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center md:backdrop-blur-[2px]">
+              {/* Actions - Visibles sur mobile, au survol sur desktop */}
+              <div className="absolute top-2 right-2 flex flex-col md:flex-row md:inset-0 items-end md:items-center justify-center gap-1.5 md:gap-3 md:bg-primary/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity md:backdrop-blur-[2px]">
+                {player.identity_docs_url ? (
+                  <a
+                    href={player.identity_docs_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Voir la pièce d'identité"
+                    aria-label="Voir la pièce d'identité"
+                    className="p-2 md:px-4 md:py-2 rounded-xl bg-white/10 text-white font-black uppercase tracking-widest text-[10px] shadow-xl flex items-center gap-2 hover:scale-110 hover:bg-white/20 transition-all"
+                  >
+                    <FileText className="w-4 h-4" /> <span className="hidden md:inline">Pièce d&apos;Identité</span>
+                  </a>
+                ) : (
+                  <span
+                    title="Aucune pièce d'identité fournie"
+                    className="p-2 md:px-4 md:py-2 rounded-xl bg-white/5 text-white/30 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 cursor-not-allowed"
+                  >
+                    <FileText className="w-4 h-4" /> <span className="hidden md:inline">Aucune Pièce</span>
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
