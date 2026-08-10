@@ -1,5 +1,7 @@
 // ── Helpers partagés ─────────────────────────────────────────
 
+import { TOURNAMENT_TIMEZONE } from "./timezone";
+
 const TEAM_PALETTES = [
   { bg: "bg-red-500/20",     border: "border-red-400/30",     text: "text-red-400"     },
   { bg: "bg-blue-500/20",    border: "border-blue-400/30",    text: "text-blue-400"    },
@@ -27,17 +29,17 @@ export function getStartedAt(stats: unknown[] | null | undefined): string | null
     .find((s) => s.label === "started_at")?.value ?? null;
 }
 
-/** Formate une date en français */
+/** Formate une date en français, toujours en heure de Fieng Okano (WAT) */
 export function formatFrenchDate(
   date: string | Date,
   options: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", year: "numeric" }
 ): string {
-  return new Date(date).toLocaleDateString("fr-FR", options);
+  return new Date(date).toLocaleDateString("fr-FR", { ...options, timeZone: TOURNAMENT_TIMEZONE });
 }
 
-/** Formate une heure en français (HH:MM) */
+/** Formate une heure en français (HH:MM), toujours en heure de Fieng Okano (WAT) */
 export function formatFrenchTime(date: string | Date): string {
-  return new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TOURNAMENT_TIMEZONE });
 }
 
 /** Libellé français d'un statut de match */

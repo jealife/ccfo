@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { MatchDetailClient } from "@/components/public/MatchDetailClient";
 import { cn } from "@/lib/utils";
 import { SITE_URL } from "@/lib/constants";
+import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 
 export const revalidate = 10;
 
@@ -24,7 +25,7 @@ export async function generateMetadata(
   const home = (match.home as unknown as { name: string } | null)?.name ?? "Équipe A";
   const away = (match.away as unknown as { name: string } | null)?.name ?? "Équipe B";
   const dateStr = new Date(match.match_date).toLocaleDateString("fr-FR", {
-    day: "numeric", month: "long", year: "numeric",
+    day: "numeric", month: "long", year: "numeric", timeZone: TOURNAMENT_TIMEZONE,
   });
   const phase = match.group_name ? `${match.group_name} · ` : "";
 
@@ -127,6 +128,8 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           <div className="flex items-center gap-3 pt-4 mb-8">
             <Link
               href="/matches"
+              title="Retour aux matchs"
+              aria-label="Retour aux matchs"
               className="w-10 h-10 rounded-full bg-white/15 border border-white/20 flex items-center justify-center shrink-0 hover:bg-white/25 active:scale-95 transition-all touch-manipulation"
             >
               <ChevronLeft className="w-5 h-5 text-white" />
@@ -148,7 +151,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                 : "bg-accent text-white"
             )}>
               {isLive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-              {isLive ? "En Direct" : isFinished ? "Terminé" : matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+              {isLive ? "En Direct" : isFinished ? "Terminé" : matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TOURNAMENT_TIMEZONE })}
             </div>
           </div>
 
@@ -209,7 +212,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
             <span className="text-white/50">{match.venue || "Stade Okano"}</span>
             <span className="text-white/20">·</span>
             <span className="capitalize text-white/35">
-              {matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              {matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: TOURNAMENT_TIMEZONE })}
             </span>
           </div>
         </div>

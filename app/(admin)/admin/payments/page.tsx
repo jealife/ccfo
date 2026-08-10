@@ -251,6 +251,9 @@ export default function AdminPaymentsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button
+                      type="button"
+                      title="Voir les détails du paiement"
+                      aria-label="Voir les détails du paiement"
                       className="p-2 rounded-lg bg-white/5 border border-white/10 hover:border-primary/50 text-muted hover:text-primary transition-all"
                       onClick={(e) => {
                         e.stopPropagation();

@@ -336,7 +336,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                     ))}
                   </datalist>
                 </div>
-                <button onClick={addEvent} className="col-span-3 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
+                <button type="button" onClick={addEvent} title="Ajouter l'événement" aria-label="Ajouter l'événement" className="col-span-3 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
                   <Plus className="w-5 h-5" />
                 </button>
               </div>
@@ -392,7 +392,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
                     )}
                     <div className="text-[10px] text-muted uppercase tracking-widest font-black">{evt.team === 'home' ? match.home.name : match.away.name}</div>
                   </div>
-                  <button onClick={() => removeEvent(evt.id)} className="p-2 text-muted hover:text-red-500 transition-colors">
+                  <button type="button" onClick={() => removeEvent(evt.id)} title="Supprimer l'événement" aria-label="Supprimer l'événement" className="p-2 text-muted hover:text-red-500 transition-colors">
                     <AlertCircle className="w-4 h-4" />
                   </button>
                 </div>

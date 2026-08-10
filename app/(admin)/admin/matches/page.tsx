@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { AlertDialog } from "@/components/ui/Modal";
 import { createMatch, updateMatch, deleteMatch } from "@/app/api/matches/actions";
+import { localInputToISOString, isoToLocalInput, TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 import type { Match } from "@/lib/types";
 
 // ── Structure du tournoi ──────────────────────────────────────
@@ -41,12 +42,6 @@ function phaseSection(v: string | null | undefined) {
   return PHASES.find((p) => p.value === v)?.section ?? "group";
 }
 
-/** Convertit une date ISO (colonne Supabase) en valeur locale pour <input type="datetime-local"> */
-function toDatetimeLocal(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 const STATUS_STYLES: Record<string, string> = {
   scheduled: "bg-accent/15 text-accent",
@@ -128,7 +123,7 @@ export default function AdminMatchesPage() {
     setFormData({
       home_team_id: match.home_team_id,
       away_team_id: match.away_team_id,
-      match_date:   toDatetimeLocal(match.match_date),
+      match_date:   isoToLocalInput(match.match_date),
       venue:        match.venue || "Stade Municipal",
       status:       match.status,
       group_name:   (match.group_name as PhaseValue) || "Groupe A",
@@ -143,15 +138,20 @@ export default function AdminMatchesPage() {
       return;
     }
     setIsLoading(true);
+    // formData.match_date vient d'un <input type="datetime-local"> : une heure
+    // "naïve" saisie en heure de Fieng Okano (WAT). On la convertit en instant
+    // UTC non-ambigu avant l'envoi, sinon Postgres l'interprète comme de l'UTC
+    // et l'heure affichée ensuite est décalée d'une heure.
+    const payload = { ...formData, match_date: localInputToISOString(formData.match_date) };
     const result = editingId
       ? await updateMatch(editingId, {
-          home_team_id: formData.home_team_id,
-          away_team_id: formData.away_team_id,
-          match_date:   formData.match_date,
-          venue:        formData.venue,
-          group_name:   formData.group_name,
+          home_team_id: payload.home_team_id,
+          away_team_id: payload.away_team_id,
+          match_date:   payload.match_date,
+          venue:        payload.venue,
+          group_name:   payload.group_name,
         })
-      : await createMatch(formData);
+      : await createMatch(payload);
     if (!result.success) {
       setAlert({ isOpen: true, title: "Erreur", message: `Erreur lors de ${editingId ? "la modification" : "la création"} : ${result.error}`, type: "error" });
     } else {
@@ -363,10 +363,10 @@ function MatchRow({ match, onEdit, onDelete }: { match: Match; onEdit: () => voi
         {/* Date */}
         <div className="flex flex-row md:flex-col items-center justify-between w-full md:w-auto md:border-r border-white/5 md:pr-6 min-w-[90px] bg-white/5 md:bg-transparent p-3 md:p-0 rounded-xl shrink-0">
           <span className="text-sm font-black font-outfit text-primary">
-            {matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+            {matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", timeZone: TOURNAMENT_TIMEZONE })}
           </span>
           <span className="text-[10px] font-bold text-muted uppercase">
-            {matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            {matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TOURNAMENT_TIMEZONE })}
           </span>
         </div>
 

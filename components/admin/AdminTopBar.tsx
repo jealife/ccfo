@@ -183,7 +183,10 @@ export function AdminTopBar({ userName, pendingCount }: AdminTopBarProps) {
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={clearSearch}
+                title="Effacer la recherche"
+                aria-label="Effacer la recherche"
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-white transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
@@ -207,7 +210,10 @@ export function AdminTopBar({ userName, pendingCount }: AdminTopBarProps) {
 
           {/* Mobile search button */}
           <button
+            type="button"
             onClick={() => setMobileSearchOpen(true)}
+            title="Rechercher"
+            aria-label="Rechercher"
             className="lg:hidden p-2 rounded-xl text-muted hover:text-white hover:bg-white/5 transition-all"
           >
             <Search className="w-5 h-5" />
@@ -216,7 +222,10 @@ export function AdminTopBar({ userName, pendingCount }: AdminTopBarProps) {
           {/* Notification bell */}
           <div className="relative" ref={notifRef}>
             <button
+              type="button"
               onClick={() => { setNotifOpen((v) => !v); setAvatarOpen(false); }}
+              title="Notifications"
+              aria-label="Notifications"
               className="relative p-2 rounded-xl text-muted hover:text-foreground hover:bg-white/5 transition-all"
             >
               <Bell className="w-5 h-5" />
@@ -231,7 +240,7 @@ export function AdminTopBar({ userName, pendingCount }: AdminTopBarProps) {
               <div className="absolute right-0 top-full mt-2 w-72 bg-card border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in">
                 <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                   <p className="text-[10px] font-black uppercase tracking-widest">Notifications</p>
-                  <button onClick={() => setNotifOpen(false)} className="text-muted hover:text-white">
+                  <button type="button" onClick={() => setNotifOpen(false)} title="Fermer les notifications" aria-label="Fermer les notifications" className="text-muted hover:text-white">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -315,7 +324,7 @@ export function AdminTopBar({ userName, pendingCount }: AdminTopBarProps) {
               placeholder="Rechercher équipe, joueur..."
               className="flex-1 bg-transparent text-base outline-none placeholder:text-muted"
             />
-            <button onClick={clearSearch} className="p-1 text-muted hover:text-white">
+            <button type="button" onClick={clearSearch} title="Fermer la recherche" aria-label="Fermer la recherche" className="p-1 text-muted hover:text-white">
               <X className="w-5 h-5" />
             </button>
           </div>

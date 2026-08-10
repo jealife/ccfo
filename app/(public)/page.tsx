@@ -17,6 +17,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { LiveHeroMatch } from "@/components/public/LiveHeroMatch";
 import type { Match, Standing, MatchEvent } from "@/lib/types";
 import { getTeamPalette } from "@/lib/helpers";
+import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 
 export const revalidate = 30;
 
@@ -345,10 +346,10 @@ function MatchRowCard({ match }: { match: Match }) {
           {match.status === "scheduled" ? (
             <>
               <span className="text-sm font-black text-accent">
-                {matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                {matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TOURNAMENT_TIMEZONE })}
               </span>
               <span className="text-[9px] font-bold text-muted uppercase tracking-wide">
-                {matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                {matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", timeZone: TOURNAMENT_TIMEZONE })}
               </span>
             </>
           ) : (

@@ -61,8 +61,11 @@ export function InstallPrompt() {
             {/* Background Glow */}
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
             
-            <button 
+            <button
+              type="button"
               onClick={() => setIsVisible(false)}
+              title="Fermer"
+              aria-label="Fermer"
               className="absolute top-4 right-4 text-muted hover:text-white"
             >
               <X className="w-5 h-5" />

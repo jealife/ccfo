@@ -12,6 +12,7 @@ import {
   Loader2
 } from "lucide-react";
 import Link from "next/link";
+import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 
 type ManagerMatch = {
   id: string;
@@ -118,7 +119,7 @@ export default function DashboardMatchesPage() {
                 <div className="text-center min-w-[60px]">
                   <div className="text-xs font-black uppercase text-muted">Final</div>
                   <div className="text-[10px] text-muted/60 mt-0.5">
-                    {new Date(match.match_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    {new Date(match.match_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: TOURNAMENT_TIMEZONE })}
                   </div>
                 </div>
 
@@ -160,7 +161,7 @@ function MatchCard({ match }: { match: ManagerMatch }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted">
           <Clock className="w-3 h-3 text-primary" />
-          {matchDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          {matchDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TOURNAMENT_TIMEZONE })}
         </div>
         <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest">
           {match.venue || 'Stade Municipal'}
@@ -178,7 +179,7 @@ function MatchCard({ match }: { match: ManagerMatch }) {
         <div className="flex flex-col items-center">
           <div className="text-2xl font-black font-outfit italic text-white/20">VS</div>
           <div className="text-[10px] font-bold text-primary mt-1">
-            {matchDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            {matchDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: TOURNAMENT_TIMEZONE })}
           </div>
         </div>
 

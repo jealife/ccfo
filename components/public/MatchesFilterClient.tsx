@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Calendar, ChevronRight } from "lucide-react";
 import { MatchTimer } from "./MatchTimer";
 import { getTeamPalette } from "@/lib/helpers";
+import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 
 type FilterValue = "Tous" | "live" | "finished" | "scheduled";
 
@@ -27,7 +28,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
 
   const groupedMatches = filteredMatches.reduce<Record<string, Match[]>>((acc, match) => {
     const d = new Date(match.match_date);
-    let label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    let label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: TOURNAMENT_TIMEZONE });
     label = label.charAt(0).toUpperCase() + label.slice(1);
     if (!acc[label]) acc[label] = [];
     acc[label].push(match);
@@ -70,7 +71,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                 const isLive     = match.status === "live";
                 const isFinished = match.status === "finished";
                 const matchDate  = new Date(match.match_date);
-                const time       = matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                const time       = matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TOURNAMENT_TIMEZONE });
                 const startedAt  = (match.stats as Array<{ label: string; value?: string }> | undefined)
                   ?.find((s) => s.label === "started_at")?.value;
                 const phaseLabel = match.group_name ?? null;
@@ -117,7 +118,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                             <span className="text-xs font-black text-accent tabular-nums">{time}</span>
                           )}
                           <span className="text-[10px] font-medium text-muted capitalize">
-                            {matchDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}
+                            {matchDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: TOURNAMENT_TIMEZONE })}
                           </span>
                         </div>
 

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 
 export const metadata = {
   title: "Mon Dashboard — CCFO26",
@@ -182,10 +183,10 @@ export default async function ManagerDashboardPage() {
                   <div className="flex flex-col items-center gap-1">
                     <div className="text-2xl font-black font-outfit italic text-white/20">VS</div>
                     <div className="text-[10px] font-bold text-primary text-center">
-                      {new Date(nextMatch.match_date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      {new Date(nextMatch.match_date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TOURNAMENT_TIMEZONE })}
                     </div>
                     <div className="text-[10px] font-black text-primary/60 text-center">
-                      {new Date(nextMatch.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(nextMatch.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: TOURNAMENT_TIMEZONE })}
                     </div>
                   </div>
                   <div className="flex-1 text-center space-y-2">

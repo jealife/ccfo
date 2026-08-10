@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Trophy, Swords } from "lucide-react";
 import type { Standing, Match } from "@/lib/types";
+import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 
 export const metadata: Metadata = {
   title: "Classement Officiel",
@@ -273,7 +274,7 @@ function KnockoutCard({ match, label, accent = "primary" }: {
           : isFinished ? "bg-secondary text-muted border border-border"
           : "bg-accent/15 text-accent"
         )}>
-          {isLive ? "Live" : isFinished ? "Terminé" : matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+          {isLive ? "Live" : isFinished ? "Terminé" : matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", timeZone: TOURNAMENT_TIMEZONE })}
         </span>
       </div>
 

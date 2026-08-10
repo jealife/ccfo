@@ -49,8 +49,11 @@ export function AdminBottomNav() {
               <h2 className="text-xl font-black font-outfit uppercase tracking-tighter">Menu Admin</h2>
               <p className="text-[10px] font-black uppercase tracking-widest text-primary">Administration CCFO26</p>
             </div>
-            <button 
-              onClick={() => setIsMenuOpen(false)} 
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(false)}
+              title="Fermer le menu"
+              aria-label="Fermer le menu"
               className="p-2 bg-white/5 rounded-xl text-muted hover:text-white"
             >
               <X className="w-5 h-5" />

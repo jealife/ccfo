@@ -87,7 +87,7 @@ export function PWAInstallPrompt() {
         >
           Installer
         </button>
-        <button onClick={handleDismiss} className="p-2 sm:hidden absolute top-2 right-2 text-muted hover:text-white">
+        <button type="button" onClick={handleDismiss} title="Fermer" aria-label="Fermer" className="p-2 sm:hidden absolute top-2 right-2 text-muted hover:text-white">
           <X className="w-4 h-4" />
         </button>
       </div>

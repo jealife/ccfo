@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { getStartedAt } from "@/lib/helpers";
+import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 import type { Match, MatchStat } from "@/lib/types";
 import { MatchTimer } from "./MatchTimer";
 
@@ -83,9 +84,9 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
               <>
                 <div className="text-3xl md:text-5xl font-black text-white tracking-tight">VS</div>
                 <div className="text-[10px] text-white/50 font-bold text-center">
-                  {matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                  {matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", timeZone: TOURNAMENT_TIMEZONE })}
                   {" • "}
-                  {matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                  {matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TOURNAMENT_TIMEZONE })}
                 </div>
               </>
             ) : (
@@ -116,7 +117,7 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
         {/* Footer row */}
         <div className="relative mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
           <span className="text-[10px] text-white/40 font-medium capitalize">
-            {matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+            {matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: TOURNAMENT_TIMEZONE })}
           </span>
           <span className="flex items-center gap-1 text-[11px] text-white/60 font-bold group-hover:text-white transition-colors">
             Voir les détails <ChevronRight className="w-3.5 h-3.5" />

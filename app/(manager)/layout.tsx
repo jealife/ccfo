@@ -124,7 +124,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
           </div>
 
           <div className="flex items-center gap-2 lg:gap-4">
-            <button className="relative p-2 text-muted hover:text-foreground">
+            <button type="button" title="Notifications" aria-label="Notifications" className="relative p-2 text-muted hover:text-foreground">
               <Bell className="w-5 h-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full border-2 border-background" />
             </button>

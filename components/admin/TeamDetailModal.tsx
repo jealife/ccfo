@@ -107,7 +107,7 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+          <button type="button" onClick={onClose} title="Fermer" aria-label="Fermer" className="p-2 hover:bg-white/10 rounded-xl transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
