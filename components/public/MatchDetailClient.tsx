@@ -17,11 +17,12 @@ interface MatchDetailClientProps {
 
 const TABS = [
   { id: "details", label: "Résumé"       },
-  { id: "stats",   label: "Statistiques" },
+  // Onglet Statistiques désactivé temporairement — aucune saisie de stats n'est encore possible côté admin.
   { id: "lineups", label: "Compositions" },
 ] as const;
 
-type TabId = (typeof TABS)[number]["id"];
+// "stats" reste dans le type pour que le panneau Statistiques (désactivé ci-dessus) compile toujours.
+type TabId = (typeof TABS)[number]["id"] | "stats";
 
 /** Sépare le started_at (stocké dans le JSON stats) des vraies statistiques */
 function splitStats(raw: unknown[]): { stats: MatchStat[]; startedAt: string | null } {

@@ -11,12 +11,13 @@ import {
   Shield,
   Trophy,
   Swords,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { AlertDialog } from "@/components/ui/Modal";
-import { createMatch, deleteMatch } from "@/app/api/matches/actions";
+import { createMatch, updateMatch, deleteMatch } from "@/app/api/matches/actions";
 import type { Match } from "@/lib/types";
 
 // ── Structure du tournoi ──────────────────────────────────────
@@ -40,6 +41,13 @@ function phaseSection(v: string | null | undefined) {
   return PHASES.find((p) => p.value === v)?.section ?? "group";
 }
 
+/** Convertit une date ISO (colonne Supabase) en valeur locale pour <input type="datetime-local"> */
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const STATUS_STYLES: Record<string, string> = {
   scheduled: "bg-accent/15 text-accent",
   live:      "bg-primary/15 text-primary animate-pulse",
@@ -61,6 +69,7 @@ export default function AdminMatchesPage() {
   const [matches, setMatches] = useState<AdminMatchRow[]>([]);
   const [teams,   setTeams]   = useState<TeamOption[]>([]);
   const [showForm,  setShowForm]  = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const supabase = createClient();
 
@@ -108,19 +117,45 @@ export default function AdminMatchesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCreateMatch = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({ home_team_id: "", away_team_id: "", match_date: "", venue: "Stade Municipal", status: "scheduled", group_name: "Groupe A" });
+  };
+
+  const handleEditClick = (match: AdminMatchRow) => {
+    setEditingId(match.id);
+    setFormData({
+      home_team_id: match.home_team_id,
+      away_team_id: match.away_team_id,
+      match_date:   toDatetimeLocal(match.match_date),
+      venue:        match.venue || "Stade Municipal",
+      status:       match.status,
+      group_name:   (match.group_name as PhaseValue) || "Groupe A",
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmitMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.home_team_id === formData.away_team_id) {
       setAlert({ isOpen: true, title: "Sélection Invalide", message: "Une équipe ne peut pas s'affronter elle-même !", type: "warning" });
       return;
     }
     setIsLoading(true);
-    const result = await createMatch(formData);
+    const result = editingId
+      ? await updateMatch(editingId, {
+          home_team_id: formData.home_team_id,
+          away_team_id: formData.away_team_id,
+          match_date:   formData.match_date,
+          venue:        formData.venue,
+          group_name:   formData.group_name,
+        })
+      : await createMatch(formData);
     if (!result.success) {
-      setAlert({ isOpen: true, title: "Erreur", message: "Erreur lors de la création : " + result.error, type: "error" });
+      setAlert({ isOpen: true, title: "Erreur", message: `Erreur lors de ${editingId ? "la modification" : "la création"} : ${result.error}`, type: "error" });
     } else {
-      setShowForm(false);
-      setFormData({ home_team_id: "", away_team_id: "", match_date: "", venue: "Stade Municipal", status: "scheduled", group_name: "Groupe A" });
+      resetForm();
       fetchData();
     }
     setIsLoading(false);
@@ -155,7 +190,7 @@ export default function AdminMatchesPage() {
         </div>
         <button
           type="button"
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => (showForm ? resetForm() : setShowForm(true))}
           className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-primary/20"
         >
           {showForm ? <XCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -166,7 +201,10 @@ export default function AdminMatchesPage() {
       {/* Formulaire */}
       {showForm && (
         <div className="glass-card p-8 border-primary/20 bg-linear-to-br from-card to-primary/5 animate-slide-up">
-          <form onSubmit={handleCreateMatch} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+          <h2 className="text-sm font-black uppercase tracking-widest text-muted mb-6">
+            {editingId ? "Modifier le Match" : "Nouveau Match"}
+          </h2>
+          <form onSubmit={handleSubmitMatch} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
 
             {/* Phase */}
             <div className="space-y-2 lg:col-span-3 md:col-span-2">
@@ -240,7 +278,7 @@ export default function AdminMatchesPage() {
               disabled={isLoading}
               className="lg:col-start-3 py-3.5 rounded-xl bg-white text-primary font-black uppercase tracking-widest text-xs hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Enregistrement...</> : "Confirmer le Match"}
+              {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Enregistrement...</> : editingId ? "Enregistrer les modifications" : "Confirmer le Match"}
             </button>
           </form>
         </div>
@@ -283,6 +321,7 @@ export default function AdminMatchesPage() {
                     <MatchRow
                       key={match.id}
                       match={match}
+                      onEdit={() => handleEditClick(match)}
                       onDelete={() => handleDeleteMatch(match.id)}
                     />
                   ))}
@@ -314,7 +353,7 @@ export default function AdminMatchesPage() {
 }
 
 /* ── Ligne match ── */
-function MatchRow({ match, onDelete }: { match: Match; onDelete: () => void }) {
+function MatchRow({ match, onEdit, onDelete }: { match: Match; onEdit: () => void; onDelete: () => void }) {
   const matchDate = new Date(match.match_date);
 
   return (
@@ -364,6 +403,11 @@ function MatchRow({ match, onDelete }: { match: Match; onDelete: () => void }) {
         )}>
           {STATUS_LABELS[match.status] || match.status}
         </span>
+        {match.status === "scheduled" && (
+          <button type="button" onClick={onEdit} title="Modifier ce match" className="p-2 text-muted hover:text-primary transition-colors">
+            <Pencil className="w-4 h-4" />
+          </button>
+        )}
         <button type="button" onClick={onDelete} title="Supprimer ce match" className="p-2 text-muted hover:text-red-500 transition-colors">
           <Trash2 className="w-4 h-4" />
         </button>

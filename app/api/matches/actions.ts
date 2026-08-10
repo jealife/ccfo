@@ -97,6 +97,39 @@ export async function createMatch(matchData: z.input<typeof matchCreateSchema>) 
   return { success: true };
 }
 
+const matchEditSchema = z.object({
+  home_team_id: z.string().uuid("Équipe domicile requise"),
+  away_team_id: z.string().uuid("Équipe extérieur requise"),
+  match_date: z.string().min(1, "Date requise"),
+  venue: z.string().trim().optional().default(""),
+  group_name: z.string().trim().min(1, "Phase requise"),
+});
+
+export async function updateMatch(id: string, matchData: z.input<typeof matchEditSchema>) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return { success: false, error: authError };
+
+  const parsed = matchEditSchema.safeParse(matchData);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides" };
+  }
+  if (parsed.data.home_team_id === parsed.data.away_team_id) {
+    return { success: false, error: "Une équipe ne peut pas s'affronter elle-même" };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('matches').update(parsed.data).eq('id', id);
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath('/admin/matches');
+  revalidatePath(`/admin/matches/${id}`);
+  revalidatePath(`/matches/${id}`);
+  revalidatePath('/matches');
+  revalidatePath('/');
+
+  return { success: true };
+}
+
 export async function deleteMatch(id: string) {
   const { error: authError } = await requireAdmin();
   if (authError) return { success: false, error: authError };
