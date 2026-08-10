@@ -91,6 +91,7 @@ export interface TournamentConfig {
   players_per_team: number;
   staff_per_team: number;
   is_active: boolean;
+  registrations_open: boolean;
   points_win: number;
   points_draw: number;
   points_loss: number;

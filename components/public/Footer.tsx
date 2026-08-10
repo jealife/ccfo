@@ -4,15 +4,26 @@ import Link from "next/link";
 import { Mail, Phone, MapPin, Globe } from "lucide-react";
 import Image from "next/image";
 import { ThemeToggle } from "./ThemeToggle";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
-export function PublicFooter() {
+export function PublicFooter({ registrationsOpen }: { registrationsOpen: boolean }) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (registrationsOpen) return;
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => setIsLoggedIn(!!session));
+  }, [registrationsOpen]);
+
   return (
     <footer className="hidden lg:block bg-surface-inverse text-white pt-16 pb-10 relative overflow-hidden">
       {/* Subtle top border accent */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-primary" />
 
       <div className="container mx-auto px-6 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-16">
+        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16", registrationsOpen ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
 
           {/* Brand */}
           <div className="space-y-5">
@@ -43,7 +54,7 @@ export function PublicFooter() {
               <li><FooterLink href="/matches">Matchs &amp; Résultats</FooterLink></li>
               <li><FooterLink href="/standings">Classement Officiel</FooterLink></li>
               <li><FooterLink href="/teams">Les Équipes</FooterLink></li>
-              <li><FooterLink href="/register">Inscriptions</FooterLink></li>
+              {registrationsOpen && <li><FooterLink href="/register">Inscriptions</FooterLink></li>}
             </ul>
           </div>
 
@@ -71,18 +82,20 @@ export function PublicFooter() {
           </div>
 
           {/* CTA */}
-          <div className="space-y-5">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-primary">Participez</h3>
-            <p className="text-sm text-white/50 leading-relaxed">
-              Inscrivez votre équipe et participez à la plus grande compétition du canton.
-            </p>
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-            >
-              Inscrire mon équipe
-            </Link>
-          </div>
+          {registrationsOpen && (
+            <div className="space-y-5">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-primary">Participez</h3>
+              <p className="text-sm text-white/50 leading-relaxed">
+                Inscrivez votre équipe et participez à la plus grande compétition du canton.
+              </p>
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+              >
+                Inscrire mon équipe
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Bottom bar */}
@@ -97,6 +110,12 @@ export function PublicFooter() {
           <div className="flex flex-wrap items-center justify-center gap-4">
             <ThemeToggle />
             <div className="flex items-center gap-x-6 text-[9px] font-bold uppercase tracking-widest text-white/30">
+              {!registrationsOpen && !isLoggedIn && (
+                <>
+                  <Link href="/login" className="hover:text-primary transition-colors">Connexion</Link>
+                  <span className="text-white/10 hidden md:inline">·</span>
+                </>
+              )}
               <Link href="/terms"   className="hover:text-primary transition-colors">Mentions Légales</Link>
               <Link href="/privacy" className="hover:text-primary transition-colors">Confidentialité</Link>
               <span className="text-white/10 hidden md:inline">·</span>

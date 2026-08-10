@@ -85,7 +85,7 @@ export function RegistrationForm() {
     players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null }),
     documents: { receipt: null }
   });
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error" | "closed">("idle");
 
   // Toujours pointer vers les dernières données, pour les handlers hors-cycle React (visibilitychange, pagehide).
   const formDataRef = useRef(formData);
@@ -108,7 +108,13 @@ export function RegistrationForm() {
     setSaveStatus("saving");
     try {
       const result = await saveRegistrationDraft(data);
-      if (!result?.success) throw new Error(result?.error || "Échec de la sauvegarde");
+      if (!result?.success) {
+        if (result?.code === "REGISTRATIONS_CLOSED") {
+          setSaveStatus("closed");
+          return;
+        }
+        throw new Error(result?.error || "Échec de la sauvegarde");
+      }
       retryCountRef.current = 0;
       setSaveStatus("saved");
     } catch (err) {
@@ -592,7 +598,7 @@ export function RegistrationForm() {
   );
 }
 
-function SaveStatusIndicator({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
+function SaveStatusIndicator({ status }: { status: "idle" | "saving" | "saved" | "error" | "closed" }) {
   if (status === "idle") return null;
 
   return (
@@ -613,6 +619,12 @@ function SaveStatusIndicator({ status }: { status: "idle" | "saving" | "saved" |
         <span className="flex items-center gap-1.5 text-red-400">
           <AlertTriangle className="w-3.5 h-3.5" />
           Échec de la sauvegarde — nouvelle tentative… Si le problème persiste, contactez l'administration.
+        </span>
+      )}
+      {status === "closed" && (
+        <span className="flex items-center gap-1.5 text-red-400">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Inscriptions fermées — votre brouillon n&apos;a pas pu être sauvegardé.
         </span>
       )}
     </div>

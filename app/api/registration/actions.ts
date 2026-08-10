@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { registrationSchema, type RegistrationFormData } from "@/lib/validation/registration";
 import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/errors";
+import { isRegistrationOpen } from "@/lib/registration";
 
 function toIsoDateHelper(frDate: string | null | undefined): string | null {
   if (!frDate || frDate.length !== 10) return null;
@@ -19,6 +20,10 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return { success: false, error: "Non autorisé" };
+
+  if (!(await isRegistrationOpen())) {
+    return { success: false, error: "Les inscriptions sont actuellement fermées.", code: "REGISTRATIONS_CLOSED" as const };
+  }
 
   const parsed = registrationSchema.safeParse(formData);
   if (!parsed.success) {
@@ -148,6 +153,10 @@ export async function saveRegistrationDraft(formData: any) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Non autorisé" };
+
+  if (!(await isRegistrationOpen())) {
+    return { success: false, error: "Les inscriptions sont actuellement fermées.", code: "REGISTRATIONS_CLOSED" as const };
+  }
 
   const admin = createAdminClient();
 

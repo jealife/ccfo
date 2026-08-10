@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, Calendar, Users, BarChart3, LogIn } from "lucide-react";
+import { Trophy, Calendar, Users, BarChart3, LogIn, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-export function PublicNavbar() {
+export function PublicNavbar({ registrationsOpen }: { registrationsOpen: boolean }) {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (registrationsOpen) return;
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => setIsLoggedIn(!!session));
+  }, [registrationsOpen]);
 
   return (
     <>
@@ -38,20 +47,33 @@ export function PublicNavbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/register"
-              className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-muted hover:text-foreground transition-colors"
-            >
-              S&apos;inscrire
-            </Link>
-            <Link
-              href="/login"
-              aria-label="Espace Équipe"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all shadow-sm shadow-primary/20 touch-manipulation"
-            >
-              <LogIn className="w-4 h-4" />
-              <span className="hidden lg:inline">Espace Équipe</span>
-            </Link>
+            {registrationsOpen ? (
+              <>
+                <Link
+                  href="/register"
+                  className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-muted hover:text-foreground transition-colors"
+                >
+                  S&apos;inscrire
+                </Link>
+                <Link
+                  href="/login"
+                  aria-label="Espace Équipe"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all shadow-sm shadow-primary/20 touch-manipulation"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden lg:inline">Espace Équipe</span>
+                </Link>
+              </>
+            ) : isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                aria-label="Tableau de bord"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all shadow-sm shadow-primary/20 touch-manipulation"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span className="hidden lg:inline">Tableau de bord</span>
+              </Link>
+            ) : null}
           </div>
         </div>
       </nav>

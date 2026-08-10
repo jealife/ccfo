@@ -14,6 +14,7 @@ type Config = {
   players_per_team: number | string;
   staff_per_team: number | string;
   is_active: boolean;
+  registrations_open: boolean;
   points_win: number | string;
   points_draw: number | string;
   points_loss: number | string;
@@ -29,6 +30,7 @@ const DEFAULT_CONFIG: Config = {
   players_per_team: 24,
   staff_per_team: 6,
   is_active: true,
+  registrations_open: true,
   points_win: 3,
   points_draw: 1,
   points_loss: 0,
@@ -270,6 +272,36 @@ export default function AdminTournamentsPage() {
                     : "bg-red-500/10 text-red-500 border-red-500/20"
                 )}>
                   {config.is_active ? "Actif" : "Suspendu"}
+                </span>
+              )}
+            </div>
+
+            <div className="pt-4 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-bold">Inscriptions</p>
+                <p className="text-xs text-muted">Autorise la création de compte et l&apos;inscription de nouvelles équipes.</p>
+              </div>
+              {isEditing ? (
+                <button
+                  onClick={() => set('registrations_open', !config.registrations_open)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-black uppercase transition-all cursor-pointer hover:scale-105 border",
+                    config.registrations_open
+                      ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500 hover:text-white"
+                      : "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500 hover:text-white"
+                  )}
+                  title="Cliquer pour basculer"
+                >
+                  {config.registrations_open ? "Ouvertes" : "Fermées"}
+                </button>
+              ) : (
+                <span className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-black uppercase border",
+                  config.registrations_open
+                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : "bg-red-500/10 text-red-500 border-red-500/20"
+                )}>
+                  {config.registrations_open ? "Ouvertes" : "Fermées"}
                 </span>
               )}
             </div>

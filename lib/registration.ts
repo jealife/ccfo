@@ -33,3 +33,18 @@ export async function getRegistrationStatus(): Promise<RegistrationStatus> {
 
   return { teamCount, maxTeams, isOpen: teamCount < maxTeams };
 }
+
+/**
+ * Indique si les inscriptions (création de compte manager + soumission de
+ * fiche d'équipe) sont ouvertes, selon le champ `registrations_open` de
+ * `tournament_config`. Indépendant de `is_active`.
+ */
+export async function isRegistrationOpen(): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('tournament_config')
+    .select('registrations_open')
+    .maybeSingle();
+
+  return data?.registrations_open ?? true;
+}

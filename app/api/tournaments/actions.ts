@@ -30,6 +30,7 @@ const configSchema = z.object({
   players_per_team: z.number().int().min(1).max(40).optional(),
   staff_per_team: z.number().int().min(0).max(20).optional(),
   is_active: z.boolean().optional(),
+  registrations_open: z.boolean().optional(),
   points_win: z.number().int().min(0).optional(),
   points_draw: z.number().int().min(0).optional(),
   points_loss: z.number().int().min(0).optional(),
@@ -62,6 +63,9 @@ export async function updateTournamentConfig(configData: z.infer<typeof configSc
   revalidatePath('/admin/tournaments');
   revalidatePath('/standings');
   revalidatePath('/');
+  revalidatePath('/matches');
+  revalidatePath('/teams');
+  revalidatePath('/register');
 
   return { success: true };
 }
