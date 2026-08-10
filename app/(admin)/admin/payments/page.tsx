@@ -33,12 +33,18 @@ type PaymentTeam = {
   village: string | null;
   status: string;
   payment_receipt_url?: string | null;
-  payments?: PaymentRow[] | null;
+  // payments.team_id est UNIQUE en base : PostgREST renvoie donc un objet
+  // (ou null) plutôt qu'un tableau pour cette relation embarquée.
+  payments?: PaymentRow | PaymentRow[] | null;
 };
 
-/** Le paiement de référence d'une équipe (le plus ancien : un seul par équipe). */
+/** Le paiement de référence d'une équipe (un seul par équipe). */
 function getPayment(team: PaymentTeam): PaymentRow | null {
-  const rows = team.payments ?? [];
+  const rows = Array.isArray(team.payments)
+    ? team.payments
+    : team.payments
+      ? [team.payments]
+      : [];
   if (rows.length === 0) return null;
   return [...rows].sort((a, b) =>
     (a.created_at ?? "").localeCompare(b.created_at ?? "")
