@@ -173,7 +173,10 @@ export default function AdminStaffPage() {
               {/* Bouton licence — visible sur mobile, au survol sur desktop */}
               <div className="absolute top-2 right-2 md:inset-0 md:bg-accent/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center md:backdrop-blur-[2px]">
                 <button
+                  type="button"
                   onClick={() => setPrintingMember(member)}
+                  title="Imprimer la licence"
+                  aria-label="Imprimer la licence"
                   className="p-2 md:px-4 md:py-2 rounded-xl bg-accent text-white font-black uppercase tracking-widest text-[10px] shadow-xl flex items-center gap-2 hover:scale-110 transition-all"
                 >
                   <Printer className="w-4 h-4" /> <span className="hidden md:inline">Imprimer Licence</span>
