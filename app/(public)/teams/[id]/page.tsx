@@ -5,6 +5,7 @@ import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/server";
 import { ChevronLeft, MapPin, Users, ShieldCheck, Shirt } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { categorizePosition, positionLabel, positionGroupLabel, positionGroupBadgeClass, POSITION_GROUP_ORDER, type PositionGroup } from "@/lib/position";
 import type { Player } from "@/lib/types";
 
 export const revalidate = 300;
@@ -38,22 +39,6 @@ export async function generateMetadata(
   };
 }
 
-const POSITION_LABELS: Record<string, string> = {
-  GK:  "Gardien",
-  DEF: "Défenseur",
-  MID: "Milieu",
-  ATT: "Attaquant",
-  FWD: "Attaquant",
-};
-
-const POSITION_COLORS: Record<string, string> = {
-  GK:  "bg-yellow-400/15 text-yellow-500 border-yellow-400/20",
-  DEF: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  MID: "bg-green-500/15 text-green-400 border-green-500/20",
-  ATT: "bg-primary/15 text-primary border-primary/20",
-  FWD: "bg-primary/15 text-primary border-primary/20",
-};
-
 export default async function TeamDetailPage({
   params,
 }: {
@@ -80,18 +65,9 @@ export default async function TeamDetailPage({
 
   const typedPlayers = (players ?? []) as Player[];
 
-  const byPosition: Record<string, Player[]> = {};
-  for (const p of typedPlayers) {
-    const pos = p.position ?? "—";
-    if (!byPosition[pos]) byPosition[pos] = [];
-    byPosition[pos].push(p);
-  }
-
-  const positionOrder = ["GK", "DEF", "MID", "ATT", "FWD"];
-  const sortedPositions = [
-    ...positionOrder.filter((pos) => byPosition[pos]),
-    ...Object.keys(byPosition).filter((pos) => !positionOrder.includes(pos)),
-  ];
+  const byPosition: Record<PositionGroup, Player[]> = { GK: [], DEF: [], MID: [], ATT: [], OTHER: [] };
+  for (const p of typedPlayers) byPosition[categorizePosition(p.position)].push(p);
+  const sortedPositions = POSITION_GROUP_ORDER.filter((g) => byPosition[g].length > 0);
 
   return (
     <main className="bg-background pt-24 pb-24 lg:pb-0">
@@ -152,9 +128,9 @@ export default async function TeamDetailPage({
                     <div className="h-px flex-1 bg-border" />
                     <span className={cn(
                       "text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border",
-                      POSITION_COLORS[pos] ?? "bg-secondary text-muted border-border"
+                      positionGroupBadgeClass(pos)
                     )}>
-                      {POSITION_LABELS[pos] ?? pos}
+                      {positionGroupLabel(pos)}
                     </span>
                     <div className="h-px flex-1 bg-border" />
                   </div>
@@ -213,7 +189,7 @@ function PlayerCard({ player }: { player: Player }) {
         <div className="flex items-center gap-1.5 mt-1">
           <Shirt className="w-3 h-3 text-muted shrink-0" />
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
-            {POSITION_LABELS[player.position ?? ""] ?? player.position ?? "—"}
+            {player.position ? positionLabel(player.position) : "—"}
           </span>
         </div>
       </div>

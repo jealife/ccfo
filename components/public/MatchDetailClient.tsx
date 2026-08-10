@@ -2,10 +2,17 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Goal, Square, User, Award, Star, ArrowLeftRight } from "lucide-react";
+import { Goal, Square, Award, Star, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { getStartedAt, formatFrenchDate, formatMatchStatus } from "@/lib/helpers";
+import {
+  categorizePosition,
+  positionGroupLabel,
+  positionGroupBadgeClass,
+  POSITION_GROUP_ORDER,
+  type PositionGroup,
+} from "@/lib/position";
 import type { Match, MatchEvent, MatchStat, Player } from "@/lib/types";
 import { MatchTimer } from "./MatchTimer";
 
@@ -301,6 +308,7 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
                   const team        = match[side];
                   const teamName    = team?.name    ?? "Équipe inconnue";
                   const teamPlayers = team?.players ?? [];
+                  const groups      = groupByPosition(teamPlayers);
                   return (
                     <div key={side} className="glass-card overflow-hidden">
                       <div className="bg-secondary border-b border-border p-4 flex items-center gap-3">
@@ -320,33 +328,41 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
                         </div>
                         <span className="ml-auto text-[10px] font-bold text-muted">{teamPlayers.length} joueurs</span>
                       </div>
-                      <div className="divide-y divide-border">
-                        {teamPlayers.length > 0 ? teamPlayers.map((p) => (
-                          <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors">
-                            <span className={cn(
-                              "w-6 text-right font-black font-outfit text-xs shrink-0",
-                              side === "home" ? "text-primary" : "text-foreground"
-                            )}>
-                              {p.jersey_number ?? "—"}
-                            </span>
-                            <div className="w-8 h-8 rounded-full bg-secondary border border-border overflow-hidden shrink-0 flex items-center justify-center relative">
-                              {p.photo_url ? (
-                                <Image src={p.photo_url} alt={p.full_name} fill className="object-cover" sizes="32px" />
-                              ) : (
-                                <User className="w-4 h-4 text-muted/50" />
-                              )}
+                      {teamPlayers.length > 0 ? (
+                        <div className="divide-y divide-border">
+                          {groups.map(({ group, players }) => (
+                            <div key={group}>
+                              <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
+                                <span className={cn(
+                                  "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                                  positionGroupBadgeClass(group)
+                                )}>
+                                  {positionGroupLabel(group)}
+                                </span>
+                                <span className="text-[9px] font-bold text-muted">{players.length}</span>
+                              </div>
+                              {players.map((p) => (
+                                <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/50 transition-colors">
+                                  <span className={cn(
+                                    "w-6 text-right font-black font-outfit text-xs shrink-0",
+                                    side === "home" ? "text-primary" : "text-foreground"
+                                  )}>
+                                    {p.jersey_number ?? "—"}
+                                  </span>
+                                  <PlayerAvatar photo={p.photo_url} name={p.full_name} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-sm text-foreground truncate">{p.full_name}</div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-bold text-sm text-foreground truncate">{p.full_name}</div>
-                              <div className="text-[9px] font-black text-muted uppercase tracking-widest">{p.position ?? "—"}</div>
-                            </div>
-                          </div>
-                        )) : (
-                          <div className="p-8 text-center text-muted text-sm italic">
-                            Composition non disponible.
-                          </div>
-                        )}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center text-muted text-sm italic">
+                          Composition non disponible.
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -388,29 +404,41 @@ function StatBar({ homePerc }: { homePerc: number }) {
 }
 
 /* ── Terrain de foot ── */
-const POSITION_ORDER: string[] = ["GK", "DEF", "MID", "ATT", "FWD"];
 
-function groupByPosition(players: Player[]): Player[][] {
-  const groups: Record<string, Player[]> = {};
-  for (const p of players) {
-    const pos = p.position?.toUpperCase() ?? "—";
-    const key = POSITION_ORDER.find((o) => pos.startsWith(o)) ?? pos;
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(p);
-  }
-  return POSITION_ORDER.filter((k) => groups[k]?.length).map((k) => groups[k]);
+type PositionBucket = { group: PositionGroup; players: Player[] };
+
+/** Regroupe par poste sans jamais perdre de joueur (les postes non reconnus vont dans "OTHER"). */
+function groupByPosition(players: Player[]): PositionBucket[] {
+  const groups: Record<PositionGroup, Player[]> = { GK: [], DEF: [], MID: [], ATT: [], OTHER: [] };
+  for (const p of players) groups[categorizePosition(p.position)].push(p);
+  return POSITION_GROUP_ORDER.filter((g) => groups[g].length > 0).map((g) => ({ group: g, players: groups[g] }));
+}
+
+/** Formation type (ex. "4-3-3"), calculée hors gardien et postes non reconnus. */
+function formationLabel(buckets: PositionBucket[]): string | null {
+  const counts = new Map(buckets.map((b) => [b.group, b.players.length]));
+  const def = counts.get("DEF") ?? 0;
+  const mid = counts.get("MID") ?? 0;
+  const att = counts.get("ATT") ?? 0;
+  if (!def || !mid || !att) return null;
+  return `${def}-${mid}-${att}`;
 }
 
 function PitchPlayer({ player, color }: { player: Player; color: "red" | "dark" }) {
   return (
-    <div className="flex flex-col items-center gap-0.5 shrink-0">
+    <div className="flex flex-col items-center gap-1 shrink-0 group/player" title={player.full_name}>
       <div className={cn(
-        "w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-[10px] text-white shadow",
-        color === "red" ? "bg-primary border-primary/80" : "bg-foreground border-foreground/80"
+        "relative w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-[11px] text-white shadow-lg overflow-hidden shrink-0",
+        "transition-transform duration-200 group-hover/player:scale-110",
+        color === "red" ? "bg-primary border-white/80 shadow-primary/30" : "bg-foreground border-white/70 shadow-black/30"
       )}>
-        {player.jersey_number ?? player.full_name?.[0] ?? "?"}
+        {player.photo_url ? (
+          <Image src={player.photo_url} alt="" fill sizes="36px" className="object-cover" />
+        ) : (
+          player.jersey_number ?? player.full_name?.[0] ?? "?"
+        )}
       </div>
-      <span className="text-[8px] font-bold text-white/80 max-w-[44px] truncate text-center leading-tight">
+      <span className="text-[8px] font-bold text-white max-w-[52px] truncate text-center leading-tight [text-shadow:0_1px_2px_rgb(0_0_0_/_60%)]">
         {player.full_name?.split(" ").pop() ?? ""}
       </span>
     </div>
@@ -425,6 +453,8 @@ function FootballPitch({ homePlayers, awayPlayers, homeName, awayName }: {
 }) {
   const homeGroups = groupByPosition(homePlayers);
   const awayGroups = groupByPosition(awayPlayers);
+  const homeFormation = formationLabel(homeGroups);
+  const awayFormation = formationLabel(awayGroups);
 
   if (homePlayers.length === 0 && awayPlayers.length === 0) return null;
 
@@ -446,13 +476,15 @@ function FootballPitch({ homePlayers, awayPlayers, homeName, awayName }: {
         ))}
       </svg>
 
-      <div className="relative z-10 pt-3 pb-1 text-center">
-        <span className="text-[9px] font-black uppercase tracking-widest text-white/50">{awayName}</span>
+      <div className="relative z-10 pt-3 pb-1 flex flex-col items-center gap-0.5">
+        <span className="text-[9px] font-black uppercase tracking-widest text-white/70">{awayName}</span>
+        {awayFormation && <span className="text-[8px] font-bold text-white/40 tabular-nums">{awayFormation}</span>}
       </div>
-      <div className="relative z-10 flex flex-col gap-3 px-4 pb-2">
-        {[...awayGroups].reverse().map((group, i) => (
-          <div key={i} className="flex justify-center gap-3 flex-wrap">
-            {group.map((p) => <PitchPlayer key={p.id} player={p} color="dark" />)}
+      {/* Le gardien est affiché en premier (extrémité haute = son propre but) */}
+      <div className="relative z-10 flex flex-col gap-4 px-4 pb-2">
+        {awayGroups.map(({ group, players }) => (
+          <div key={group} className="flex justify-center gap-4 flex-wrap">
+            {players.map((p) => <PitchPlayer key={p.id} player={p} color="dark" />)}
           </div>
         ))}
       </div>
@@ -461,15 +493,17 @@ function FootballPitch({ homePlayers, awayPlayers, homeName, awayName }: {
         <div className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center bg-white/5 shrink-0" />
         <div className="flex-1 h-px bg-white/20 mx-6" />
       </div>
-      <div className="relative z-10 flex flex-col gap-3 px-4 pt-2">
-        {homeGroups.map((group, i) => (
-          <div key={i} className="flex justify-center gap-3 flex-wrap">
-            {group.map((p) => <PitchPlayer key={p.id} player={p} color="red" />)}
+      {/* Le gardien est affiché en dernier (extrémité basse = son propre but) */}
+      <div className="relative z-10 flex flex-col-reverse gap-4 px-4 pt-2">
+        {homeGroups.map(({ group, players }) => (
+          <div key={group} className="flex justify-center gap-4 flex-wrap">
+            {players.map((p) => <PitchPlayer key={p.id} player={p} color="red" />)}
           </div>
         ))}
       </div>
-      <div className="relative z-10 pt-1 pb-3 text-center">
-        <span className="text-[9px] font-black uppercase tracking-widest text-white/50">{homeName}</span>
+      <div className="relative z-10 pt-1 pb-3 flex flex-col items-center gap-0.5">
+        {homeFormation && <span className="text-[8px] font-bold text-white/40 tabular-nums">{homeFormation}</span>}
+        <span className="text-[9px] font-black uppercase tracking-widest text-white/70">{homeName}</span>
       </div>
     </div>
   );
