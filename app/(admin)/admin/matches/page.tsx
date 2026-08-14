@@ -19,7 +19,7 @@ import Link from "next/link";
 import { AlertDialog } from "@/components/ui/Modal";
 import { createMatch, updateMatch, deleteMatch } from "@/app/api/matches/actions";
 import { localInputToISOString, isoToLocalInput, TOURNAMENT_TIMEZONE } from "@/lib/timezone";
-import type { Match } from "@/lib/types";
+import type { Match, MatchStatus } from "@/lib/types";
 
 // ── Structure du tournoi ──────────────────────────────────────
 const PHASES = [
@@ -46,12 +46,14 @@ function phaseSection(v: string | null | undefined) {
 const STATUS_STYLES: Record<string, string> = {
   scheduled: "bg-accent/15 text-accent",
   live:      "bg-primary/15 text-primary animate-pulse",
+  half_time: "bg-yellow-500/15 text-yellow-500",
   finished:  "bg-secondary text-muted border border-border",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Programmé",
   live:      "En direct",
+  half_time: "Mi-temps",
   finished:  "Terminé",
 };
 
@@ -73,7 +75,7 @@ export default function AdminMatchesPage() {
     away_team_id: string;
     match_date: string;
     venue: string;
-    status: "scheduled" | "live" | "finished";
+    status: MatchStatus;
     group_name: PhaseValue;
   }>({
     home_team_id: "",
@@ -380,7 +382,7 @@ function MatchRow({ match, onEdit, onDelete }: { match: Match; onEdit: () => voi
           </div>
 
           <div className="px-4 py-1.5 rounded-xl bg-white/5 border border-white/5 shrink-0">
-            {match.status === "finished"
+            {match.status !== "scheduled"
               ? <span className="text-sm font-black tabular-nums">{match.home_score} – {match.away_score}</span>
               : <span className="text-[10px] font-black uppercase tracking-widest text-primary/50">VS</span>
             }

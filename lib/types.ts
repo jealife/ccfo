@@ -1,6 +1,6 @@
 // ── Types partagés pour toute l'application CCFO ─────────────
 
-export type MatchStatus   = "scheduled" | "live" | "finished";
+export type MatchStatus   = "scheduled" | "live" | "half_time" | "finished";
 export type EventType     = "goal" | "yellow" | "red" | "substitution";
 export type PlayerRole    = "GK" | "DEF" | "MID" | "ATT" | "FWD";
 export type TeamStatus    = "incomplete" | "pending" | "validated" | "rejected" | "locked";
@@ -60,7 +60,7 @@ export interface Match {
   group_name?: string | null;
   venue?: string | null;
   events?: MatchEvent[];
-  stats?: (MatchStat | { label: "started_at"; value: string })[];
+  stats?: (MatchStat | { label: "started_at" | "second_half_started_at"; value: string })[];
   motm_player?: string | null;
   home?: Team;
   away?: Team;

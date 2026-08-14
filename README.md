@@ -46,7 +46,7 @@ Plateforme de la **Coupe Cantonale Fieng Okano** : site public pour les supporte
 -- Enums
 CREATE TYPE user_role   AS ENUM ('admin', 'manager');
 CREATE TYPE team_status AS ENUM ('incomplete', 'pending', 'validated', 'rejected', 'locked');
-CREATE TYPE match_status AS ENUM ('scheduled', 'live', 'finished');
+CREATE TYPE match_status AS ENUM ('scheduled', 'live', 'half_time', 'finished'); -- 'half_time' ajouté via sql/add_half_time_match_status.sql
 CREATE TYPE payment_status AS ENUM ('pending', 'paid');
 
 -- Profils (créés par trigger à l'inscription — voir sql/harden_profiles_trigger.sql)

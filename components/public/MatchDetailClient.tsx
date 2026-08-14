@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Goal, Square, Award, Star, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { getStartedAt, formatFrenchDate, formatMatchStatus } from "@/lib/helpers";
+import { getStartedAt, getSecondHalfStartedAt, formatFrenchDate, formatMatchStatus } from "@/lib/helpers";
 import {
   categorizePosition,
   positionGroupLabel,
@@ -31,11 +31,12 @@ const TABS = [
 // "stats" reste dans le type pour que le panneau Statistiques (désactivé ci-dessus) compile toujours.
 type TabId = (typeof TABS)[number]["id"] | "stats";
 
-/** Sépare le started_at (stocké dans le JSON stats) des vraies statistiques */
-function splitStats(raw: unknown[]): { stats: MatchStat[]; startedAt: string | null } {
+/** Sépare le started_at / second_half_started_at (stockés dans le JSON stats) des vraies statistiques */
+function splitStats(raw: unknown[]): { stats: MatchStat[]; startedAt: string | null; secondHalfStartedAt: string | null } {
   return {
-    stats: (raw as MatchStat[]).filter((s) => s.label !== "started_at"),
+    stats: (raw as MatchStat[]).filter((s) => s.label !== "started_at" && s.label !== "second_half_started_at"),
     startedAt: getStartedAt(raw),
+    secondHalfStartedAt: getSecondHalfStartedAt(raw),
   };
 }
 
@@ -45,6 +46,7 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
   const [events, setEvents]       = useState<MatchEvent[]>(initialEvents);
   const [stats,  setStats]        = useState<MatchStat[]>(() => splitStats(initialStats ?? []).stats);
   const [startedAt, setStartedAt] = useState<string | null>(() => splitStats(initialStats ?? []).startedAt);
+  const [secondHalfStartedAt, setSecondHalfStartedAt] = useState<string | null>(() => splitStats(initialStats ?? []).secondHalfStartedAt);
 
   const supabase = createClient();
 
@@ -61,6 +63,7 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
             const next = splitStats(payload.new.stats as unknown[]);
             setStats(next.stats);
             if (next.startedAt) setStartedAt(next.startedAt);
+            if (next.secondHalfStartedAt) setSecondHalfStartedAt(next.secondHalfStartedAt);
           }
         }
       )
@@ -201,8 +204,8 @@ export function MatchDetailClient({ match: initialMatch, events: initialEvents, 
 
               {/* Sidebar */}
               <div className="lg:w-72 shrink-0 space-y-4">
-                {match.status === "live" && (
-                  <MatchTimer startedAt={startedAt ?? undefined} status={match.status} />
+                {(match.status === "live" || match.status === "half_time") && (
+                  <MatchTimer startedAt={startedAt ?? undefined} secondHalfStartedAt={secondHalfStartedAt ?? undefined} status={match.status} />
                 )}
 
                 {match.motm_player && (() => {

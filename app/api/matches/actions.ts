@@ -18,10 +18,11 @@ const matchEventSchema = z.object({
 const matchStatSchema = z.union([
   z.object({ label: z.string(), home: z.union([z.number(), z.string()]), away: z.union([z.number(), z.string()]) }),
   z.object({ label: z.literal("started_at"), value: z.string() }),
+  z.object({ label: z.literal("second_half_started_at"), value: z.string() }),
 ]);
 
 const matchUpdateSchema = z.object({
-  status: z.enum(["scheduled", "live", "finished"]).optional(),
+  status: z.enum(["scheduled", "live", "half_time", "finished"]).optional(),
   motm_player: z.string().optional(),
   home_score: z.number().int().min(0).optional(),
   away_score: z.number().int().min(0).optional(),
@@ -70,7 +71,7 @@ const matchCreateSchema = z.object({
   away_team_id: z.string().uuid("Équipe extérieur requise"),
   match_date: z.string().min(1, "Date requise"),
   venue: z.string().trim().optional().default(""),
-  status: z.enum(["scheduled", "live", "finished"]).default("scheduled"),
+  status: z.enum(["scheduled", "live", "half_time", "finished"]).default("scheduled"),
   group_name: z.string().trim().min(1, "Phase requise"),
 });
 

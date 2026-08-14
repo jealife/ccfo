@@ -5,7 +5,7 @@ import { MapPin, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { getStartedAt } from "@/lib/helpers";
+import { getStartedAt, getSecondHalfStartedAt } from "@/lib/helpers";
 import { TOURNAMENT_TIMEZONE } from "@/lib/timezone";
 import type { Match, MatchStat } from "@/lib/types";
 import { MatchTimer } from "./MatchTimer";
@@ -30,8 +30,10 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
   if (!match) return null;
 
   const startedAt  = getStartedAt(match.stats as MatchStat[]);
+  const secondHalfStartedAt = getSecondHalfStartedAt(match.stats as MatchStat[]);
   const matchDate  = new Date(match.match_date);
   const isLive     = match.status === "live";
+  const isHalfTime = match.status === "half_time";
   const isFinished = match.status === "finished";
   const isScheduled = match.status === "scheduled";
 
@@ -47,10 +49,10 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
           <div className="flex items-center gap-2">
             <span className={cn(
               "w-2 h-2 rounded-full shrink-0",
-              isLive ? "bg-red-400 animate-pulse" : "bg-white/30"
+              isLive ? "bg-red-400 animate-pulse" : isHalfTime ? "bg-yellow-400" : "bg-white/30"
             )} />
             <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest">
-              {isLive ? "En Direct" : isFinished ? "Terminé" : "Match à l'Affiche"}
+              {isLive ? "En Direct" : isHalfTime ? "Mi-temps" : isFinished ? "Terminé" : "Match à l'Affiche"}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-white/40">
@@ -94,8 +96,8 @@ export function LiveHeroMatch({ initialMatch }: { initialMatch: Match }) {
                 <div className="text-4xl md:text-6xl font-black text-white tracking-tighter">
                   {match.home_score} : {match.away_score}
                 </div>
-                {isLive ? (
-                  <MatchTimer startedAt={startedAt ?? undefined} status={match.status} />
+                {isLive || isHalfTime ? (
+                  <MatchTimer startedAt={startedAt ?? undefined} secondHalfStartedAt={secondHalfStartedAt ?? undefined} status={match.status} />
                 ) : (
                   <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Temps réglementaire</span>
                 )}

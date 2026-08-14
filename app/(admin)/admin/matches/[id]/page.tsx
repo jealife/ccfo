@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock, Star, ArrowLeftRight, RefreshCw, AlertTriangle } from "lucide-react";
+import { ChevronLeft, Save, Plus, Activity, AlertCircle, Goal, Square, Play, SquareCheck, Clock, Star, ArrowLeftRight, RefreshCw, AlertTriangle, PauseCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,7 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
   const [homePlayers, setHomePlayers] = useState<RosterPlayer[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<RosterPlayer[]>([]);
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [secondHalfStartedAt, setSecondHalfStartedAt] = useState<string | null>(null);
   const [matchStats, setMatchStats] = useState<MatchStat[]>([]);
 
   // New Event Form
@@ -92,7 +93,9 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
       const stats = (data.stats || []) as (MatchStat & { value?: string })[];
       const startedAtEntry = stats.find((s) => s.label === 'started_at');
       setStartedAt(startedAtEntry ? (startedAtEntry.value ?? null) : null);
-      setMatchStats(stats.filter((s) => s.label !== 'started_at'));
+      const secondHalfEntry = stats.find((s) => s.label === 'second_half_started_at');
+      setSecondHalfStartedAt(secondHalfEntry ? (secondHalfEntry.value ?? null) : null);
+      setMatchStats(stats.filter((s) => s.label !== 'started_at' && s.label !== 'second_half_started_at'));
 
       // Fetch players for both teams
       const [hRes, aRes] = await Promise.all([
@@ -119,10 +122,13 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
     const sortedEvents = [...events].sort((a, b) => parseInt(String(a.minute)) - parseInt(String(b.minute)));
     setEvents(sortedEvents);
 
-    const currentStartedAt = status === 'live' ? (startedAt || new Date().toISOString()) : startedAt;
-    const finalStats: (MatchStat | { label: "started_at"; value: string })[] = [...matchStats];
+    const currentStartedAt = (status === 'live' || status === 'half_time') ? (startedAt || new Date().toISOString()) : startedAt;
+    const finalStats: (MatchStat | { label: "started_at"; value: string } | { label: "second_half_started_at"; value: string })[] = [...matchStats];
     if (currentStartedAt) {
       finalStats.push({ label: 'started_at', value: currentStartedAt });
+    }
+    if (secondHalfStartedAt) {
+      finalStats.push({ label: 'second_half_started_at', value: secondHalfStartedAt });
     }
 
     const result = await updateMatchLive(id, {
@@ -258,28 +264,45 @@ export default function MatchLiveController({ params }: { params: Promise<{ id: 
 
           <div className="glass-card p-8 space-y-6">
             <h3 className="text-xs font-black uppercase tracking-widest text-muted">Statut du Match</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <button onClick={() => setStatus('scheduled')} className={cn("p-3 rounded-xl border flex flex-col items-center gap-2 transition-all", status === 'scheduled' ? "bg-white/10 border-white/20" : "bg-card border-white/5 opacity-50")}>
                 <Clock className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase">Prévu</span>
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setStatus('live');
-                  if (!startedAt) setStartedAt(new Date().toISOString());
-                }} 
+                  if (!startedAt) {
+                    // Coup d'envoi de la 1ère mi-temps
+                    setStartedAt(new Date().toISOString());
+                  } else if (status === 'half_time' && !secondHalfStartedAt) {
+                    // Reprise du jeu après la mi-temps
+                    setSecondHalfStartedAt(new Date().toISOString());
+                  }
+                }}
                 className={cn("p-3 rounded-xl border flex flex-col items-center gap-2 transition-all", status === 'live' ? "bg-primary/20 border-primary text-primary" : "bg-card border-white/5 opacity-50")}
               >
                 <Play className="w-5 h-5" />
-                <span className="text-[10px] font-black uppercase">En Direct</span>
+                <span className="text-[10px] font-black uppercase">{secondHalfStartedAt || !startedAt ? "En Direct" : "Reprise"}</span>
+              </button>
+              <button onClick={() => setStatus('half_time')} className={cn("p-3 rounded-xl border flex flex-col items-center gap-2 transition-all", status === 'half_time' ? "bg-yellow-500/20 border-yellow-500 text-yellow-500" : "bg-card border-white/5 opacity-50")}>
+                <PauseCircle className="w-5 h-5" />
+                <span className="text-[10px] font-black uppercase">Mi-temps</span>
               </button>
               <button onClick={() => setStatus('finished')} className={cn("p-3 rounded-xl border flex flex-col items-center gap-2 transition-all", status === 'finished' ? "bg-green-500/20 border-green-500 text-green-500" : "bg-card border-white/5 opacity-50")}>
                 <SquareCheck className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase">Terminé</span>
               </button>
             </div>
+            {(status === 'live' || status === 'half_time') && (
+              <p className="text-[10px] text-muted uppercase tracking-widest font-black text-center">
+                {status === 'half_time'
+                  ? "Mi-temps en cours"
+                  : secondHalfStartedAt ? "2nde mi-temps en cours" : "1ère mi-temps en cours"}
+              </p>
+            )}
           </div>
-          
+
           <div className="glass-card p-8 space-y-6">
             <h3 className="text-xs font-black uppercase tracking-widest text-muted">Homme du Match</h3>
             <div className="relative">

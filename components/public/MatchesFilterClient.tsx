@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { isGroupPhase } from "@/lib/helpers";
+import { isGroupPhase, getStartedAt, getSecondHalfStartedAt } from "@/lib/helpers";
 import type { Match } from "@/lib/types";
 import Link from "next/link";
 import { Calendar, ChevronRight } from "lucide-react";
@@ -23,7 +23,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
   const [filter, setFilter] = useState<FilterValue>("Tous");
 
   const filteredMatches = initialMatches.filter((match) =>
-    filter === "Tous" || match.status === filter
+    filter === "Tous" || match.status === filter || (filter === "live" && match.status === "half_time")
   );
 
   const groupedMatches = filteredMatches.reduce<Record<string, Match[]>>((acc, match) => {
@@ -69,11 +69,13 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
             <div className="space-y-2.5">
               {groupedMatches[dateStr].map((match) => {
                 const isLive     = match.status === "live";
+                const isHalfTime = match.status === "half_time";
                 const isFinished = match.status === "finished";
+                const isLiveOrHalfTime = isLive || isHalfTime;
                 const matchDate  = new Date(match.match_date);
                 const time       = matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TOURNAMENT_TIMEZONE });
-                const startedAt  = (match.stats as Array<{ label: string; value?: string }> | undefined)
-                  ?.find((s) => s.label === "started_at")?.value;
+                const startedAt  = getStartedAt(match.stats) ?? undefined;
+                const secondHalfStartedAt = getSecondHalfStartedAt(match.stats) ?? undefined;
                 const phaseLabel = match.group_name ?? null;
                 const knockout   = phaseLabel && !isGroupPhase(phaseLabel);
                 const homeColor  = getTeamPalette(match.home?.name);

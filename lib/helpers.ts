@@ -22,11 +22,18 @@ export function getTeamPalette(name: string | undefined | null) {
   return TEAM_PALETTES[code % TEAM_PALETTES.length];
 }
 
-/** Extrait la valeur started_at depuis le tableau stats d'un match */
+/** Extrait la valeur started_at (coup d'envoi 1ère mi-temps) depuis le tableau stats d'un match */
 export function getStartedAt(stats: unknown[] | null | undefined): string | null {
   if (!Array.isArray(stats)) return null;
   return (stats as Array<{ label: string; value?: string }>)
     .find((s) => s.label === "started_at")?.value ?? null;
+}
+
+/** Extrait la valeur second_half_started_at (reprise après la mi-temps) depuis le tableau stats d'un match */
+export function getSecondHalfStartedAt(stats: unknown[] | null | undefined): string | null {
+  if (!Array.isArray(stats)) return null;
+  return (stats as Array<{ label: string; value?: string }>)
+    .find((s) => s.label === "second_half_started_at")?.value ?? null;
 }
 
 /** Formate une date en français, toujours en heure de Fieng Okano (WAT) */
@@ -47,6 +54,7 @@ export function formatMatchStatus(status: string): string {
   const labels: Record<string, string> = {
     scheduled: "Programmé",
     live:      "En direct",
+    half_time: "Mi-temps",
     finished:  "Terminé",
   };
   return labels[status] ?? status;
