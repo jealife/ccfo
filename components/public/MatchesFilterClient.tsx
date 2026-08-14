@@ -86,9 +86,9 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                     <div className={cn(
                       "bg-card rounded-2xl border transition-all duration-200 shadow-sm cursor-pointer overflow-hidden",
                       "hover:shadow-md active:scale-[0.99]",
-                      isLive ? "border-primary/30 hover:border-primary/50" : "border-border hover:border-primary/20"
+                      isLiveOrHalfTime ? "border-primary/30 hover:border-primary/50" : "border-border hover:border-primary/20"
                     )}>
-                      {isLive && <div className="h-0.5 w-full bg-primary" />}
+                      {isLiveOrHalfTime && <div className="h-0.5 w-full bg-primary" />}
 
                       {/* Phase badge */}
                       {phaseLabel && (
@@ -112,6 +112,11 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                               Live
                             </span>
+                          ) : isHalfTime ? (
+                            <span className="flex items-center gap-1.5 text-[10px] font-black text-yellow-500 uppercase tracking-widest">
+                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
+                              Mi-temps
+                            </span>
                           ) : isFinished ? (
                             <span className="px-2.5 py-0.5 rounded-full bg-secondary border border-border text-[9px] font-black text-muted uppercase tracking-widest">
                               Terminé
@@ -131,7 +136,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                           <div className="flex flex-col items-center gap-2">
                             <div className={cn(
                               "w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl border-2 transition-transform group-hover:scale-105 duration-200",
-                              isLive
+                              isLiveOrHalfTime
                                 ? "bg-primary/10 border-primary/30 text-primary shadow-lg shadow-primary/10"
                                 : cn(homeColor.bg, homeColor.border, homeColor.text)
                             )}>
@@ -139,7 +144,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                             </div>
                             <span className={cn(
                               "text-[11px] font-bold text-center leading-tight line-clamp-2 w-full px-1",
-                              isLive ? "text-primary" : "text-foreground"
+                              isLiveOrHalfTime ? "text-primary" : "text-foreground"
                             )}>
                               {match.home?.name ?? "—"}
                             </span>
@@ -150,7 +155,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                           <div className="flex flex-col items-center gap-1.5 px-3 min-w-[80px]">
                             <div className={cn(
                               "flex items-center gap-1.5 px-4 py-2.5 rounded-2xl border",
-                              isLive
+                              isLiveOrHalfTime
                                 ? "bg-primary/10 border-primary/25"
                                 : isFinished
                                 ? "bg-secondary border-border"
@@ -158,20 +163,20 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                             )}>
                               <span className={cn(
                                 "text-2xl font-black tabular-nums font-outfit leading-none",
-                                isLive ? "text-primary" : isFinished ? "text-foreground" : "text-muted/50"
+                                isLiveOrHalfTime ? "text-primary" : isFinished ? "text-foreground" : "text-muted/50"
                               )}>
                                 {match.status === "scheduled" ? "—" : match.home_score ?? 0}
                               </span>
                               <span className="text-muted/30 font-black text-xl leading-none">:</span>
                               <span className={cn(
                                 "text-2xl font-black tabular-nums font-outfit leading-none",
-                                isLive ? "text-primary" : isFinished ? "text-foreground" : "text-muted/50"
+                                isLiveOrHalfTime ? "text-primary" : isFinished ? "text-foreground" : "text-muted/50"
                               )}>
                                 {match.status === "scheduled" ? "—" : match.away_score ?? 0}
                               </span>
                             </div>
-                            {isLive && (
-                              <MatchTimer startedAt={startedAt} status={match.status} />
+                            {isLiveOrHalfTime && (
+                              <MatchTimer startedAt={startedAt} secondHalfStartedAt={secondHalfStartedAt} status={match.status} />
                             )}
                           </div>
 
@@ -179,7 +184,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                           <div className="flex flex-col items-center gap-2">
                             <div className={cn(
                               "w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl border-2 transition-transform group-hover:scale-105 duration-200",
-                              isLive
+                              isLiveOrHalfTime
                                 ? "bg-primary/10 border-primary/30 text-primary shadow-lg shadow-primary/10"
                                 : cn(awayColor.bg, awayColor.border, awayColor.text)
                             )}>
@@ -187,7 +192,7 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                             </div>
                             <span className={cn(
                               "text-[11px] font-bold text-center leading-tight line-clamp-2 w-full px-1",
-                              isLive ? "text-primary" : "text-foreground"
+                              isLiveOrHalfTime ? "text-primary" : "text-foreground"
                             )}>
                               {match.away?.name ?? "—"}
                             </span>
@@ -214,7 +219,15 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                                 Live
                               </span>
-                              <MatchTimer startedAt={startedAt} status={match.status} />
+                              <MatchTimer startedAt={startedAt} secondHalfStartedAt={secondHalfStartedAt} status={match.status} />
+                            </>
+                          ) : isHalfTime ? (
+                            <>
+                              <span className="flex items-center gap-1 text-xs font-black text-yellow-500 uppercase tracking-tight">
+                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
+                                Mi-temps
+                              </span>
+                              <MatchTimer startedAt={startedAt} secondHalfStartedAt={secondHalfStartedAt} status={match.status} />
                             </>
                           ) : isFinished ? (
                             <span className="px-2 py-0.5 rounded-md bg-secondary text-xs font-black text-muted uppercase tracking-tight">
@@ -233,13 +246,13 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                           <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
                             <span className={cn(
                               "font-bold text-base text-foreground truncate text-right leading-tight",
-                              isLive && "text-primary"
+                              isLiveOrHalfTime && "text-primary"
                             )}>
                               {match.home?.name ?? "—"}
                             </span>
                             <div className={cn(
                               "w-12 h-12 rounded-full flex items-center justify-center font-black text-lg border-2 shrink-0 transition-transform group-hover:scale-105 duration-200",
-                              isLive ? "bg-primary/10 border-primary/30 text-primary" : cn(homeColor.bg, homeColor.border, homeColor.text)
+                              isLiveOrHalfTime ? "bg-primary/10 border-primary/30 text-primary" : cn(homeColor.bg, homeColor.border, homeColor.text)
                             )}>
                               {match.home?.name?.[0] ?? "?"}
                             </div>
@@ -247,18 +260,18 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
 
                           <div className={cn(
                             "flex items-center gap-2 px-5 py-3 rounded-xl border shrink-0 min-w-[100px] justify-center",
-                            isLive ? "bg-primary/10 border-primary/25" : "bg-secondary border-border"
+                            isLiveOrHalfTime ? "bg-primary/10 border-primary/25" : "bg-secondary border-border"
                           )}>
                             <span className={cn(
                               "text-2xl font-black tabular-nums font-outfit",
-                              isLive ? "text-primary" : isFinished ? "text-foreground" : "text-muted/60"
+                              isLiveOrHalfTime ? "text-primary" : isFinished ? "text-foreground" : "text-muted/60"
                             )}>
                               {match.status === "scheduled" ? "—" : match.home_score ?? 0}
                             </span>
                             <span className="text-muted/40 font-black text-xl">:</span>
                             <span className={cn(
                               "text-2xl font-black tabular-nums font-outfit",
-                              isLive ? "text-primary" : isFinished ? "text-foreground" : "text-muted/60"
+                              isLiveOrHalfTime ? "text-primary" : isFinished ? "text-foreground" : "text-muted/60"
                             )}>
                               {match.status === "scheduled" ? "—" : match.away_score ?? 0}
                             </span>
@@ -267,13 +280,13 @@ export function MatchesFilterClient({ initialMatches }: { initialMatches: Match[
                           <div className="flex-1 flex items-center gap-3 min-w-0">
                             <div className={cn(
                               "w-12 h-12 rounded-full flex items-center justify-center font-black text-lg border-2 shrink-0 transition-transform group-hover:scale-105 duration-200",
-                              isLive ? "bg-primary/10 border-primary/30 text-primary" : cn(awayColor.bg, awayColor.border, awayColor.text)
+                              isLiveOrHalfTime ? "bg-primary/10 border-primary/30 text-primary" : cn(awayColor.bg, awayColor.border, awayColor.text)
                             )}>
                               {match.away?.name?.[0] ?? "?"}
                             </div>
                             <span className={cn(
                               "font-bold text-base text-foreground truncate leading-tight",
-                              isLive && "text-primary"
+                              isLiveOrHalfTime && "text-primary"
                             )}>
                               {match.away?.name ?? "—"}
                             </span>
