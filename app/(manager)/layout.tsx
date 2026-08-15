@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Users,
   LogOut,
-  Bell,
   Calendar,
   PlusCircle,
   Receipt,
@@ -15,9 +14,11 @@ import { signOut } from "@/app/api/auth/actions";
 import { returnToAdmin } from "@/app/api/teams/actions";
 import { ManagerBottomNav } from "@/components/dashboard/ManagerBottomNav";
 import { SidebarItem } from "@/components/dashboard/SidebarItem";
+import { ManagerNotifBell, type ManagerNotification } from "@/components/dashboard/ManagerNotifBell";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { formatFrenchDate, formatFrenchTime } from "@/lib/helpers";
 import type { Viewport } from "next";
 
 export const viewport: Viewport = {
@@ -26,6 +27,11 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: "#ef4444",
 };
+
+/** Heures restantes avant un match, à partir de maintenant. */
+function hoursUntil(matchDate: string): number {
+  return (new Date(matchDate).getTime() - Date.now()) / 3_600_000;
+}
 
 export const metadata = {
   manifest: "/manifest.json",
@@ -60,9 +66,74 @@ export default async function ManagerLayout({ children }: { children: React.Reac
 
   const { data: team } = await supabase
     .from('teams')
-    .select('status')
+    .select('id, status, registration_unlocked, payment_receipt_url')
     .eq('manager_id', user?.id)
     .maybeSingle();
+
+  const notifications: ManagerNotification[] = [];
+
+  if (team) {
+    if (team.status === 'rejected') {
+      notifications.push({
+        id: 'rejected',
+        type: 'rejected',
+        title: 'Dossier rejeté',
+        subtitle: "Corrigez les éléments signalés puis renvoyez votre dossier.",
+        href: '/manager/registration',
+      });
+    }
+
+    if (['validated', 'locked'].includes(team.status) && team.registration_unlocked) {
+      notifications.push({
+        id: 'roster_reopened',
+        type: 'roster_reopened',
+        title: "Effectif rouvert par l'administration",
+        subtitle: "Vous pouvez de nouveau ajouter ou retirer des joueurs et membres du staff.",
+        href: '/dashboard/my-team',
+      });
+    }
+
+    if (team.status === 'incomplete') {
+      const [{ count: staffMissing }, { count: playersMissing }] = await Promise.all([
+        supabase.from('staff').select('id', { count: 'exact', head: true }).eq('team_id', team.id).is('identity_docs_url', null),
+        supabase.from('players').select('id', { count: 'exact', head: true }).eq('team_id', team.id).is('identity_docs_url', null),
+      ]);
+      const missingDocs = (staffMissing || 0) + (playersMissing || 0) + (team.payment_receipt_url ? 0 : 1);
+      if (missingDocs > 0) {
+        notifications.push({
+          id: 'missing_docs',
+          type: 'missing_docs',
+          title: `${missingDocs} document${missingDocs > 1 ? 's' : ''} manquant${missingDocs > 1 ? 's' : ''}`,
+          subtitle: "Pièces d'identité ou preuve de paiement à compléter avant validation.",
+          href: '/dashboard/my-team',
+        });
+      }
+    }
+
+    const { data: nextMatch } = await supabase
+      .from('matches')
+      .select('id, match_date, home:teams!home_team_id(name), away:teams!away_team_id(name)')
+      .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
+      .in('status', ['scheduled', 'live'])
+      .order('match_date', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (nextMatch?.match_date) {
+      const hours = hoursUntil(nextMatch.match_date);
+      if (hours >= 0 && hours <= 48) {
+        const home = (nextMatch.home as unknown as { name: string } | null)?.name ?? "?";
+        const away = (nextMatch.away as unknown as { name: string } | null)?.name ?? "?";
+        notifications.push({
+          id: 'match_soon',
+          type: 'match_soon',
+          title: `Match dans ${hours < 1 ? "moins d'1h" : `${Math.round(hours)}h`}`,
+          subtitle: `${home} vs ${away} — ${formatFrenchDate(nextMatch.match_date, { day: '2-digit', month: '2-digit' })} à ${formatFrenchTime(nextMatch.match_date)}`,
+          href: `/matches/${nextMatch.id}`,
+        });
+      }
+    }
+  }
 
   const navLinks = [
     { href: "/dashboard", icon: <LayoutDashboard />, label: "Dashboard" },
@@ -132,10 +203,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
           </div>
 
           <div className="flex items-center gap-2 lg:gap-4">
-            <button type="button" title="Notifications" aria-label="Notifications" className="relative p-2 text-muted hover:text-foreground">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full border-2 border-background" />
-            </button>
+            <ManagerNotifBell items={notifications} />
             <div className="h-8 w-px bg-white/5 hidden lg:block" />
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
