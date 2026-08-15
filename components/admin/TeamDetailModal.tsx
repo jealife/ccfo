@@ -9,7 +9,8 @@ import {
   XCircle,
   Shield,
   Loader2,
-  Printer
+  Printer,
+  LogIn
 } from "lucide-react";
 import { PlayerLicense } from "@/components/dashboard/PlayerLicense";
 import { cn } from "@/lib/utils";
@@ -44,9 +45,10 @@ interface TeamDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStatusUpdate: (teamId: string, status: string) => void;
+  onImpersonate: (teamId: string) => void;
 }
 
-export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamDetailModalProps) {
+export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate, onImpersonate }: TeamDetailModalProps) {
   const [players, setPlayers] = useState<ModalPlayer[]>([]);
   const [staff, setStaff] = useState<ModalStaff[]>([]);
   const [loading, setLoading] = useState(true);
@@ -255,12 +257,21 @@ export function TeamDetailModal({ team, isOpen, onClose, onStatusUpdate }: TeamD
                 </button>
              </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="px-6 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest transition-all"
-          >
-            Fermer
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onImpersonate(team.id)}
+              title="Se connecter en tant que ce manager, pour voir son espace tel qu'il le voit"
+              className="px-4 py-2 rounded-xl border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+            >
+              <LogIn className="w-4 h-4" /> Espace manager
+            </button>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest transition-all"
+            >
+              Fermer
+            </button>
+          </div>
         </div>
 
       </div>

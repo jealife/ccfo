@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
-import { getTeamsWithPayments, updateTeamStatus } from "@/app/api/teams/actions";
+import { getTeamsWithPayments, updateTeamStatus, impersonateManager } from "@/app/api/teams/actions";
 import { REGISTRATION_FEE } from "@/lib/constants";
 import { formatFrenchDate, formatReceiptNumber } from "@/lib/helpers";
 
@@ -57,7 +57,7 @@ export default function AdminPaymentsPage() {
   const [search, setSearch] = useState("");
   const [selectedTeam, setSelectedTeam] = useState<PaymentTeam | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning" }>({
+  const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "warning"; isConfirm?: boolean; onConfirm?: () => void }>({
     isOpen: false,
     title: "",
     message: "",
@@ -113,6 +113,23 @@ export default function AdminPaymentsPage() {
         type: "success"
       });
     }
+  };
+
+  const handleImpersonate = async (teamId: string) => {
+    const team = teams.find(t => t.id === teamId);
+    setAlert({
+      isOpen: true,
+      title: "Accéder à l'espace manager ?",
+      message: `Vous allez être connecté(e) en tant que manager de ${team?.name ?? "cette équipe"}. Votre session admin sera mise de côté — utilisez le bouton "Retour à l'administration" dans l'espace manager pour revenir.`,
+      type: "warning",
+      isConfirm: true,
+      onConfirm: async () => {
+        const result = await impersonateManager(teamId);
+        if (result && !result.success) {
+          setAlert({ isOpen: true, title: "Erreur", message: result.error || "Action impossible", type: "error" });
+        }
+      },
+    });
   };
 
   return (
@@ -342,21 +359,28 @@ export default function AdminPaymentsPage() {
 
       {/* Detail Modal */}
       {selectedTeam && (
-        <TeamDetailModal 
+        <TeamDetailModal
           team={selectedTeam}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onStatusUpdate={handleStatusUpdate}
+          onImpersonate={(teamId) => {
+            setIsModalOpen(false);
+            handleImpersonate(teamId);
+          }}
         />
       )}
 
       {/* Alert Dialog */}
-      <AlertDialog 
+      <AlertDialog
         isOpen={alert.isOpen}
         onClose={() => setAlert({ ...alert, isOpen: false })}
         title={alert.title}
         message={alert.message}
         type={alert.type}
+        isConfirm={alert.isConfirm}
+        onConfirm={alert.onConfirm}
+        confirmLabel={alert.isConfirm ? "Continuer" : "OK"}
       />
     </div>
   );

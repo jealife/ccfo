@@ -1,20 +1,23 @@
 import Link from "next/link";
 import Image from "next/image";
-import { 
-  LayoutDashboard, 
-  Users, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Users,
+  LogOut,
   Bell,
   Calendar,
   PlusCircle,
-  Receipt
+  Receipt,
+  ShieldAlert
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/api/auth/actions";
+import { returnToAdmin } from "@/app/api/teams/actions";
 import { ManagerBottomNav } from "@/components/dashboard/ManagerBottomNav";
 import { SidebarItem } from "@/components/dashboard/SidebarItem";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import type { Viewport } from "next";
 
 export const viewport: Viewport = {
@@ -49,6 +52,11 @@ export default async function ManagerLayout({ children }: { children: React.Reac
   if (profile?.role === "admin") redirect("/admin");
 
   const userName = profile?.full_name || "Manager";
+
+  // Présent uniquement quand un admin consulte cet espace via "Espace manager"
+  // (voir impersonateManager) — permet de revenir à sa session admin.
+  const cookieStore = await cookies();
+  const isImpersonatedByAdmin = !!cookieStore.get("ccfo_admin_stash")?.value;
 
   const { data: team } = await supabase
     .from('teams')
@@ -140,6 +148,20 @@ export default async function ManagerLayout({ children }: { children: React.Reac
             </div>
           </div>
         </header>
+
+        {isImpersonatedByAdmin && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 lg:px-8 py-3 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-500">
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              Vous consultez cet espace en tant qu&apos;administrateur, connecté(e) sous ce manager.
+            </div>
+            <form action={returnToAdmin}>
+              <button type="submit" className="px-3 py-1.5 rounded-lg bg-yellow-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-yellow-400 transition-colors">
+                Retour à l&apos;administration
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="p-4 lg:p-8">
           {children}

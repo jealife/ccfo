@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { TeamDetailModal } from "@/components/admin/TeamDetailModal";
 import { AlertDialog } from "@/components/ui/Modal";
-import { setRegistrationUnlocked, updateTeamStatus, deleteTeamAndManager } from "@/app/api/teams/actions";
+import { setRegistrationUnlocked, updateTeamStatus, deleteTeamAndManager, impersonateManager } from "@/app/api/teams/actions";
 import type { TournamentConfig } from "@/lib/types";
 
 type AdminTeam = {
@@ -153,6 +153,24 @@ export default function AdminTeamsPage() {
           message: "L'équipe et son manager ont été supprimés avec succès.",
           type: "success",
         });
+      },
+    });
+  };
+
+  const handleImpersonate = async (teamId: string) => {
+    const team = teams.find(t => t.id === teamId);
+    setAlert({
+      isOpen: true,
+      title: "Accéder à l'espace manager ?",
+      message: `Vous allez être connecté(e) en tant que manager de ${team?.name ?? "cette équipe"}. Votre session admin sera mise de côté — utilisez le bouton "Retour à l'administration" dans l'espace manager pour revenir.`,
+      type: "warning",
+      isConfirm: true,
+      onConfirm: async () => {
+        const result = await impersonateManager(teamId);
+        // En cas de succès, l'action redirige elle-même vers /dashboard/my-team.
+        if (result && !result.success) {
+          setAlert({ isOpen: true, title: "Erreur", message: result.error || "Action impossible", type: "error" });
+        }
       },
     });
   };
@@ -392,6 +410,10 @@ export default function AdminTeamsPage() {
           onStatusUpdate={(teamId, status) => {
             setIsDetailModalOpen(false);
             handleStatusUpdate(teamId, status);
+          }}
+          onImpersonate={(teamId) => {
+            setIsDetailModalOpen(false);
+            handleImpersonate(teamId);
           }}
         />
       )}
