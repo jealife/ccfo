@@ -23,8 +23,10 @@ type DocTeam = {
   status: string;
   staffTotal: number;
   staffWithDocs: number;
+  staffWithBirthCerts: number;
   playersTotal: number;
   playersWithDocs: number;
+  playersWithBirthCerts: number;
 };
 
 export default function AdminDocumentsPage() {
@@ -51,8 +53,8 @@ export default function AdminDocumentsPage() {
           .from('teams')
           .select('id, name, village, payment_receipt_url, status')
           .order('created_at', { ascending: false }),
-        supabase.from('staff').select('team_id, identity_docs_url'),
-        supabase.from('players').select('team_id, identity_docs_url'),
+        supabase.from('staff').select('team_id, identity_docs_url, birth_certificate_url'),
+        supabase.from('players').select('team_id, identity_docs_url, birth_certificate_url'),
       ]);
 
       if (!error && teamsData) {
@@ -63,8 +65,10 @@ export default function AdminDocumentsPage() {
             ...t,
             staffTotal: teamStaff.length,
             staffWithDocs: teamStaff.filter((s) => !!s.identity_docs_url).length,
+            staffWithBirthCerts: teamStaff.filter((s) => !!s.birth_certificate_url).length,
             playersTotal: teamPlayers.length,
             playersWithDocs: teamPlayers.filter((p) => !!p.identity_docs_url).length,
+            playersWithBirthCerts: teamPlayers.filter((p) => !!p.birth_certificate_url).length,
           };
         });
         setTeams(merged);
@@ -110,7 +114,9 @@ export default function AdminDocumentsPage() {
     !!team &&
     !!team.payment_receipt_url &&
     team.staffTotal > 0 && team.staffWithDocs === team.staffTotal &&
-    team.playersTotal > 0 && team.playersWithDocs === team.playersTotal;
+    team.staffWithBirthCerts === team.staffTotal &&
+    team.playersTotal > 0 && team.playersWithDocs === team.playersTotal &&
+    team.playersWithBirthCerts === team.playersTotal;
 
   return (
     <div className="space-y-8 animate-fade-in pb-20">
@@ -225,6 +231,8 @@ export default function AdminDocumentsPage() {
             <div className="grid grid-cols-1 gap-3">
               <CountRow label="Pièces d'Identité Staff" done={team.staffWithDocs} total={team.staffTotal} />
               <CountRow label="Pièces d'Identité Joueurs" done={team.playersWithDocs} total={team.playersTotal} />
+              <CountRow label="Actes de Naissance Staff" done={team.staffWithBirthCerts} total={team.staffTotal} />
+              <CountRow label="Actes de Naissance Joueurs" done={team.playersWithBirthCerts} total={team.playersTotal} />
               <DocRow label="Preuve de Paiement" url={team.payment_receipt_url ?? undefined} />
             </div>
 

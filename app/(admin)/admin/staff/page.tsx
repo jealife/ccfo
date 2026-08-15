@@ -8,7 +8,8 @@ import {
   Printer,
   Shield,
   UserSquare2,
-  FileText
+  FileText,
+  Baby
 } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +26,7 @@ type StaffMember = {
   date_of_birth: string | null;
   photo_url: string | null;
   identity_docs_url: string | null;
+  birth_certificate_url: string | null;
   teams: { name: string; village: string | null } | null;
 };
 
@@ -192,6 +194,26 @@ export default function AdminStaffPage() {
                     className="p-2 md:px-4 md:py-2 rounded-xl bg-white/5 text-white/30 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 cursor-not-allowed"
                   >
                     <FileText className="w-4 h-4" /> <span className="hidden md:inline">Aucune Pièce</span>
+                  </span>
+                )}
+                {member.birth_certificate_url ? (
+                  <a
+                    href={member.birth_certificate_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Voir l'acte de naissance"
+                    aria-label="Voir l'acte de naissance"
+                    className="p-2 md:px-4 md:py-2 rounded-xl bg-white/10 text-white font-black uppercase tracking-widest text-[10px] shadow-xl flex items-center gap-2 hover:scale-110 hover:bg-white/20 transition-all"
+                  >
+                    <Baby className="w-4 h-4" /> <span className="hidden md:inline">Acte de Naissance</span>
+                  </a>
+                ) : (
+                  <span
+                    title="Aucun acte de naissance fourni"
+                    className="p-2 md:px-4 md:py-2 rounded-xl bg-white/5 text-white/30 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 cursor-not-allowed"
+                  >
+                    <Baby className="w-4 h-4" /> <span className="hidden md:inline">Aucun Acte</span>
                   </span>
                 )}
                 <button

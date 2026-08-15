@@ -87,6 +87,7 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
         date_of_birth: s.date_of_birth || null,
         photo_url: s.photo_url || null,
         identity_docs_url: s.identity_docs_url || null,
+        birth_certificate_url: s.birth_certificate_url || null,
       };
     });
 
@@ -122,6 +123,7 @@ export async function submitTeamRegistration(formData: RegistrationFormData) {
         date_of_birth: p.date_of_birth || null,
         origin_village: p.origin_village,
         identity_docs_url: p.identity_docs_url || null,
+        birth_certificate_url: p.birth_certificate_url || null,
       };
       const existingId = existingByName.get(p.full_name);
       const { error: playerError } = existingId
@@ -214,6 +216,7 @@ export async function saveRegistrationDraft(formData: any) {
         date_of_birth: toIsoDateHelper(s.dob),
         photo_url: s.photo || null,
         identity_docs_url: s.idDocument || null,
+        birth_certificate_url: s.birthCertificate || null,
       };
     });
     const { error: staffInsertError } = await admin.from('staff').insert(staffData);
@@ -244,6 +247,7 @@ export async function saveRegistrationDraft(formData: any) {
         date_of_birth: toIsoDateHelper(p.dob),
         origin_village: p.village || null,
         identity_docs_url: p.idDocument || null,
+        birth_certificate_url: p.birthCertificate || null,
       };
       const existingId = existingByName.get(fullName);
       const { error: playerError } = existingId

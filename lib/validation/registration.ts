@@ -39,6 +39,7 @@ export const staffMemberSchema = z.object({
   date_of_birth: z.union([z.literal(""), dateOfBirthSchema]).optional().default(""),
   photo_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
   identity_docs_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
+  birth_certificate_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
 });
 
 export const playerEntrySchema = z.object({
@@ -48,6 +49,7 @@ export const playerEntrySchema = z.object({
   date_of_birth: dateOfBirthSchema,
   origin_village: z.string().trim().optional().default(""),
   identity_docs_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
+  birth_certificate_url: z.union([z.literal(""), z.string().url()]).nullable().optional().default(""),
 });
 
 export const documentsSchema = z.object({

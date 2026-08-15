@@ -28,8 +28,8 @@ import { MOBILE_MONEY_NUMBER } from "@/lib/constants";
 import { translateUploadError } from "@/lib/errors";
 
 type TeamFormState = { name: string; village: string; color: string; president: string; phone: string; whatsapp: string; email: string };
-type StaffFormState = { name: string; role: string; village: string; dob: string; photo: string | null; idDocument: string | null };
-type PlayerFormState = { name: string; number: string; dob: string; position: string; village: string; idDocument: string | null };
+type StaffFormState = { name: string; role: string; village: string; dob: string; photo: string | null; idDocument: string | null; birthCertificate: string | null };
+type PlayerFormState = { name: string; number: string; dob: string; position: string; village: string; idDocument: string | null; birthCertificate: string | null };
 type DocumentsFormState = { receipt: string | null };
 type FormState = {
   team: TeamFormState;
@@ -42,6 +42,11 @@ type InputChange = React.ChangeEvent<HTMLInputElement>;
 /** Chemin de photo staff (hors composant : Date.now() ne doit pas être appelé au rendu) */
 function makeStaffPhotoPath(teamSlug: string, index: number, ext: string | undefined) {
   return `staff-photos/${teamSlug}-staff-${index + 1}-${Date.now()}.${ext}`;
+}
+
+/** Chemin d'acte de naissance (hors composant : Date.now() ne doit pas être appelé au rendu) */
+function makeBirthCertPath(folder: "staff-birth-certs" | "player-birth-certs", label: string, index: number, ext: string | undefined) {
+  return `${folder}/${label}-${index + 1}-${Date.now()}.${ext}`;
 }
 
 function toFrDate(isoDate: string | null | undefined) {
@@ -82,8 +87,8 @@ export function RegistrationForm() {
   
   const [formData, setFormData] = useState<FormState>({
     team: { name: "", village: "", color: "", president: "", phone: "", whatsapp: "", email: "" },
-    staff: Array(6).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null }),
-    players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null }),
+    staff: Array(6).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null, birthCertificate: null }),
+    players: Array(24).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null, birthCertificate: null }),
     documents: { receipt: null }
   });
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error" | "closed">("idle");
@@ -225,7 +230,7 @@ export function RegistrationForm() {
         const { data: playersData } = await supabase.from('players').select('*').eq('team_id', teamData.id).order('created_at', { ascending: true });
 
         // Map existing staff into fixed-size array
-        const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null });
+        const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null, birthCertificate: null });
         staffData?.forEach((s, i) => {
           if (i < sLimit) mappedStaff[i] = {
             name: `${s.first_name} ${s.last_name}`,
@@ -234,13 +239,14 @@ export function RegistrationForm() {
             dob: toFrDate(s.date_of_birth),
             photo: s.photo_url || null,
             idDocument: s.identity_docs_url || null,
+            birthCertificate: s.birth_certificate_url || null,
           };
         });
 
         // Map existing players into fixed-size array
-        const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null });
+        const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null, birthCertificate: null });
         playersData?.forEach((p, i) => {
-          if (i < pLimit) mappedPlayers[i] = { name: p.full_name, number: String(p.jersey_number ?? ""), dob: toFrDate(p.date_of_birth), position: p.position || "", village: p.origin_village || "", idDocument: p.identity_docs_url || null };
+          if (i < pLimit) mappedPlayers[i] = { name: p.full_name, number: String(p.jersey_number ?? ""), dob: toFrDate(p.date_of_birth), position: p.position || "", village: p.origin_village || "", idDocument: p.identity_docs_url || null, birthCertificate: p.birth_certificate_url || null };
         });
 
         setFormData({
@@ -295,14 +301,14 @@ export function RegistrationForm() {
             const parsedDraft = JSON.parse(draft);
             
             // On s'assure de respecter les limites actuelles du tournoi
-            const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null });
+            const mappedStaff = Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null, birthCertificate: null });
             if (parsedDraft.staff && Array.isArray(parsedDraft.staff)) {
               parsedDraft.staff.forEach((s: any, i: number) => {
                 if (i < sLimit) mappedStaff[i] = { ...mappedStaff[i], ...s };
               });
             }
             
-            const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null });
+            const mappedPlayers = Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null, birthCertificate: null });
             if (parsedDraft.players && Array.isArray(parsedDraft.players)) {
               parsedDraft.players.forEach((p: any, i: number) => {
                 if (i < pLimit) mappedPlayers[i] = { ...mappedPlayers[i], ...p };
@@ -334,8 +340,8 @@ export function RegistrationForm() {
         // Default empty arrays if no team exists yet and no valid draft
         setFormData(prev => ({
           ...prev,
-          staff: Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null }),
-          players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null }),
+          staff: Array(sLimit).fill({ name: "", role: "", village: "", dob: "", photo: null, idDocument: null, birthCertificate: null }),
+          players: Array(pLimit).fill({ name: "", number: "", dob: "", position: "", village: "", idDocument: null, birthCertificate: null }),
         }));
       }
       setIsLoaded(true);
@@ -421,6 +427,7 @@ export function RegistrationForm() {
             date_of_birth: toIsoDate(s.dob),
             photo_url: s.photo,
             identity_docs_url: s.idDocument,
+            birth_certificate_url: s.birthCertificate,
           })),
         players: formData.players
           .filter((p) => p.name.trim())
@@ -431,6 +438,7 @@ export function RegistrationForm() {
             date_of_birth: toIsoDate(p.dob),
             origin_village: p.village,
             identity_docs_url: p.idDocument,
+            birth_certificate_url: p.birthCertificate,
           })),
         documents: {
           payment_receipt: formData.documents.receipt,
@@ -725,12 +733,40 @@ function StaffStep({ data, updateData, limit, teamName, showAlert }: {
     setUploadingIdIndex(null);
   };
 
+  const [uploadingBirthCertIndex, setUploadingBirthCertIndex] = useState<number | null>(null);
+
+  const handleBirthCertUpload = async (e: InputChange, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateUploadFile(file, "document");
+    if (validationError) {
+      showAlert("Document non accepté", validationError, "error");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingBirthCertIndex(index);
+    const filePath = makeBirthCertPath("staff-birth-certs", "membre", index, file.name.split('.').pop());
+
+    const { error: uploadError } = await supabase.storage.from('team-docs').upload(filePath, file);
+
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
+      updateData(index, { birthCertificate: publicUrlData.publicUrl });
+    } else {
+      console.error("[upload] Error:", uploadError.message);
+      showAlert("Erreur d'envoi", translateUploadError(uploadError.message), "error");
+    }
+    setUploadingBirthCertIndex(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-2xl font-black font-outfit">Staff Technique</h2>
-          <p className="text-muted text-xs md:text-sm">Exactement {limit} membres requis — chaque membre fournit sa propre pièce d’identité</p>
+          <p className="text-muted text-xs md:text-sm">Exactement {limit} membres requis — chaque membre fournit sa propre pièce d’identité et son acte de naissance</p>
         </div>
         <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase self-start md:self-auto">
           Requis: {limit} / Actuel: {data.filter((s) => s.name).length}
@@ -773,44 +809,21 @@ function StaffStep({ data, updateData, limit, teamName, showAlert }: {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormInput label="Village" placeholder="ex: Fieng Okano" value={member.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <FormDateInput label="Date de naissance" value={member.dob} onChange={(val) => updateData(i, {dob: val})} />
-                  </div>
-                  <label className={cn(
-                    "shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-all text-[9px] font-black uppercase tracking-widest",
-                    member.idDocument
-                      ? "border-green-500/40 bg-green-500/10 text-green-500"
-                      : "border-border bg-secondary/50 text-muted hover:border-primary/50 hover:text-primary"
-                  )}>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.zip,image/jpeg,image/png,image/webp"
-                      onChange={(e) => handleIdUpload(e, i)}
-                      disabled={uploadingIdIndex === i}
-                    />
-                    {uploadingIdIndex === i ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : member.idDocument ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    ) : (
-                      <FileText className="w-3.5 h-3.5" />
-                    )}
-                    Pièce ID
-                  </label>
-                  {member.idDocument && (
-                    <a
-                      href={member.idDocument}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="shrink-0 p-2.5 rounded-xl border border-border bg-secondary/50 text-muted hover:text-primary hover:border-primary/50 transition-all"
-                      title="Voir la pièce d'identité"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                </div>
+                <FormDateInput label="Date de naissance" value={member.dob} onChange={(val) => updateData(i, {dob: val})} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <DocUploadButton
+                  label="Pièce ID"
+                  url={member.idDocument}
+                  uploading={uploadingIdIndex === i}
+                  onFile={(e) => handleIdUpload(e, i)}
+                />
+                <DocUploadButton
+                  label="Acte de naissance"
+                  url={member.birthCertificate}
+                  uploading={uploadingBirthCertIndex === i}
+                  onFile={(e) => handleBirthCertUpload(e, i)}
+                />
               </div>
             </div>
           </div>
@@ -855,12 +868,40 @@ function PlayersStep({ data, updateData, limit, showAlert }: {
     setUploadingIndex(null);
   };
 
+  const [uploadingBirthCertIndex, setUploadingBirthCertIndex] = useState<number | null>(null);
+
+  const handleBirthCertUpload = async (e: InputChange, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateUploadFile(file, "document");
+    if (validationError) {
+      showAlert("Document non accepté", validationError, "error");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingBirthCertIndex(index);
+    const filePath = makeBirthCertPath("player-birth-certs", "joueur", index, file.name.split('.').pop());
+
+    const { error: uploadError } = await supabase.storage.from('team-docs').upload(filePath, file);
+
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage.from('team-docs').getPublicUrl(filePath);
+      updateData(index, { birthCertificate: publicUrlData.publicUrl });
+    } else {
+      console.error("[upload] Error:", uploadError.message);
+      showAlert("Erreur d'envoi", translateUploadError(uploadError.message), "error");
+    }
+    setUploadingBirthCertIndex(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-2xl font-black font-outfit">Liste des Joueurs</h2>
-          <p className="text-muted text-xs md:text-sm">Exactement {limit} joueurs requis — chaque joueur doit fournir sa propre pièce d’identité</p>
+          <p className="text-muted text-xs md:text-sm">Exactement {limit} joueurs requis — chaque joueur doit fournir sa propre pièce d’identité et son acte de naissance</p>
         </div>
         <div className="px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-[10px] font-black uppercase self-start md:self-auto">
           Joueurs: {limit} / Actuel: {data.filter((p) => p.name).length}
@@ -883,51 +924,76 @@ function PlayersStep({ data, updateData, limit, showAlert }: {
                 <FormInput label="Village" placeholder="Bassam" value={player.village} onChange={(e: InputChange) => updateData(i, {village: e.target.value})} />
               </div>
             </div>
-            <div className="mt-3 flex items-end gap-2">
-              <div className="flex-1">
-                <FormDateInput
-                  label="Date de naissance *"
-                  value={player.dob}
-                  onChange={(val) => updateData(i, {dob: val})}
-                />
-              </div>
-              <label className={cn(
-                "shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-all text-[9px] font-black uppercase tracking-widest",
-                player.idDocument
-                  ? "border-green-500/40 bg-green-500/10 text-green-500"
-                  : "border-border bg-secondary/50 text-muted hover:border-primary/50 hover:text-primary"
-              )}>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.zip,image/jpeg,image/png,image/webp"
-                  onChange={(e) => handleIdUpload(e, i)}
-                  disabled={uploadingIndex === i}
-                />
-                {uploadingIndex === i ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : player.idDocument ? (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                ) : (
-                  <FileText className="w-3.5 h-3.5" />
-                )}
-                Pièce ID
-              </label>
-              {player.idDocument && (
-                <a
-                  href={player.idDocument}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 p-2.5 rounded-xl border border-border bg-secondary/50 text-muted hover:text-primary hover:border-primary/50 transition-all"
-                  title="Voir la pièce d'identité"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
+            <div className="mt-3">
+              <FormDateInput
+                label="Date de naissance *"
+                value={player.dob}
+                onChange={(val) => updateData(i, {dob: val})}
+              />
+            </div>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <DocUploadButton
+                label="Pièce ID"
+                url={player.idDocument}
+                uploading={uploadingIndex === i}
+                onFile={(e) => handleIdUpload(e, i)}
+              />
+              <DocUploadButton
+                label="Acte de naissance"
+                url={player.birthCertificate}
+                uploading={uploadingBirthCertIndex === i}
+                onFile={(e) => handleBirthCertUpload(e, i)}
+              />
             </div>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Bouton d'upload générique pour un document (pièce ID, acte de naissance…), avec lien de consultation. */
+function DocUploadButton({ label, url, uploading, onFile }: {
+  label: string;
+  url: string | null;
+  uploading: boolean;
+  onFile: (e: InputChange) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <label className={cn(
+        "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-all text-[9px] font-black uppercase tracking-widest",
+        url
+          ? "border-green-500/40 bg-green-500/10 text-green-500"
+          : "border-border bg-secondary/50 text-muted hover:border-primary/50 hover:text-primary"
+      )}>
+        <input
+          type="file"
+          className="hidden"
+          accept=".pdf,.zip,image/jpeg,image/png,image/webp"
+          onChange={onFile}
+          disabled={uploading}
+        />
+        {uploading ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : url ? (
+          <CheckCircle2 className="w-3.5 h-3.5" />
+        ) : (
+          <FileText className="w-3.5 h-3.5" />
+        )}
+        {label}
+      </label>
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="shrink-0 p-2.5 rounded-xl border border-border bg-secondary/50 text-muted hover:text-primary hover:border-primary/50 transition-all"
+          title={`Voir : ${label}`}
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      )}
     </div>
   );
 }

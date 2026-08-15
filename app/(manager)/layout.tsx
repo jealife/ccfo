@@ -94,17 +94,27 @@ export default async function ManagerLayout({ children }: { children: React.Reac
     }
 
     if (team.status === 'incomplete') {
-      const [{ count: staffMissing }, { count: playersMissing }] = await Promise.all([
+      const [
+        { count: staffMissingId },
+        { count: playersMissingId },
+        { count: staffMissingBirthCert },
+        { count: playersMissingBirthCert },
+      ] = await Promise.all([
         supabase.from('staff').select('id', { count: 'exact', head: true }).eq('team_id', team.id).is('identity_docs_url', null),
         supabase.from('players').select('id', { count: 'exact', head: true }).eq('team_id', team.id).is('identity_docs_url', null),
+        supabase.from('staff').select('id', { count: 'exact', head: true }).eq('team_id', team.id).is('birth_certificate_url', null),
+        supabase.from('players').select('id', { count: 'exact', head: true }).eq('team_id', team.id).is('birth_certificate_url', null),
       ]);
-      const missingDocs = (staffMissing || 0) + (playersMissing || 0) + (team.payment_receipt_url ? 0 : 1);
+      const missingDocs =
+        (staffMissingId || 0) + (playersMissingId || 0) +
+        (staffMissingBirthCert || 0) + (playersMissingBirthCert || 0) +
+        (team.payment_receipt_url ? 0 : 1);
       if (missingDocs > 0) {
         notifications.push({
           id: 'missing_docs',
           type: 'missing_docs',
           title: `${missingDocs} document${missingDocs > 1 ? 's' : ''} manquant${missingDocs > 1 ? 's' : ''}`,
-          subtitle: "Pièces d'identité ou preuve de paiement à compléter avant validation.",
+          subtitle: "Pièces d'identité, actes de naissance ou preuve de paiement à compléter avant validation.",
           href: '/dashboard/my-team',
         });
       }

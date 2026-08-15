@@ -25,7 +25,7 @@ import {
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { updatePlayerPhoto, updateStaffPhoto, updatePlayerDocument, updateStaffDocument } from "@/app/api/players/actions";
+import { updatePlayerPhoto, updateStaffPhoto, updatePlayerDocument, updateStaffDocument, updatePlayerBirthCertificate, updateStaffBirthCertificate } from "@/app/api/players/actions";
 import { addPlayer, addStaff, deletePlayer, deleteStaff, updatePlayer, updateStaff } from "@/app/api/team/actions";
 import { formatFrenchDate } from "@/lib/helpers";
 
@@ -39,8 +39,12 @@ function makePhotoPath(folder: "player-photos" | "staff-photos", id: string, ext
   return `${folder}/${id}-${Date.now()}.${ext}`;
 }
 
-/** Chemin de document d'identité (dossier distinct des photos, même bucket) */
-function makeDocPath(folder: "player-docs" | "staff-docs", id: string, ext: string | undefined) {
+/** Chemin de document (dossier distinct des photos, même bucket) */
+function makeDocPath(
+  folder: "player-docs" | "staff-docs" | "player-birth-certs" | "staff-birth-certs",
+  id: string,
+  ext: string | undefined
+) {
   return `${folder}/${id}-${Date.now()}.${ext}`;
 }
 
@@ -64,6 +68,7 @@ type StaffRow = {
   date_of_birth: string | null;
   photo_url: string | null;
   identity_docs_url: string | null;
+  birth_certificate_url: string | null;
 };
 
 type PlayerRow = {
@@ -76,6 +81,7 @@ type PlayerRow = {
   date_of_birth: string | null;
   photo_url: string | null;
   identity_docs_url: string | null;
+  birth_certificate_url: string | null;
 };
 
 export default function MyTeamPage() {
@@ -168,9 +174,9 @@ export default function MyTeamPage() {
     return supabase.storage.from('team-docs').getPublicUrl(filePath).data.publicUrl;
   };
 
-  /** Envoie une pièce d'identité (PDF ou image) et retourne son URL publique. */
+  /** Envoie un document (pièce d'identité, acte de naissance…) et retourne son URL publique. */
   const uploadDocument = async (
-    folder: "player-docs" | "staff-docs",
+    folder: "player-docs" | "staff-docs" | "player-birth-certs" | "staff-birth-certs",
     id: string,
     file: File
   ): Promise<string | null> => {
@@ -267,6 +273,7 @@ export default function MyTeamPage() {
       date_of_birth: "",
       photo_url: null,
       identity_docs_url: null,
+      birth_certificate_url: null,
     };
 
     setPlayers(prev => [...prev, draft]);
@@ -320,6 +327,7 @@ export default function MyTeamPage() {
       date_of_birth: "",
       photo_url: null,
       identity_docs_url: null,
+      birth_certificate_url: null,
     }]);
     setEditingStaffId(DRAFT_ID);
   };
@@ -408,6 +416,25 @@ export default function MyTeamPage() {
     return true;
   };
 
+  const handleStaffBirthCertUpload = async (id: string, file: File): Promise<boolean> => {
+    if (id === DRAFT_ID) {
+      showToast("Enregistrez d'abord le membre avant d'ajouter son acte de naissance", "error");
+      return false;
+    }
+    const url = await uploadDocument("staff-birth-certs", id, file);
+    if (!url) return false;
+
+    const result = await updateStaffBirthCertificate(id, url);
+    if (!result.success) {
+      showToast(`Erreur : ${result.error}`, "error");
+      return false;
+    }
+
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, birth_certificate_url: url } : s));
+    showToast("Acte de naissance mis à jour", "success");
+    return true;
+  };
+
   const handleDeleteStaff = async (staffId: string) => {
     setConfirm(null);
     if (!team) return;
@@ -455,6 +482,25 @@ export default function MyTeamPage() {
 
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, identity_docs_url: url } : p));
     showToast("Pièce d'identité mise à jour", "success");
+    return true;
+  };
+
+  const handlePlayerBirthCertUpload = async (id: string, file: File): Promise<boolean> => {
+    if (id === DRAFT_ID) {
+      showToast("Enregistrez d'abord le joueur avant d'ajouter son acte de naissance", "error");
+      return false;
+    }
+    const url = await uploadDocument("player-birth-certs", id, file);
+    if (!url) return false;
+
+    const result = await updatePlayerBirthCertificate(id, url);
+    if (!result.success) {
+      showToast(`Erreur : ${result.error}`, "error");
+      return false;
+    }
+
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, birth_certificate_url: url } : p));
+    showToast("Acte de naissance mis à jour", "success");
     return true;
   };
 
@@ -556,7 +602,7 @@ export default function MyTeamPage() {
           </div>
           <h2 className="text-lg md:text-2xl font-black font-outfit uppercase tracking-tighter">Documents</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <DocStatusRow
             label="Pièces d'identité Staff"
             done={staff.filter((s) => !!s.identity_docs_url).length}
@@ -568,9 +614,19 @@ export default function MyTeamPage() {
             total={players.length}
           />
           <DocLink label="Preuve de paiement" url={team.payment_receipt_url} />
+          <DocStatusRow
+            label="Actes de naissance Staff"
+            done={staff.filter((s) => !!s.birth_certificate_url).length}
+            total={staff.length}
+          />
+          <DocStatusRow
+            label="Actes de naissance Joueurs"
+            done={players.filter((p) => !!p.birth_certificate_url).length}
+            total={players.length}
+          />
         </div>
         <p className="text-[10px] text-muted px-1">
-          La pièce d’identité de chaque joueur/membre du staff s’ajoute depuis sa fiche ci-dessous.
+          La pièce d’identité et l’acte de naissance de chaque joueur/membre du staff s’ajoutent depuis sa fiche ci-dessous.
           Pour la preuve de paiement, rendez-vous dans{" "}
           <a href="/manager/registration" className="text-primary hover:underline">votre inscription</a>.
         </p>
@@ -641,6 +697,7 @@ export default function MyTeamPage() {
                 onSave={(updates) => handleUpdateStaff(member.id, updates)}
                 onPhotoUpload={(file) => handleStaffPhotoUpload(member.id, file)}
                 onDocUpload={(file) => handleStaffDocUpload(member.id, file)}
+                onBirthCertUpload={(file) => handleStaffBirthCertUpload(member.id, file)}
                 onDelete={() => setConfirm({ type: "staff", id: member.id, name: `${member.first_name} ${member.last_name}` })}
               />
             ))}
@@ -693,6 +750,7 @@ export default function MyTeamPage() {
                 onSave={(updates) => handleUpdatePlayer(player.id, updates)}
                 onPhotoUpload={(file) => handlePhotoUpload(player.id, file)}
                 onDocUpload={(file) => handlePlayerDocUpload(player.id, file)}
+                onBirthCertUpload={(file) => handlePlayerBirthCertUpload(player.id, file)}
                 onDelete={() => setConfirm({ type: "player", id: player.id, name: player.full_name })}
               />
             ))}
@@ -858,7 +916,11 @@ function PhotoBadge({ url, uploading, onFile }: {
 }
 
 /** Pièce d'identité : upload (remplace si déjà présente) + lien pour voir le fichier actuel. */
-function DocBadge({ url, uploading, onFile }: {
+/** Bouton texte générique pour un document (pièce ID, acte de naissance…). */
+function DocBadge({ addLabel, replaceLabel, viewLabel, url, uploading, onFile }: {
+  addLabel: string;
+  replaceLabel: string;
+  viewLabel: string;
   url: string | null;
   uploading: boolean;
   onFile: (file: File) => void;
@@ -889,7 +951,7 @@ function DocBadge({ url, uploading, onFile }: {
         ) : (
           <FileText className="w-3 h-3" />
         )}
-        {url ? "Remplacer la pièce ID" : "Ajouter une pièce ID"}
+        {url ? replaceLabel : addLabel}
       </label>
       {url && (
         <a
@@ -897,7 +959,7 @@ function DocBadge({ url, uploading, onFile }: {
           target="_blank"
           rel="noreferrer"
           className="shrink-0 p-2 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-all"
-          title="Voir la pièce d'identité"
+          title={viewLabel}
         >
           <ExternalLink className="w-3.5 h-3.5" />
         </a>
@@ -906,7 +968,7 @@ function DocBadge({ url, uploading, onFile }: {
   );
 }
 
-function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDocUpload, onDelete }: {
+function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDocUpload, onBirthCertUpload, onDelete }: {
   player: PlayerRow;
   isEditing: boolean;
   canDelete: boolean;
@@ -915,11 +977,13 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
   onSave: (updates: PlayerRow) => void;
   onPhotoUpload: (file: File) => Promise<boolean>;
   onDocUpload: (file: File) => Promise<boolean>;
+  onBirthCertUpload: (file: File) => Promise<boolean>;
   onDelete: () => void;
 }) {
   const [edited, setEdited] = useState(player);
   const [uploading, setUploading] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [uploadingBirthCert, setUploadingBirthCert] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Resynchronise l'état local quand le joueur change
@@ -950,6 +1014,12 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
     setUploadingDoc(true);
     await onDocUpload(file);
     setUploadingDoc(false);
+  };
+
+  const handleBirthCertFile = async (file: File) => {
+    setUploadingBirthCert(true);
+    await onBirthCertUpload(file);
+    setUploadingBirthCert(false);
   };
 
   return (
@@ -1077,7 +1147,26 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
           </div>
           <div className="col-span-2">
             <Field label="Pièce d'identité">
-              <DocBadge url={player.identity_docs_url} uploading={uploadingDoc} onFile={handleDocFile} />
+              <DocBadge
+                addLabel="Ajouter une pièce ID"
+                replaceLabel="Remplacer la pièce ID"
+                viewLabel="Voir la pièce d'identité"
+                url={player.identity_docs_url}
+                uploading={uploadingDoc}
+                onFile={handleDocFile}
+              />
+            </Field>
+          </div>
+          <div className="col-span-2">
+            <Field label="Acte de naissance">
+              <DocBadge
+                addLabel="Ajouter un acte de naissance"
+                replaceLabel="Remplacer l'acte de naissance"
+                viewLabel="Voir l'acte de naissance"
+                url={player.birth_certificate_url}
+                uploading={uploadingBirthCert}
+                onFile={handleBirthCertFile}
+              />
             </Field>
           </div>
         </div>
@@ -1086,7 +1175,7 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
   );
 }
 
-function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDocUpload, onDelete }: {
+function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDocUpload, onBirthCertUpload, onDelete }: {
   member: StaffRow;
   isEditing: boolean;
   canDelete: boolean;
@@ -1095,11 +1184,13 @@ function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onP
   onSave: (updates: StaffRow) => void;
   onPhotoUpload: (file: File) => Promise<boolean>;
   onDocUpload: (file: File) => Promise<boolean>;
+  onBirthCertUpload: (file: File) => Promise<boolean>;
   onDelete: () => void;
 }) {
   const [edited, setEdited] = useState(member);
   const [uploading, setUploading] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [uploadingBirthCert, setUploadingBirthCert] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [prev, setPrev] = useState(member);
@@ -1128,6 +1219,12 @@ function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onP
     setUploadingDoc(true);
     await onDocUpload(file);
     setUploadingDoc(false);
+  };
+
+  const handleBirthCertFile = async (file: File) => {
+    setUploadingBirthCert(true);
+    await onBirthCertUpload(file);
+    setUploadingBirthCert(false);
   };
 
   const displayName = `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim();
@@ -1240,7 +1337,26 @@ function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onP
           </div>
           <div className="col-span-2">
             <Field label="Pièce d'identité">
-              <DocBadge url={member.identity_docs_url} uploading={uploadingDoc} onFile={handleDocFile} />
+              <DocBadge
+                addLabel="Ajouter une pièce ID"
+                replaceLabel="Remplacer la pièce ID"
+                viewLabel="Voir la pièce d'identité"
+                url={member.identity_docs_url}
+                uploading={uploadingDoc}
+                onFile={handleDocFile}
+              />
+            </Field>
+          </div>
+          <div className="col-span-2">
+            <Field label="Acte de naissance">
+              <DocBadge
+                addLabel="Ajouter un acte de naissance"
+                replaceLabel="Remplacer l'acte de naissance"
+                viewLabel="Voir l'acte de naissance"
+                url={member.birth_certificate_url}
+                uploading={uploadingBirthCert}
+                onFile={handleBirthCertFile}
+              />
             </Field>
           </div>
         </div>
