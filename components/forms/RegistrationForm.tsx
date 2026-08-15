@@ -752,7 +752,12 @@ function StaffStep({ data, updateData, limit, teamName, showAlert }: {
               {uploadingIndex === i ? (
                 <Loader2 className="w-5 h-5 text-primary animate-spin" />
               ) : member.photo ? (
-                <Image src={member.photo} alt={member.name || `Membre ${i + 1}`} fill className="object-cover" />
+                <>
+                  <Image src={member.photo} alt={member.name || `Membre ${i + 1}`} fill className="object-cover" />
+                  <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-primary border-2 border-background flex items-center justify-center">
+                    <Camera className="w-2.5 h-2.5 text-white" />
+                  </div>
+                </>
               ) : (
                 <div className="flex flex-col items-center gap-1 text-muted group-hover:text-primary transition-colors">
                   <Camera className="w-5 h-5" />

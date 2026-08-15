@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   Lock,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Info
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -590,6 +591,15 @@ export default function MyTeamPage() {
         </div>
       )}
 
+      {/* Rappel du geste à faire — la vignette photo seule n'est pas assez explicite pour tout le monde */}
+      <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-blue-400">
+        <Info className="w-4 h-4 shrink-0 mt-0.5" />
+        <p className="text-xs">
+          Pour chaque joueur ou membre du staff, ouvrez sa fiche (crayon <Edit2 className="w-3 h-3 inline -mt-0.5" />) : vous y trouverez les boutons
+          <span className="font-black"> « Ajouter une photo »</span> et <span className="font-black">« Ajouter une pièce ID »</span>.
+        </p>
+      </div>
+
       {/* Staff Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
@@ -756,7 +766,13 @@ const inputCls = (hasError?: boolean) => cn(
   hasError ? "border-red-500" : "border-white/10"
 );
 
-/** Vignette photo cliquable (upload). */
+/**
+ * Vignette photo cliquable. L'ancienne version ne montrait l'icône appareil
+ * photo qu'au survol (`:hover`) — invisible sur mobile/tactile, l'appareil
+ * de la plupart des managers. Le badge est maintenant toujours visible, et
+ * une étiquette « Photo » apparaît tant qu'aucune photo n'est ajoutée, pour
+ * que l'action soit évidente sans avoir à deviner.
+ */
 function PhotoThumb({ url, alt, uploading, onFile, className }: {
   url: string | null;
   alt: string;
@@ -766,7 +782,8 @@ function PhotoThumb({ url, alt, uploading, onFile, className }: {
 }) {
   return (
     <label className={cn(
-      "relative shrink-0 rounded-xl overflow-hidden bg-secondary/60 border border-white/10 cursor-pointer group/photo",
+      "relative shrink-0 rounded-xl overflow-hidden bg-secondary/60 border cursor-pointer",
+      url ? "border-white/10" : "border-2 border-dashed border-primary/30",
       className
     )}>
       <input
@@ -782,19 +799,60 @@ function PhotoThumb({ url, alt, uploading, onFile, className }: {
       {url ? (
         <Image src={url} alt={alt} fill sizes="80px" className="object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-muted/40">
-          <User className="w-6 h-6 stroke-[1.5px]" />
+        <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-primary/70">
+          <Camera className="w-5 h-5" />
+          <span className="text-[7px] font-black uppercase tracking-widest">Photo</span>
         </div>
       )}
       {uploading ? (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
           <Loader2 className="w-4 h-4 text-white animate-spin" />
         </div>
-      ) : (
-        <div className="absolute inset-0 bg-primary/60 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center">
-          <Camera className="w-4 h-4 text-white" />
+      ) : url ? (
+        <div className="absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full bg-primary border-2 border-background flex items-center justify-center">
+          <Camera className="w-2.5 h-2.5 text-white" />
         </div>
+      ) : null}
+    </label>
+  );
+}
+
+/**
+ * Bouton texte pour la photo, en complément de la vignette cliquable :
+ * certains managers ne devinent pas qu'on peut toucher la vignette, ce
+ * bouton rend l'action aussi explicite que « Pièce ID ».
+ */
+function PhotoBadge({ url, uploading, onFile }: {
+  url: string | null;
+  uploading: boolean;
+  onFile: (file: File) => void;
+}) {
+  return (
+    <label className={cn(
+      "flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer transition-all text-[9px] font-black uppercase tracking-widest",
+      url
+        ? "border-green-500/40 bg-green-500/10 text-green-500"
+        : "border-yellow-500/30 bg-yellow-500/5 text-yellow-500/80 hover:border-primary/50 hover:text-primary"
+    )}>
+      <input
+        type="file"
+        className="hidden"
+        accept="image/*"
+        disabled={uploading}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+          e.target.value = "";
+        }}
+      />
+      {uploading ? (
+        <Loader2 className="w-3 h-3 animate-spin" />
+      ) : url ? (
+        <CheckCircle2 className="w-3 h-3" />
+      ) : (
+        <Camera className="w-3 h-3" />
       )}
+      {url ? "Remplacer la photo" : "Ajouter une photo"}
     </label>
   );
 }
@@ -1013,6 +1071,11 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
             />
           </Field>
           <div className="col-span-2">
+            <Field label="Photo">
+              <PhotoBadge url={player.photo_url} uploading={uploading} onFile={handleFile} />
+            </Field>
+          </div>
+          <div className="col-span-2">
             <Field label="Pièce d'identité">
               <DocBadge url={player.identity_docs_url} uploading={uploadingDoc} onFile={handleDocFile} />
             </Field>
@@ -1168,6 +1231,11 @@ function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onP
                 className={inputCls()}
                 onChange={(e) => setEdited({ ...edited, date_of_birth: e.target.value })}
               />
+            </Field>
+          </div>
+          <div className="col-span-2">
+            <Field label="Photo">
+              <PhotoBadge url={member.photo_url} uploading={uploading} onFile={handleFile} />
             </Field>
           </div>
           <div className="col-span-2">
