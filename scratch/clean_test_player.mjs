@@ -16,15 +16,25 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 });
 
 const PLAYER_ID = 'd61ad31b-6e8a-4f90-bd3e-0de9c9527038';
-const paths = [
-  'player-photos/d61ad31b-6e8a-4f90-bd3e-0de9c9527038-1786805104334.jpg',
-  'player-docs/d61ad31b-6e8a-4f90-bd3e-0de9c9527038-1786805118018.png',
-  'player-birth-certs/d61ad31b-6e8a-4f90-bd3e-0de9c9527038-1786805124248.png',
-];
 
-const { data: removed, error: storageError } = await supabase.storage.from('team-docs').remove(paths);
-console.log('Fichiers supprimés du storage:', removed?.map(f => f.name));
-if (storageError) console.error('Erreur storage:', storageError.message);
+const { data: player } = await supabase
+  .from('players')
+  .select('photo_url, identity_docs_url, birth_certificate_url')
+  .eq('id', PLAYER_ID)
+  .single();
+
+const toPath = (url) => url ? url.split('/public/team-docs/')[1] : null;
+const paths = [player.photo_url, player.identity_docs_url, player.birth_certificate_url]
+  .map(toPath)
+  .filter(Boolean);
+
+if (paths.length > 0) {
+  const { data: removed, error: storageError } = await supabase.storage.from('team-docs').remove(paths);
+  console.log('Fichiers supprimés du storage:', removed?.map(f => f.name));
+  if (storageError) console.error('Erreur storage:', storageError.message);
+} else {
+  console.log('Aucun fichier à supprimer.');
+}
 
 const { data, error } = await supabase
   .from('players')
