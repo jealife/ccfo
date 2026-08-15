@@ -16,6 +16,7 @@ import {
   Info,
   Loader2,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { submitTeamRegistration, saveRegistrationDraft } from "@/app/api/registration/actions";
@@ -793,6 +794,17 @@ function StaffStep({ data, updateData, limit, teamName, showAlert }: {
                     )}
                     Pièce ID
                   </label>
+                  {member.idDocument && (
+                    <a
+                      href={member.idDocument}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 p-2.5 rounded-xl border border-border bg-secondary/50 text-muted hover:text-primary hover:border-primary/50 transition-all"
+                      title="Voir la pièce d'identité"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -896,6 +908,17 @@ function PlayersStep({ data, updateData, limit, showAlert }: {
                 )}
                 Pièce ID
               </label>
+              {player.idDocument && (
+                <a
+                  href={player.idDocument}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 p-2.5 rounded-xl border border-border bg-secondary/50 text-muted hover:text-primary hover:border-primary/50 transition-all"
+                  title="Voir la pièce d'identité"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
             </div>
           </div>
         ))}

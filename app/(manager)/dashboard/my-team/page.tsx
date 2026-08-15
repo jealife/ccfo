@@ -17,20 +17,29 @@ import {
   AlertCircle,
   Trash2,
   AlertTriangle,
-  Lock
+  Lock,
+  FileText,
+  ExternalLink
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { updatePlayerPhoto, updateStaffPhoto } from "@/app/api/players/actions";
+import { updatePlayerPhoto, updateStaffPhoto, updatePlayerDocument, updateStaffDocument } from "@/app/api/players/actions";
 import { addPlayer, addStaff, deletePlayer, deleteStaff, updatePlayer, updateStaff } from "@/app/api/team/actions";
 import { formatFrenchDate } from "@/lib/helpers";
 
 const ROSTER_LOCKED_MSG =
   "Votre équipe est validée : l'effectif est figé. Contactez l'administration pour rouvrir l'accès.";
 
+const MAX_DOC_SIZE = 10 * 1024 * 1024; // 10 Mo, aligné sur la limite de l'inscription
+
 /** Chemin de photo (hors composant : Date.now() ne doit pas être appelé au rendu) */
 function makePhotoPath(folder: "player-photos" | "staff-photos", id: string, ext: string | undefined) {
+  return `${folder}/${id}-${Date.now()}.${ext}`;
+}
+
+/** Chemin de document d'identité (dossier distinct des photos, même bucket) */
+function makeDocPath(folder: "player-docs" | "staff-docs", id: string, ext: string | undefined) {
   return `${folder}/${id}-${Date.now()}.${ext}`;
 }
 
@@ -41,6 +50,7 @@ type TeamRow = {
   status: string;
   president_name: string | null;
   registration_unlocked?: boolean | null;
+  payment_receipt_url: string | null;
 };
 
 type StaffRow = {
@@ -52,6 +62,7 @@ type StaffRow = {
   origin_village: string | null;
   date_of_birth: string | null;
   photo_url: string | null;
+  identity_docs_url: string | null;
 };
 
 type PlayerRow = {
@@ -63,6 +74,7 @@ type PlayerRow = {
   origin_village: string | null;
   date_of_birth: string | null;
   photo_url: string | null;
+  identity_docs_url: string | null;
 };
 
 export default function MyTeamPage() {
@@ -155,6 +167,35 @@ export default function MyTeamPage() {
     return supabase.storage.from('team-docs').getPublicUrl(filePath).data.publicUrl;
   };
 
+  /** Envoie une pièce d'identité (PDF ou image) et retourne son URL publique. */
+  const uploadDocument = async (
+    folder: "player-docs" | "staff-docs",
+    id: string,
+    file: File
+  ): Promise<string | null> => {
+    const acceptedTypes = ["application/pdf", "application/zip", "application/x-zip-compressed", "image/jpeg", "image/png", "image/webp"];
+    if (!acceptedTypes.includes(file.type)) {
+      showToast("Format non supporté. Utilisez un PDF, un ZIP ou une image.", "error");
+      return null;
+    }
+    if (file.size > MAX_DOC_SIZE) {
+      showToast("Document trop lourd (max 10 Mo)", "error");
+      return null;
+    }
+
+    const filePath = makeDocPath(folder, id, file.name.split('.').pop());
+    const { error: uploadError } = await supabase.storage
+      .from('team-docs')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      showToast("Erreur upload : " + uploadError.message, "error");
+      return null;
+    }
+
+    return supabase.storage.from('team-docs').getPublicUrl(filePath).data.publicUrl;
+  };
+
   const handleUpdatePlayer = async (id: string, updates: PlayerRow) => {
     if (!team) return;
 
@@ -224,6 +265,7 @@ export default function MyTeamPage() {
       origin_village: team.village || "",
       date_of_birth: "",
       photo_url: null,
+      identity_docs_url: null,
     };
 
     setPlayers(prev => [...prev, draft]);
@@ -276,6 +318,7 @@ export default function MyTeamPage() {
       origin_village: team.village || "",
       date_of_birth: "",
       photo_url: null,
+      identity_docs_url: null,
     }]);
     setEditingStaffId(DRAFT_ID);
   };
@@ -345,6 +388,25 @@ export default function MyTeamPage() {
     return true;
   };
 
+  const handleStaffDocUpload = async (id: string, file: File): Promise<boolean> => {
+    if (id === DRAFT_ID) {
+      showToast("Enregistrez d'abord le membre avant d'ajouter sa pièce d'identité", "error");
+      return false;
+    }
+    const url = await uploadDocument("staff-docs", id, file);
+    if (!url) return false;
+
+    const result = await updateStaffDocument(id, url);
+    if (!result.success) {
+      showToast(`Erreur : ${result.error}`, "error");
+      return false;
+    }
+
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, identity_docs_url: url } : s));
+    showToast("Pièce d'identité mise à jour", "success");
+    return true;
+  };
+
   const handleDeleteStaff = async (staffId: string) => {
     setConfirm(null);
     if (!team) return;
@@ -373,6 +435,25 @@ export default function MyTeamPage() {
 
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, photo_url: url } : p));
     showToast("Photo mise à jour", "success");
+    return true;
+  };
+
+  const handlePlayerDocUpload = async (id: string, file: File): Promise<boolean> => {
+    if (id === DRAFT_ID) {
+      showToast("Enregistrez d'abord le joueur avant d'ajouter sa pièce d'identité", "error");
+      return false;
+    }
+    const url = await uploadDocument("player-docs", id, file);
+    if (!url) return false;
+
+    const result = await updatePlayerDocument(id, url);
+    if (!result.success) {
+      showToast(`Erreur : ${result.error}`, "error");
+      return false;
+    }
+
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, identity_docs_url: url } : p));
+    showToast("Pièce d'identité mise à jour", "success");
     return true;
   };
 
@@ -466,6 +547,34 @@ export default function MyTeamPage() {
         <Users className="absolute -bottom-10 -right-10 w-48 md:w-64 h-48 md:h-64 text-white/5 rotate-12" />
       </div>
 
+      {/* Documents de l'équipe */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-3 px-1">
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-white/5 flex items-center justify-center text-primary border border-white/5">
+            <FileText className="w-4 h-4 md:w-5 md:h-5" />
+          </div>
+          <h2 className="text-lg md:text-2xl font-black font-outfit uppercase tracking-tighter">Documents</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <DocStatusRow
+            label="Pièces d'identité Staff"
+            done={staff.filter((s) => !!s.identity_docs_url).length}
+            total={staff.length}
+          />
+          <DocStatusRow
+            label="Pièces d'identité Joueurs"
+            done={players.filter((p) => !!p.identity_docs_url).length}
+            total={players.length}
+          />
+          <DocLink label="Preuve de paiement" url={team.payment_receipt_url} />
+        </div>
+        <p className="text-[10px] text-muted px-1">
+          La pièce d’identité de chaque joueur/membre du staff s’ajoute depuis sa fiche ci-dessous.
+          Pour la preuve de paiement, rendez-vous dans{" "}
+          <a href="/manager/registration" className="text-primary hover:underline">votre inscription</a>.
+        </p>
+      </section>
+
       {/* Effectif figé après validation */}
       {rosterLocked && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-yellow-500">
@@ -521,6 +630,7 @@ export default function MyTeamPage() {
                 onCancel={() => handleCancelStaffEdit(member.id)}
                 onSave={(updates) => handleUpdateStaff(member.id, updates)}
                 onPhotoUpload={(file) => handleStaffPhotoUpload(member.id, file)}
+                onDocUpload={(file) => handleStaffDocUpload(member.id, file)}
                 onDelete={() => setConfirm({ type: "staff", id: member.id, name: `${member.first_name} ${member.last_name}` })}
               />
             ))}
@@ -572,6 +682,7 @@ export default function MyTeamPage() {
                 onCancel={() => handleCancelEdit(player.id)}
                 onSave={(updates) => handleUpdatePlayer(player.id, updates)}
                 onPhotoUpload={(file) => handlePhotoUpload(player.id, file)}
+                onDocUpload={(file) => handlePlayerDocUpload(player.id, file)}
                 onDelete={() => setConfirm({ type: "player", id: player.id, name: player.full_name })}
               />
             ))}
@@ -582,6 +693,48 @@ export default function MyTeamPage() {
   );
 }
 
+
+/** Compteur de pièces d'identité fournies (staff ou joueurs). */
+function DocStatusRow({ label, done, total }: { label: string; done: number; total: number }) {
+  const complete = total > 0 && done === total;
+  return (
+    <div className={cn(
+      "flex items-center justify-between p-3 rounded-xl border",
+      complete ? "bg-white/5 border-white/5" : "bg-yellow-500/5 border-yellow-500/10"
+    )}>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <FileText className={cn("w-4 h-4 shrink-0", complete ? "text-primary" : "text-yellow-500/80")} />
+        <span className="text-[10px] font-black uppercase tracking-widest truncate">{label}</span>
+      </div>
+      <span className={cn("text-[9px] font-bold shrink-0 ml-2", complete ? "text-muted" : "text-yellow-500")}>
+        {done} / {total}
+      </span>
+    </div>
+  );
+}
+
+/** Lien vers un document déjà uploadé (ou indication qu'il manque). */
+function DocLink({ label, url }: { label: string; url: string | null }) {
+  if (!url) {
+    return (
+      <div className="flex items-center justify-between p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10">
+        <span className="text-[10px] font-black uppercase tracking-widest text-yellow-500/80">{label}</span>
+        <span className="text-[9px] font-bold text-yellow-500 italic shrink-0 ml-2">Manquant</span>
+      </div>
+    );
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-primary/50 transition-all group/row"
+    >
+      <span className="text-[10px] font-black uppercase tracking-widest truncate">{label}</span>
+      <ExternalLink className="w-3 h-3 text-muted group-hover/row:text-primary transition-colors shrink-0 ml-2" />
+    </a>
+  );
+}
 
 /** Petit champ étiqueté, partagé par les cartes joueur et staff. */
 function Field({ label, error, children }: {
@@ -646,7 +799,56 @@ function PhotoThumb({ url, alt, uploading, onFile, className }: {
   );
 }
 
-function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDelete }: {
+/** Pièce d'identité : upload (remplace si déjà présente) + lien pour voir le fichier actuel. */
+function DocBadge({ url, uploading, onFile }: {
+  url: string | null;
+  uploading: boolean;
+  onFile: (file: File) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <label className={cn(
+        "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer transition-all text-[9px] font-black uppercase tracking-widest",
+        url
+          ? "border-green-500/40 bg-green-500/10 text-green-500"
+          : "border-yellow-500/30 bg-yellow-500/5 text-yellow-500/80 hover:border-primary/50 hover:text-primary"
+      )}>
+        <input
+          type="file"
+          className="hidden"
+          accept=".pdf,.zip,image/jpeg,image/png,image/webp"
+          disabled={uploading}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+            e.target.value = "";
+          }}
+        />
+        {uploading ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : url ? (
+          <CheckCircle2 className="w-3 h-3" />
+        ) : (
+          <FileText className="w-3 h-3" />
+        )}
+        {url ? "Remplacer la pièce ID" : "Ajouter une pièce ID"}
+      </label>
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="shrink-0 p-2 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-all"
+          title="Voir la pièce d'identité"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDocUpload, onDelete }: {
   player: PlayerRow;
   isEditing: boolean;
   canDelete: boolean;
@@ -654,10 +856,12 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
   onCancel: () => void;
   onSave: (updates: PlayerRow) => void;
   onPhotoUpload: (file: File) => Promise<boolean>;
+  onDocUpload: (file: File) => Promise<boolean>;
   onDelete: () => void;
 }) {
   const [edited, setEdited] = useState(player);
   const [uploading, setUploading] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Resynchronise l'état local quand le joueur change
@@ -682,6 +886,12 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
     setUploading(true);
     await onPhotoUpload(file);
     setUploading(false);
+  };
+
+  const handleDocFile = async (file: File) => {
+    setUploadingDoc(true);
+    await onDocUpload(file);
+    setUploadingDoc(false);
   };
 
   return (
@@ -802,13 +1012,18 @@ function PlayerCard({ player, isEditing, canDelete, onEdit, onCancel, onSave, on
               onChange={(e) => setEdited({ ...edited, date_of_birth: e.target.value })}
             />
           </Field>
+          <div className="col-span-2">
+            <Field label="Pièce d'identité">
+              <DocBadge url={player.identity_docs_url} uploading={uploadingDoc} onFile={handleDocFile} />
+            </Field>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDelete }: {
+function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onPhotoUpload, onDocUpload, onDelete }: {
   member: StaffRow;
   isEditing: boolean;
   canDelete: boolean;
@@ -816,10 +1031,12 @@ function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onP
   onCancel: () => void;
   onSave: (updates: StaffRow) => void;
   onPhotoUpload: (file: File) => Promise<boolean>;
+  onDocUpload: (file: File) => Promise<boolean>;
   onDelete: () => void;
 }) {
   const [edited, setEdited] = useState(member);
   const [uploading, setUploading] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [prev, setPrev] = useState(member);
@@ -842,6 +1059,12 @@ function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onP
     setUploading(true);
     await onPhotoUpload(file);
     setUploading(false);
+  };
+
+  const handleDocFile = async (file: File) => {
+    setUploadingDoc(true);
+    await onDocUpload(file);
+    setUploadingDoc(false);
   };
 
   const displayName = `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim();
@@ -945,6 +1168,11 @@ function StaffCard({ member, isEditing, canDelete, onEdit, onCancel, onSave, onP
                 className={inputCls()}
                 onChange={(e) => setEdited({ ...edited, date_of_birth: e.target.value })}
               />
+            </Field>
+          </div>
+          <div className="col-span-2">
+            <Field label="Pièce d'identité">
+              <DocBadge url={member.identity_docs_url} uploading={uploadingDoc} onFile={handleDocFile} />
             </Field>
           </div>
         </div>
